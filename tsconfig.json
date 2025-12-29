@@ -1,0 +1,3 @@
+{
+  "extends": "@vps-claude/config/tsconfig.base.json"
+}
