@@ -9,13 +9,8 @@
   "orm": "drizzle",
   "backend": "hono",
   "runtime": "bun",
-  "frontend": [
-    "next"
-  ],
-  "addons": [
-    "turborepo",
-    "oxlint"
-  ],
+  "frontend": ["next"],
+  "addons": ["turborepo", "oxlint"],
   "examples": [],
   "auth": "better-auth",
   "payments": "none",
@@ -23,5 +18,5 @@
   "dbSetup": "docker",
   "api": "orpc",
   "webDeploy": "none",
-  "serverDeploy": "none"
+  "serverDeploy": "none",
 }

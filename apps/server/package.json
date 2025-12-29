@@ -10,22 +10,22 @@
     "start": "bun run dist/index.js"
   },
   "dependencies": {
-    "hono": "catalog:",
-    "@orpc/server": "catalog:",
     "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@vps-claude/env": "workspace:*",
     "@vps-claude/api": "workspace:*",
     "@vps-claude/auth": "workspace:*",
-    "@vps-claude/db": "workspace:*"
+    "@vps-claude/db": "workspace:*",
+    "@vps-claude/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "typescript": "catalog:",
+    "@vps-claude/config": "workspace:*",
     "tsdown": "^0.16.5",
-    "@vps-claude/config": "workspace:*"
+    "typescript": "catalog:"
   }
 }

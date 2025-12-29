@@ -10,15 +10,15 @@
     }
   },
   "scripts": {},
-  "devDependencies": {
-    "typescript": "catalog:",
-    "@vps-claude/config": "workspace:*"
-  },
   "dependencies": {
+    "@vps-claude/db": "workspace:*",
+    "@vps-claude/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@vps-claude/env": "workspace:*",
-    "@vps-claude/db": "workspace:*"
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "typescript": "catalog:"
   }
 }
