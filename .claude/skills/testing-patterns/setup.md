@@ -28,11 +28,11 @@ interface TestSetup {
 
 ## In-Memory Infrastructure
 
-| Service | Implementation | Package |
-|---------|----------------|---------|
-| PostgreSQL | PGlite (WASM-based) | `@project/test-utils/pg-lite` |
-| Redis | redis-memory-server | `@project/test-utils/redis-test-server` |
-| S3 | S3rver (local filesystem) | `@project/test-utils/s3-test-server` |
+| Service    | Implementation            | Package                                 |
+| ---------- | ------------------------- | --------------------------------------- |
+| PostgreSQL | PGlite (WASM-based)       | `@project/test-utils/pg-lite`           |
+| Redis      | redis-memory-server       | `@project/test-utils/redis-test-server` |
+| S3         | S3rver (local filesystem) | `@project/test-utils/s3-test-server`    |
 
 All reset between test files. No network calls needed.
 

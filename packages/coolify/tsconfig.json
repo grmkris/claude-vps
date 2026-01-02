@@ -1,0 +1,7 @@
+{
+  "extends": "@vps-claude/config/base.json",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"]
+}

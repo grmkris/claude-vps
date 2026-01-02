@@ -1,0 +1,17 @@
+{
+  "name": "@vps-claude/redis",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@vps-claude/env": "workspace:*",
+    "ioredis": "^5.6.1"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

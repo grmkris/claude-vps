@@ -1,5 +1,9 @@
 {
   "name": "@vps-claude/config",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "exports": {
+    "./base.json": "./tsconfig.base.json",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  }
 }

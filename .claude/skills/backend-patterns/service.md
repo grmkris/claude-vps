@@ -63,20 +63,20 @@ export type XxxService = ReturnType<typeof createXxxService>;
 
 ## Key Patterns
 
-| Pattern | Example |
-|---------|---------|
-| Deps interface | `interface XxxServiceDeps { db, logger }` |
-| Factory function | `createXxxService({ deps })` |
-| Type export | `type XxxService = ReturnType<typeof createXxxService>` |
-| DB access | Import `DB_SCHEMA` from `@project/db` |
-| Error handling | `neverthrow` Result type with typed errors |
+| Pattern          | Example                                                 |
+| ---------------- | ------------------------------------------------------- |
+| Deps interface   | `interface XxxServiceDeps { db, logger }`               |
+| Factory function | `createXxxService({ deps })`                            |
+| Type export      | `type XxxService = ReturnType<typeof createXxxService>` |
+| DB access        | Import `DB_SCHEMA` from `@project/db`                   |
+| Error handling   | `neverthrow` Result type with typed errors              |
 
 ## db.query vs db.select
 
-| Use | Pattern |
-|-----|---------|
-| **db.query** (prefer) | Simple lookups, single table, with relations |
-| **db.select** | Complex joins, aggregations, custom column selection |
+| Use                   | Pattern                                              |
+| --------------------- | ---------------------------------------------------- |
+| **db.query** (prefer) | Simple lookups, single table, with relations         |
+| **db.select**         | Complex joins, aggregations, custom column selection |
 
 ```typescript
 // PREFER: Simple lookup with relations
@@ -127,6 +127,7 @@ return { ...existing, xxxService };
 ## Dependency Order
 
 Services are created in dependency order in context.ts:
+
 1. Core deps: `db`, `logger` (no dependencies)
 2. Base services: `userService`, `itemService` (only need db, logger)
 3. Dependent services: Services that need other services as deps

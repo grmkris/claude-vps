@@ -10,22 +10,24 @@ Use this skill when building backend features. Follow these patterns for consist
 ## Project Setup
 
 Replace these placeholders for your project:
+
 - `@project/` → your package scope (e.g., `@myapp/`)
 - `packages/` paths follow standard monorepo layout
 
 Expected packages:
+
 - `@project/db` - Drizzle database client, DB_SCHEMA export
 - `@project/shared` - TypeIDs, constants, shared schemas
 - `@project/logger` - Pino logger wrapper
 
 ## Quick Reference
 
-| Entity Type | Pattern | Files to Create/Modify |
-|-------------|---------|------------------------|
-| Service | Factory function with deps, neverthrow | `packages/api/src/services/xxx-service.ts`, `context.ts` |
-| Schema | 3-file pattern | `.db.ts`, `.zod.ts`, `.relations.ts` in `packages/db/src/schema/` |
-| Router | ORPC procedures, Result→Error mapping | `packages/api/src/routers/xxx-router.ts`, `routers.ts` |
-| TypeID | Prefixed ID | `packages/shared/src/typeid.schema.ts` |
+| Entity Type | Pattern                                | Files to Create/Modify                                            |
+| ----------- | -------------------------------------- | ----------------------------------------------------------------- |
+| Service     | Factory function with deps, neverthrow | `packages/api/src/services/xxx-service.ts`, `context.ts`          |
+| Schema      | 3-file pattern                         | `.db.ts`, `.zod.ts`, `.relations.ts` in `packages/db/src/schema/` |
+| Router      | ORPC procedures, Result→Error mapping  | `packages/api/src/routers/xxx-router.ts`, `routers.ts`            |
+| TypeID      | Prefixed ID                            | `packages/shared/src/typeid.schema.ts`                            |
 
 ## Key Conventions
 

@@ -1,0 +1,23 @@
+{
+  "name": "@vps-claude/test-utils",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@vps-claude/db": "workspace:*",
+    "@vps-claude/shared": "workspace:*",
+    "drizzle-orm": "^0.45.1"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "^3.2.4"
+  }
+}

@@ -10,10 +10,12 @@ Use this skill for data layer and React patterns. For visual design, use `fronte
 ## Project Setup
 
 Replace these placeholders for your project:
+
 - `@project/` → your package scope (e.g., `@myapp/`)
 - `apps/web/` paths follow standard monorepo layout
 
 Expected setup:
+
 - `@project/auth` - better-auth config
 - `@project/shared` - SERVICE_URLS, shared types
 - `@/utils/orpc` - ORPC client, queryClient
@@ -74,13 +76,13 @@ export function useCreateItem() {
 
 ## File Locations
 
-| Pattern | Location |
-|---------|----------|
-| Hooks | `apps/web/src/hooks/` |
-| ORPC client | `apps/web/src/utils/orpc.ts` |
-| Types | `apps/web/src/lib/orpc-types.ts` |
-| Auth client | `apps/web/src/lib/auth-client.ts` |
-| Providers | `apps/web/src/components/providers.tsx` |
+| Pattern     | Location                                |
+| ----------- | --------------------------------------- |
+| Hooks       | `apps/web/src/hooks/`                   |
+| ORPC client | `apps/web/src/utils/orpc.ts`            |
+| Types       | `apps/web/src/lib/orpc-types.ts`        |
+| Auth client | `apps/web/src/lib/auth-client.ts`       |
+| Providers   | `apps/web/src/components/providers.tsx` |
 
 ## Best Practices
 

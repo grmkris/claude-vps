@@ -1,6 +1,7 @@
 # Schema 3-File Pattern
 
 Each entity has 3 files in `packages/db/src/schema/{domain}/`:
+
 - `xxx.db.ts` - Drizzle table definition
 - `xxx.zod.ts` - Zod validation schemas
 - `xxx.relations.ts` - Drizzle relations
@@ -118,17 +119,17 @@ export type XxxId = z.infer<typeof XxxId>;
 
 ## Field Types
 
-| Type | Usage |
-|------|-------|
-| `typeId("entity", "col")` | TypeID columns (stored as UUID) |
-| `text("col")` | Strings |
-| `integer("col")` | Integers |
-| `numeric("col", { precision, scale })` | Money/decimals |
-| `boolean("col")` | Booleans |
-| `jsonb("col").$type<T>()` | JSON with TypeScript type |
-| `createTimestampField("col")` | Timestamps with timezone |
-| `pgEnum("name", [...])` | Enums |
-| `baseEntityFields` | createdAt, updatedAt |
+| Type                                   | Usage                           |
+| -------------------------------------- | ------------------------------- |
+| `typeId("entity", "col")`              | TypeID columns (stored as UUID) |
+| `text("col")`                          | Strings                         |
+| `integer("col")`                       | Integers                        |
+| `numeric("col", { precision, scale })` | Money/decimals                  |
+| `boolean("col")`                       | Booleans                        |
+| `jsonb("col").$type<T>()`              | JSON with TypeScript type       |
+| `createTimestampField("col")`          | Timestamps with timezone        |
+| `pgEnum("name", [...])`                | Enums                           |
+| `baseEntityFields`                     | createdAt, updatedAt            |
 
 ## Zod Enum Pattern
 

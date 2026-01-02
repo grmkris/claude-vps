@@ -74,14 +74,15 @@ export const xxxRouter = {
 
 ## Procedure Types
 
-| Type | Usage |
-|------|-------|
+| Type                 | Usage                                |
+| -------------------- | ------------------------------------ |
 | `protectedProcedure` | Requires auth, has `context.session` |
-| `publicProcedure` | No auth required |
+| `publicProcedure`    | No auth required                     |
 
 ## Error Handling
 
 Direct throw:
+
 ```typescript
 throw new ORPCError("NOT_FOUND", { message: "Item not found" });
 throw new ORPCError("BAD_REQUEST", { message: "Invalid input" });

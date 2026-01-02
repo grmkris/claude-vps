@@ -16,10 +16,17 @@
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
     "@vps-claude/auth": "workspace:*",
+    "@vps-claude/coolify": "workspace:*",
     "@vps-claude/db": "workspace:*",
     "@vps-claude/env": "workspace:*",
+    "@vps-claude/logger": "workspace:*",
+    "@vps-claude/queue": "workspace:*",
+    "@vps-claude/redis": "workspace:*",
+    "@vps-claude/shared": "workspace:*",
     "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.1",
     "hono": "catalog:",
+    "neverthrow": "^8.1.1",
     "zod": "catalog:"
   },
   "devDependencies": {

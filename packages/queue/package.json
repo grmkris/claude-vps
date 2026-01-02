@@ -1,0 +1,22 @@
+{
+  "name": "@vps-claude/queue",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@vps-claude/redis": "workspace:*",
+    "@vps-claude/shared": "workspace:*",
+    "bullmq": "^5.55.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

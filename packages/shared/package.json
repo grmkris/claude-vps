@@ -1,0 +1,20 @@
+{
+  "name": "@vps-claude/shared",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "typeid-js": "^1.2.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

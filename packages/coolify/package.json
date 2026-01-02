@@ -1,0 +1,17 @@
+{
+  "name": "@vps-claude/coolify",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@vps-claude/env": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

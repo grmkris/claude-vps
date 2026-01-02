@@ -51,6 +51,7 @@ packages/
 - **Providers**: `apps/web/src/components/providers.tsx` — QueryClient, ThemeProvider
 
 Usage:
+
 ```tsx
 import { orpc } from "@/utils/orpc";
 const { data } = orpc.healthCheck.useQuery();
@@ -59,11 +60,13 @@ const { data } = orpc.healthCheck.useQuery();
 ## Adding New Features
 
 **New ORPC endpoint:**
+
 1. Add procedure in `packages/api/src/routers/index.ts` (or create new router file)
 2. Use `publicProcedure` or `protectedProcedure`
 3. Frontend calls via `orpc.routerName.useQuery()` or `useMutation()`
 
 **New DB table:**
+
 1. Add schema in `packages/db/src/schema/`
 2. Export from `packages/db/src/schema/index.ts`
 3. Run `bun run db:generate` then `bun run db:push`
@@ -71,12 +74,14 @@ const { data } = orpc.healthCheck.useQuery();
 ## Environment Variables
 
 Server (`apps/server/.env`):
+
 - `DATABASE_URL` - Postgres connection string
 - `BETTER_AUTH_SECRET` - Min 32 chars
 - `BETTER_AUTH_URL` - Server URL
 - `CORS_ORIGIN` - Web app URL
 
 Web (`apps/web/.env`):
+
 - `NEXT_PUBLIC_SERVER_URL` - Server URL
 
 ## Linting

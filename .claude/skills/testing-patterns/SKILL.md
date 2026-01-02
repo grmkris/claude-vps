@@ -10,10 +10,12 @@ Use this skill when writing tests. Tests use isolated in-memory infrastructure.
 ## Project Setup
 
 Replace these placeholders for your project:
+
 - `@project/` → your package scope (e.g., `@myapp/`)
 - `packages/` paths follow standard monorepo layout
 
 Expected packages:
+
 - `@project/test-utils` - In-memory infrastructure (PGlite, Redis, S3)
 - `@project/shared/typeid` - TypeID validators
 
