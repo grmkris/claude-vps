@@ -3,8 +3,8 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/logger.d.ts",
+      "default": "./src/logger.ts"
     }
   },
   "scripts": {
@@ -12,14 +12,14 @@
     "check-types": "tsc --noEmit",
     "test": "bun test"
   },
-  "devDependencies": {
-    "@types/bun": "catalog:",
-    "pino-pretty": "catalog:",
-    "tsdown": "catalog:"
-  },
   "dependencies": {
     "pino": "catalog:",
     "pino-http": "catalog:",
     "pino-std-serializers": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "pino-pretty": "catalog:",
+    "tsdown": "catalog:"
   }
 }

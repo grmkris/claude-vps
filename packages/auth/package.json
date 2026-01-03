@@ -3,14 +3,23 @@
   "type": "module",
   "exports": {
     ".": {
-      "default": "./src/index.ts"
+      "default": "./src/auth-config.ts"
     },
-    "./*": {
-      "default": "./src/*.ts"
+    "./client": {
+      "default": "./src/auth-client.ts"
+    },
+    "./client/server": {
+      "default": "./src/auth-client.server.ts"
+    },
+    "./schema-gen": {
+      "default": "./src/auth.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "db:auth:generate": "npx @better-auth/cli generate --config ./src/auth.ts -y"
+  },
   "dependencies": {
+    "@electric-sql/pglite": "catalog:",
     "@vps-claude/db": "workspace:*",
     "@vps-claude/env": "workspace:*",
     "better-auth": "catalog:",

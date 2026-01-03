@@ -1,9 +1,10 @@
-import * as schema from "@vps-claude/db";
+import type { PGlite } from "@electric-sql/pglite";
 import type { Database } from "@vps-claude/db";
+
+import * as schema from "@vps-claude/db";
 import { typeIdGenerator } from "@vps-claude/shared";
 
 import { createTestDatabase, cleanupTestDatabase } from "./pg-lite";
-import type { PGlite } from "@electric-sql/pglite";
 
 export interface TestUser {
   id: string;

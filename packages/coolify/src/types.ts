@@ -26,4 +26,6 @@ export const CreateApplicationResponse = z.object({
   domains: z.array(z.string()).optional(),
 });
 
-export type CreateApplicationResponse = z.infer<typeof CreateApplicationResponse>;
+export type CreateApplicationResponse = z.infer<
+  typeof CreateApplicationResponse
+>;

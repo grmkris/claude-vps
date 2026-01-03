@@ -19,9 +19,9 @@ export function typeIdGenerator<T extends IdTypeName>(name: T): string {
 
 export function typeIdValidator<T extends IdTypeName>(name: T) {
   const prefix = idTypesMapNameToPrefix[name];
-  return z
-    .string()
-    .refine((val) => val.startsWith(`${prefix}_`), { message: `Invalid ${name} ID format` });
+  return z.string().refine((val) => val.startsWith(`${prefix}_`), {
+    message: `Invalid ${name} ID format`,
+  });
 }
 
 export const UserId = typeIdValidator("user");

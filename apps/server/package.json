@@ -1,13 +1,13 @@
 {
   "name": "server",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/server.ts",
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc -b",
-    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "dev": "bun run --hot src/index.ts",
-    "start": "bun run dist/index.js",
+    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/server.ts --outfile server",
+    "dev": "bun run --hot src/server.ts",
+    "start": "bun run dist/server.js",
     "test": "bun test",
     "test:watch": "bun test --watch"
   },

@@ -1,16 +1,17 @@
 {
-  "name": "@vps-claude/redis",
+  "name": "@vps-claude/storage",
   "type": "module",
   "exports": {
     ".": {
-      "default": "./src/redis.ts"
+      "default": "./src/storage-client.ts"
     }
   },
   "dependencies": {
     "@vps-claude/env": "workspace:*",
-    "ioredis": "^5.6.1"
+    "@vps-claude/logger": "workspace:*"
   },
   "devDependencies": {
+    "@types/bun": "catalog:",
     "@vps-claude/config": "workspace:*",
     "typescript": "catalog:"
   }

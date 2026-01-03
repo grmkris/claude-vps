@@ -26,7 +26,10 @@ function getConfig(): CoolifyConfig {
   };
 }
 
-async function coolifyFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function coolifyFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
   const config = getConfig();
   const url = `${config.apiUrl}${path}`;
 
@@ -78,7 +81,9 @@ export async function deployApplication(uuid: string): Promise<void> {
   });
 }
 
-export async function getApplication(uuid: string): Promise<CoolifyApplication> {
+export async function getApplication(
+  uuid: string
+): Promise<CoolifyApplication> {
   return coolifyFetch<CoolifyApplication>(`/applications/${uuid}`);
 }
 
@@ -94,7 +99,7 @@ export async function deleteApplication(uuid: string): Promise<void> {
 
 export async function updateApplicationEnv(
   uuid: string,
-  envVars: Record<string, string>,
+  envVars: Record<string, string>
 ): Promise<void> {
   for (const [key, value] of Object.entries(envVars)) {
     await coolifyFetch(`/applications/${uuid}/envs`, {

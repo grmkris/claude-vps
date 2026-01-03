@@ -1,8 +1,12 @@
-import { join } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
-import { drizzle as drizzleNodePg, type NodePgDatabase } from "drizzle-orm/node-postgres";
+
+import {
+  drizzle as drizzleNodePg,
+  type NodePgDatabase,
+} from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite, PgliteDatabase } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
+import { join } from "node:path";
 
 import * as schema from "./schema";
 
@@ -10,7 +14,9 @@ export * from "./schema";
 export { schema };
 export { schema as DB_SCHEMA };
 
-export type Database = NodePgDatabase<typeof schema> | PgliteDatabase<typeof schema>;
+export type Database =
+  | NodePgDatabase<typeof schema>
+  | PgliteDatabase<typeof schema>;
 
 type DbConfig =
   | { type: "node-postgres"; connectionString: string }

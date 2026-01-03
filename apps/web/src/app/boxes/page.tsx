@@ -6,20 +6,20 @@ import { authClient } from "@/lib/auth-client";
 import BoxesList from "./boxes-list";
 
 export default async function BoxesPage() {
-	const session = await authClient.getSession({
-		fetchOptions: {
-			headers: await headers(),
-			throw: true,
-		},
-	});
+  const session = await authClient.getSession({
+    fetchOptions: {
+      headers: await headers(),
+      throw: true,
+    },
+  });
 
-	if (!session?.user) {
-		redirect("/login");
-	}
+  if (!session?.user) {
+    redirect("/login");
+  }
 
-	return (
-		<div className="container mx-auto py-8">
-			<BoxesList />
-		</div>
-	);
+  return (
+    <div className="container mx-auto py-8">
+      <BoxesList />
+    </div>
+  );
 }

@@ -3,10 +3,10 @@
   "type": "module",
   "exports": {
     ".": {
-      "default": "./src/index.ts"
+      "default": "./src/queue-client.ts"
     },
-    "./*": {
-      "default": "./src/*.ts"
+    "./jobs": {
+      "default": "./src/jobs.ts"
     }
   },
   "dependencies": {

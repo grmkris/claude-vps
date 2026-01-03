@@ -1,4 +1,5 @@
 import type { LoggerOptions } from "pino";
+
 import { pino } from "pino";
 import pkg from "pino-std-serializers";
 

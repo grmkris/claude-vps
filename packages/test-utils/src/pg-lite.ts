@@ -1,20 +1,25 @@
 import { PGlite } from "@electric-sql/pglite";
-import { createDb, runMigrations, type Database, DB_SCHEMA } from "@vps-claude/db";
+import {
+  createDb,
+  runMigrations,
+  type Database,
+  DB_SCHEMA,
+} from "@vps-claude/db";
 
 export async function createTestDatabase(): Promise<{
-	db: Database;
-	pgLite: PGlite;
+  db: Database;
+  pgLite: PGlite;
 }> {
-	const pgLite = new PGlite();
-	const db = createDb({ type: "pglite", client: pgLite });
+  const pgLite = new PGlite();
+  const db = createDb({ type: "pglite", client: pgLite });
 
-	await runMigrations(db);
+  await runMigrations(db);
 
-	return { db, pgLite };
+  return { db, pgLite };
 }
 
 export async function cleanupTestDatabase(db: Database): Promise<void> {
-	await db.delete(DB_SCHEMA.box);
+  await db.delete(DB_SCHEMA.box);
 }
 
 export type { Database };
