@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 bun install              # Install dependencies
-bun run dev              # Start all apps (web:3001, server:3000)
+bun run dev              # Start all apps (web:33001, server:33000)
 bun run dev:web          # Start web only
 bun run dev:server       # Start server only
 bun run build            # Build all apps
@@ -26,8 +26,8 @@ bun run db:studio        # Open Drizzle Studio
 
 ```
 apps/
-  server/    → Hono API on port 3000
-  web/       → Next.js 16 on port 3001
+  server/    → Hono API on port 33000
+  web/       → Next.js 16 on port 33001
 
 packages/
   api/       → ORPC routers + procedures

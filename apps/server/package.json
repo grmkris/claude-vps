@@ -8,8 +8,8 @@
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --hot src/index.ts",
     "start": "bun run dist/index.js",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "dependencies": {
     "@orpc/openapi": "catalog:",
@@ -20,6 +20,8 @@
     "@vps-claude/db": "workspace:*",
     "@vps-claude/env": "workspace:*",
     "@vps-claude/logger": "workspace:*",
+    "@vps-claude/queue": "workspace:*",
+    "@vps-claude/redis": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
@@ -29,8 +31,7 @@
     "@types/bun": "catalog:",
     "@vps-claude/config": "workspace:*",
     "@vps-claude/test-utils": "workspace:*",
-    "tsdown": "^0.16.5",
-    "typescript": "catalog:",
-    "vitest": "^3.2.4"
+    "tsdown": "^0.19.0-beta.1",
+    "typescript": "catalog:"
   }
 }

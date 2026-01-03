@@ -2,48 +2,48 @@ import { getRedis } from "@vps-claude/redis";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 import { Queue } from "bullmq";
 
-import type { DeployEnvironmentJobData, DeleteEnvironmentJobData } from "./jobs";
+import type { DeployBoxJobData, DeleteBoxJobData } from "./jobs";
 
-export type { DeployEnvironmentJobData, DeleteEnvironmentJobData };
-export { DeployEnvironmentJobData as DeployEnvironmentJobDataSchema } from "./jobs";
-export { DeleteEnvironmentJobData as DeleteEnvironmentJobDataSchema } from "./jobs";
+export type { DeployBoxJobData, DeleteBoxJobData };
+export { DeployBoxJobData as DeployBoxJobDataSchema } from "./jobs";
+export { DeleteBoxJobData as DeleteBoxJobDataSchema } from "./jobs";
 
-let deployQueueInstance: Queue<DeployEnvironmentJobData> | null = null;
-let deleteQueueInstance: Queue<DeleteEnvironmentJobData> | null = null;
+let deployQueueInstance: Queue<DeployBoxJobData> | null = null;
+let deleteQueueInstance: Queue<DeleteBoxJobData> | null = null;
 
-export function getDeployQueue(): Queue<DeployEnvironmentJobData> {
-  if (!deployQueueInstance) {
-    deployQueueInstance = new Queue<DeployEnvironmentJobData>(
-      WORKER_CONFIG.deployEnvironment.name,
-      {
-        connection: getRedis(),
-      },
-    );
-  }
-  return deployQueueInstance;
+export function getDeployQueue(): Queue<DeployBoxJobData> {
+	if (!deployQueueInstance) {
+		deployQueueInstance = new Queue<DeployBoxJobData>(
+			WORKER_CONFIG.deployBox.name,
+			{
+				connection: getRedis(),
+			},
+		);
+	}
+	return deployQueueInstance;
 }
 
-export function getDeleteQueue(): Queue<DeleteEnvironmentJobData> {
-  if (!deleteQueueInstance) {
-    deleteQueueInstance = new Queue<DeleteEnvironmentJobData>(
-      WORKER_CONFIG.deleteEnvironment.name,
-      {
-        connection: getRedis(),
-      },
-    );
-  }
-  return deleteQueueInstance;
+export function getDeleteQueue(): Queue<DeleteBoxJobData> {
+	if (!deleteQueueInstance) {
+		deleteQueueInstance = new Queue<DeleteBoxJobData>(
+			WORKER_CONFIG.deleteBox.name,
+			{
+				connection: getRedis(),
+			},
+		);
+	}
+	return deleteQueueInstance;
 }
 
 export async function closeQueues(): Promise<void> {
-  if (deployQueueInstance) {
-    await deployQueueInstance.close();
-    deployQueueInstance = null;
-  }
-  if (deleteQueueInstance) {
-    await deleteQueueInstance.close();
-    deleteQueueInstance = null;
-  }
+	if (deployQueueInstance) {
+		await deployQueueInstance.close();
+		deployQueueInstance = null;
+	}
+	if (deleteQueueInstance) {
+		await deleteQueueInstance.close();
+		deleteQueueInstance = null;
+	}
 }
 
 export { Queue, Worker, Job } from "bullmq";

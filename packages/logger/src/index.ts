@@ -1,25 +1,32 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
 import type { LoggerOptions } from "pino";
 import { pino } from "pino";
 import pkg from "pino-std-serializers";
-import { z } from "zod";
 
-const LOG_DIR = join(process.cwd(), "logs");
-const LOG_FILE = join(LOG_DIR, "api.log");
-
-export const LOG_LEVELS = ["debug", "info", "warn", "error", "fatal"] as const;
-export const LogLevel = z.enum(LOG_LEVELS);
-export type LogLevel = z.infer<typeof LogLevel>;
+export type Environment = "dev" | "staging" | "prod";
 
 export interface LoggerConfig {
-  level?: LogLevel;
+  level?: string;
+  environment?: Environment;
   appName?: string;
-  isDev?: boolean;
 }
 
-export function createLogger(config: LoggerConfig = {}) {
-  const { level = "info", appName = "vps-claude", isDev = true } = config;
+export interface Logger {
+  info: (obj: Record<string, unknown>, msg?: string) => void;
+  error: (obj: Record<string, unknown>, msg?: string) => void;
+  warn: (obj: Record<string, unknown>, msg?: string) => void;
+  debug: (obj: Record<string, unknown>, msg?: string) => void;
+  fatal: (obj: Record<string, unknown>, msg?: string) => void;
+  trace: (obj: Record<string, unknown>, msg?: string) => void;
+}
+
+export function createLogger(config: LoggerConfig = {}): Logger {
+  const {
+    level = "info",
+    appName = "vps-claude",
+    environment = "dev",
+  } = config;
+
+  const isDevelopment = environment === "dev";
 
   const loggerOptions: LoggerOptions = {
     level,
@@ -44,43 +51,32 @@ export function createLogger(config: LoggerConfig = {}) {
       res: pkg.wrapResponseSerializer,
     },
     base: {
+      env: environment,
       app: appName,
     },
     timestamp: pino.stdTimeFunctions.isoTime,
   };
 
-  mkdirSync(LOG_DIR, { recursive: true });
-
-  const logger = isDev
+  const logger = isDevelopment
     ? pino({
         ...loggerOptions,
         transport: {
-          targets: [
-            {
-              target: "pino-pretty",
-              level,
-              options: {
-                colorize: true,
-                translateTime: "HH:MM:ss Z",
-                ignore: "pid,hostname,app",
-                singleLine: true,
-                messageFormat: "{msg}",
-              },
-            },
-            {
-              target: "pino/file",
-              level: "debug",
-              options: {
-                destination: LOG_FILE,
-                append: true,
-              },
-            },
-          ],
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "HH:MM:ss Z",
+            ignore: "pid,hostname,app,env",
+            singleLine: true,
+            messageFormat: "{msg}",
+            sync: true,
+          },
         },
       })
     : pino(loggerOptions);
 
+  logger.info({
+    msg: `Logger initialized in ${isDevelopment ? "development" : "production"} mode`,
+  });
+
   return logger;
 }
-
-export type Logger = ReturnType<typeof createLogger>;

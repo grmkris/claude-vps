@@ -1,151 +1,52 @@
-import { OpenAPIHandler } from "@orpc/openapi/fetch";
-import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { onError } from "@orpc/server";
-import { RPCHandler } from "@orpc/server/fetch";
-import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
-import { createContext, type Services } from "@vps-claude/api/context";
-import { appRouter } from "@vps-claude/api/routers/index";
-import { createEnvironmentService } from "@vps-claude/api/services/environment.service";
-import { createTerminalHandler } from "@vps-claude/api/terminal/terminal-handler";
+import { createApi } from "@vps-claude/api/create-api";
+import { createBoxService } from "@vps-claude/api/services/box.service";
 import {
-  createDeployWorker,
-  createDeleteWorker,
-} from "@vps-claude/api/workers/deploy-environment.worker";
+	createDeployWorker,
+	createDeleteWorker,
+} from "@vps-claude/api/workers/deploy-box.worker";
 import { auth } from "@vps-claude/auth";
 import { db } from "@vps-claude/db/client";
 import { env } from "@vps-claude/env/server";
 import { createLogger } from "@vps-claude/logger";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger as honoLogger } from "hono/logger";
+import { closeQueues } from "@vps-claude/queue";
+import { closeRedis } from "@vps-claude/redis";
 
 const logger = createLogger({ appName: "vps-claude-server" });
 
-const environmentService = createEnvironmentService({ deps: { db } });
+const boxService = createBoxService({ deps: { db } });
 
-const services: Services = {
-  environmentService,
+const services = {
+	boxService,
 };
 
-createDeployWorker({ deps: { environmentService, logger } });
-createDeleteWorker({ deps: { environmentService, logger } });
+const deployWorker = createDeployWorker({ deps: { boxService, logger } });
+const deleteWorker = createDeleteWorker({ deps: { boxService, logger } });
 
-const terminalHandler = createTerminalHandler({
-  environmentService,
-  logger,
-  getContainerWsUrl: (subdomain) => `wss://${subdomain}.${env.AGENTS_DOMAIN}/ws`,
+const { app } = createApi({
+	db,
+	logger,
+	services,
+	auth,
+	corsOrigin: env.CORS_ORIGIN,
 });
 
-export interface TerminalSessionData {
-  envId: string;
-  userId: string;
-}
+logger.info({ msg: "Server started", port: 33000 });
 
-const app = new Hono();
+const shutdown = async (signal: string) => {
+	logger.info({ msg: `${signal} received, shutting down` });
 
-app.use(honoLogger());
-app.use(
-  "/*",
-  cors({
-    origin: env.CORS_ORIGIN,
-    allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  }),
-);
+	await deployWorker.close();
+	await deleteWorker.close();
+	await closeQueues();
+	await closeRedis();
 
-app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+	process.exit(0);
+};
 
-const apiHandler = new OpenAPIHandler(appRouter, {
-  plugins: [
-    new OpenAPIReferencePlugin({
-      schemaConverters: [new ZodToJsonSchemaConverter()],
-    }),
-  ],
-  interceptors: [
-    onError((error) => {
-      logger.error({ msg: "API error", error });
-    }),
-  ],
-});
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
-const rpcHandler = new RPCHandler(appRouter, {
-  interceptors: [
-    onError((error) => {
-      logger.error({ msg: "RPC error", error });
-    }),
-  ],
-});
-
-app.use("/*", async (c, next) => {
-  const context = await createContext({ context: c, services });
-
-  const rpcResult = await rpcHandler.handle(c.req.raw, {
-    prefix: "/rpc",
-    context: context,
-  });
-
-  if (rpcResult.matched) {
-    return c.newResponse(rpcResult.response.body, rpcResult.response);
-  }
-
-  const apiResult = await apiHandler.handle(c.req.raw, {
-    prefix: "/api-reference",
-    context: context,
-  });
-
-  if (apiResult.matched) {
-    return c.newResponse(apiResult.response.body, apiResult.response);
-  }
-
-  await next();
-});
-
-app.get("/", (c) => {
-  return c.text("OK");
-});
-
-logger.info({ msg: "Server started", port: 3000 });
-
-const server = Bun.serve<TerminalSessionData>({
-  port: 3000,
-  async fetch(req, server) {
-    const url = new URL(req.url);
-
-    if (url.pathname === "/ws/terminal") {
-      const envId = url.searchParams.get("envId");
-      if (!envId) {
-        return new Response("Missing envId", { status: 400 });
-      }
-
-      const session = await auth.api.getSession({ headers: req.headers });
-      if (!session?.user?.id) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-
-      const upgraded = server.upgrade(req, {
-        data: { envId, userId: session.user.id },
-      });
-
-      if (upgraded) {
-        return undefined;
-      }
-      return new Response("WebSocket upgrade failed", { status: 500 });
-    }
-
-    return app.fetch(req);
-  },
-  websocket: {
-    open(ws) {
-      terminalHandler.open(ws);
-    },
-    message(ws, message) {
-      terminalHandler.message(ws, message);
-    },
-    close(ws) {
-      terminalHandler.close(ws);
-    },
-  },
-});
-
-export default server;
+export default {
+	port: 33000,
+	fetch: app.fetch,
+};

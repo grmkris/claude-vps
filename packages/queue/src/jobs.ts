@@ -1,16 +1,16 @@
 import { z } from "zod";
 
-export const DeployEnvironmentJobData = z.object({
-  environmentId: z.string(),
-  subdomain: z.string(),
-  password: z.string(),
+export const DeployBoxJobData = z.object({
+	boxId: z.string(),
+	subdomain: z.string(),
+	password: z.string(),
 });
 
-export type DeployEnvironmentJobData = z.infer<typeof DeployEnvironmentJobData>;
+export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;
 
-export const DeleteEnvironmentJobData = z.object({
-  environmentId: z.string(),
-  coolifyApplicationUuid: z.string(),
+export const DeleteBoxJobData = z.object({
+	boxId: z.string(),
+	coolifyApplicationUuid: z.string(),
 });
 
-export type DeleteEnvironmentJobData = z.infer<typeof DeleteEnvironmentJobData>;
+export type DeleteBoxJobData = z.infer<typeof DeleteBoxJobData>;

@@ -3,7 +3,10 @@ import { z } from "zod";
 
 export const idTypesMapNameToPrefix = {
   user: "usr",
-  environment: "env",
+  session: "ses",
+  account: "acc",
+  verification: "ver",
+  box: "box",
 } as const;
 
 export type IdTypeName = keyof typeof idTypesMapNameToPrefix;
@@ -24,5 +27,14 @@ export function typeIdValidator<T extends IdTypeName>(name: T) {
 export const UserId = typeIdValidator("user");
 export type UserId = z.infer<typeof UserId>;
 
-export const EnvironmentId = typeIdValidator("environment");
-export type EnvironmentId = z.infer<typeof EnvironmentId>;
+export const SessionId = typeIdValidator("session");
+export type SessionId = z.infer<typeof SessionId>;
+
+export const AccountId = typeIdValidator("account");
+export type AccountId = z.infer<typeof AccountId>;
+
+export const VerificationId = typeIdValidator("verification");
+export type VerificationId = z.infer<typeof VerificationId>;
+
+export const BoxId = typeIdValidator("box");
+export type BoxId = z.infer<typeof BoxId>;

@@ -1,6 +1,6 @@
 ---
 name: testing-patterns
-description: Test infrastructure patterns - PGlite for in-memory PostgreSQL, Redis/S3 mocks, TestSetup factory, Vitest. Use when writing tests or adding test infrastructure.
+description: Test infrastructure patterns - PGlite for in-memory PostgreSQL, Redis/S3 mocks, TestSetup factory, Bun test. Use when writing tests or adding test infrastructure.
 ---
 
 # Testing Infrastructure
@@ -22,12 +22,12 @@ Expected packages:
 ## Test File Location
 
 - Server tests: `apps/server/test/**/*.test.ts`
-- Use Vitest (`describe`, `it`, `expect`, `beforeAll`, `afterAll`)
+- Use Bun test (`describe`, `it`, `expect`, `beforeAll`, `afterAll`)
 
 ## Quick Start Template
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { type TestSetup, createTestSetup } from "../test/test.setup";
 import { createTestContext, createTestItem, fundUser } from "../test/test-helpers";
 import { UserId } from "@project/shared/typeid";
