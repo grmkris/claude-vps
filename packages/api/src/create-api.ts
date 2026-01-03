@@ -23,6 +23,7 @@ export interface CreateApiOptions {
   services: Services;
   auth: Auth;
   corsOrigin: string;
+  agentsDomain: string;
 }
 
 export function createApi({
@@ -30,6 +31,7 @@ export function createApi({
   services,
   auth,
   corsOrigin,
+  agentsDomain,
 }: CreateApiOptions) {
   const app = new Hono<{ Variables: HonoVariables }>();
 
@@ -107,7 +109,8 @@ export function createApi({
   });
 
   app.use("/*", async (c, next) => {
-    const context = await createContext({ context: c, services, auth });
+    const config = { agentsDomain };
+    const context = await createContext({ context: c, services, auth, config });
 
     const rpcResult = await rpcHandler.handle(c.req.raw, {
       prefix: "/rpc",

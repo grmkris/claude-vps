@@ -22,7 +22,8 @@
   "dependencies": {
     "@electric-sql/pglite": "catalog:",
     "@vps-claude/db": "workspace:*",
-    "@vps-claude/env": "workspace:*",
+    "@vps-claude/email": "workspace:*",
+    "@vps-claude/shared": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "zod": "catalog:"

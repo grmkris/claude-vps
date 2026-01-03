@@ -1,22 +1,13 @@
-import { env } from "@vps-claude/env/server";
 import Redis from "ioredis";
 
-let redisInstance: Redis | null = null;
-
-export function getRedis(): Redis {
-  if (!redisInstance) {
-    redisInstance = new Redis(env.REDIS_URL, {
-      maxRetriesPerRequest: null,
-    });
-  }
-  return redisInstance;
+export interface RedisConfig {
+  url: string;
 }
 
-export async function closeRedis(): Promise<void> {
-  if (redisInstance) {
-    await redisInstance.quit();
-    redisInstance = null;
-  }
+export function createRedisClient(config: RedisConfig): Redis {
+  return new Redis(config.url, {
+    maxRetriesPerRequest: null,
+  });
 }
 
 export { Redis };

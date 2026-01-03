@@ -5,29 +5,62 @@ import {
   createDeleteWorker,
 } from "@vps-claude/api/workers/deploy-box.worker";
 import { createAuth } from "@vps-claude/auth";
-import { db } from "@vps-claude/db/client";
-import { env } from "@vps-claude/env/server";
+import { createCoolifyClient } from "@vps-claude/coolify";
+import { createDb } from "@vps-claude/db";
+import { createEmailClient } from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
-import { closeQueues } from "@vps-claude/queue";
-import { closeRedis } from "@vps-claude/redis";
+import { createQueueClient } from "@vps-claude/queue";
+import { createRedisClient } from "@vps-claude/redis";
+
+import { env } from "./env";
 
 const logger = createLogger({ appName: "vps-claude-server" });
+
+const db = createDb({
+  type: "node-postgres",
+  connectionString: env.DATABASE_URL,
+});
+
+const redis = createRedisClient({ url: env.REDIS_URL });
+
+const queueClient = createQueueClient({ redis });
+
+const emailClient = createEmailClient({
+  apiKey: env.INBOUND_EMAIL_API_KEY,
+  logger,
+});
+
+const coolifyClient = createCoolifyClient({
+  env: env.APP_ENV,
+  apiToken: env.COOLIFY_API_TOKEN,
+  projectUuid: env.COOLIFY_PROJECT_UUID,
+  serverUuid: env.COOLIFY_SERVER_UUID,
+  environmentName: env.COOLIFY_ENVIRONMENT_NAME,
+  environmentUuid: env.COOLIFY_ENVIRONMENT_UUID,
+  agentsDomain: env.AGENTS_DOMAIN,
+});
 
 const auth = createAuth({
   db,
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
   trustedOrigins: [env.CORS_ORIGIN],
+  emailClient,
+  appEnv: env.APP_ENV,
 });
 
-const boxService = createBoxService({ deps: { db } });
+const boxService = createBoxService({ deps: { db, queueClient } });
 
 const services = {
   boxService,
 };
 
-const deployWorker = createDeployWorker({ deps: { boxService, logger } });
-const deleteWorker = createDeleteWorker({ deps: { boxService, logger } });
+const deployWorker = createDeployWorker({
+  deps: { boxService, coolifyClient, redis, logger },
+});
+const deleteWorker = createDeleteWorker({
+  deps: { boxService, coolifyClient, redis, logger },
+});
 
 const { app } = createApi({
   db,
@@ -35,6 +68,7 @@ const { app } = createApi({
   services,
   auth,
   corsOrigin: env.CORS_ORIGIN,
+  agentsDomain: env.AGENTS_DOMAIN,
 });
 
 logger.info({ msg: "Server started", port: 33000 });
@@ -44,8 +78,8 @@ const shutdown = async (signal: string) => {
 
   await deployWorker.close();
   await deleteWorker.close();
-  await closeQueues();
-  await closeRedis();
+  await queueClient.close();
+  await redis.quit();
 
   process.exit(0);
 };

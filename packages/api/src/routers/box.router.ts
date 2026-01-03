@@ -1,5 +1,4 @@
 import { ORPCError } from "@orpc/server";
-import { env } from "@vps-claude/env/server";
 import { BoxId } from "@vps-claude/shared";
 import { z } from "zod";
 
@@ -95,7 +94,7 @@ export const boxRouter = {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
 
-      const url = `https://${box.subdomain}.${env.AGENTS_DOMAIN}`;
+      const url = `https://${box.subdomain}.${context.config.agentsDomain}`;
       return { url };
     }),
 };

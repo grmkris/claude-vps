@@ -1,10 +1,13 @@
 import type { PGlite } from "@electric-sql/pglite";
 import type { Database } from "@vps-claude/db";
+import { createQueueClient, type QueueClient } from "@vps-claude/queue";
+import { Redis } from "ioredis";
 
 import * as schema from "@vps-claude/db";
 import { typeIdGenerator } from "@vps-claude/shared";
 
 import { createTestDatabase, cleanupTestDatabase } from "./pg-lite";
+import { createTestRedisSetup, type RedisTestSetup } from "./redis-test-server";
 
 export interface TestUser {
   id: string;
@@ -15,6 +18,11 @@ export interface TestUser {
 export interface TestSetup {
   db: Database;
   pgLite: PGlite;
+  deps: {
+    queue: QueueClient;
+    redis: Redis;
+    redisSetup: RedisTestSetup;
+  };
   users: {
     authenticated: TestUser;
   };
@@ -24,6 +32,11 @@ export interface TestSetup {
 
 export async function createTestSetup(): Promise<TestSetup> {
   const { db, pgLite } = await createTestDatabase();
+
+  // Real in-memory Redis + real queue
+  const redisSetup = await createTestRedisSetup();
+  const redis = new Redis(redisSetup.url, { maxRetriesPerRequest: null });
+  const queueClient = createQueueClient({ redis });
 
   const userId = typeIdGenerator("user");
   const testUser: TestUser = {
@@ -42,6 +55,11 @@ export async function createTestSetup(): Promise<TestSetup> {
   return {
     db,
     pgLite,
+    deps: {
+      queue: queueClient,
+      redis,
+      redisSetup,
+    },
     users: {
       authenticated: testUser,
     },
@@ -49,6 +67,9 @@ export async function createTestSetup(): Promise<TestSetup> {
       await cleanupTestDatabase(db);
     },
     close: async () => {
+      await queueClient.close();
+      redis.disconnect();
+      await redisSetup.shutdown();
       await pgLite.close();
     },
   };

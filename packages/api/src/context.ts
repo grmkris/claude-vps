@@ -7,22 +7,29 @@ export interface Services {
   boxService: BoxService;
 }
 
+export interface ApiConfig {
+  agentsDomain: string;
+}
+
 export type CreateContextOptions = {
   context: HonoContext;
   services: Services;
   auth: Auth;
+  config: ApiConfig;
 };
 
 export async function createContext({
   context,
   services,
   auth,
+  config,
 }: CreateContextOptions) {
   const session = await auth.api.getSession({
     headers: context.req.raw.headers,
   });
   return {
     session,
+    config,
     ...services,
   };
 }

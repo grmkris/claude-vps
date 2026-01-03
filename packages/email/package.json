@@ -1,0 +1,29 @@
+{
+  "name": "@vps-claude/email",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/email-client.ts",
+    "./emails/*": "./emails/*.tsx"
+  },
+  "scripts": {
+    "dev:email": "email dev",
+    "lint": "ultracite check",
+    "fix": "ultracite fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-email/components": "^1.0.1",
+    "@react-email/render": "^2.0.0",
+    "@vps-claude/logger": "workspace:*",
+    "inboundemail": "^0.19.0",
+    "react": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@react-email/preview-server": "5.1.0",
+    "@types/react": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "react-email": "^5.0.8"
+  }
+}

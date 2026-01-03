@@ -1,7 +1,7 @@
 import type { Database } from "@vps-claude/db";
 
 import { box, type Box } from "@vps-claude/db";
-import { getDeployQueue, getDeleteQueue } from "@vps-claude/queue";
+import type { QueueClient } from "@vps-claude/queue";
 import { BoxId } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
 import { and, eq, ne } from "drizzle-orm";
@@ -15,10 +15,11 @@ export type BoxServiceError =
 
 interface BoxServiceDeps {
   db: Database;
+  queueClient: QueueClient;
 }
 
 export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
-  const { db } = deps;
+  const { db, queueClient } = deps;
 
   return {
     async getById(id: BoxId): Promise<Box | undefined> {
@@ -98,8 +99,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
       await db.update(box).set({ status: "deploying" }).where(eq(box.id, id));
 
-      const deployQueue = getDeployQueue();
-      await deployQueue.add("deploy", {
+      await queueClient.deployQueue.add("deploy", {
         boxId: id,
         subdomain: boxRecord.subdomain,
         password,
@@ -123,8 +123,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       }
 
       if (boxRecord.coolifyApplicationUuid) {
-        const deleteQueue = getDeleteQueue();
-        await deleteQueue.add("delete", {
+        await queueClient.deleteQueue.add("delete", {
           boxId: id,
           coolifyApplicationUuid: boxRecord.coolifyApplicationUuid,
         });

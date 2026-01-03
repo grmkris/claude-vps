@@ -22,7 +22,6 @@
     "db:down": "docker compose down"
   },
   "dependencies": {
-    "@vps-claude/env": "workspace:*",
     "@vps-claude/shared": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",

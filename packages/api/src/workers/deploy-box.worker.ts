@@ -1,30 +1,26 @@
+import type { CoolifyClient } from "@vps-claude/coolify";
 import type { Logger } from "@vps-claude/logger";
+import type { Redis } from "@vps-claude/redis";
 
-import {
-  createApplication,
-  deployApplication,
-  getApplication,
-  updateApplicationEnv,
-  deleteApplication,
-} from "@vps-claude/coolify";
 import {
   type DeployBoxJobData,
   type DeleteBoxJobData,
   Worker,
   type Job,
 } from "@vps-claude/queue";
-import { getRedis } from "@vps-claude/redis";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 
 import type { BoxService } from "../services/box.service";
 
 interface WorkerDeps {
   boxService: BoxService;
+  coolifyClient: CoolifyClient;
+  redis: Redis;
   logger: Logger;
 }
 
 export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
-  const { boxService, logger } = deps;
+  const { boxService, coolifyClient, redis, logger } = deps;
 
   const worker = new Worker<DeployBoxJobData>(
     WORKER_CONFIG.deployBox.name,
@@ -32,14 +28,18 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
       const { boxId, subdomain, password } = job.data;
 
       try {
-        const app = await createApplication({ subdomain, password });
+        const app = await coolifyClient.createApplication({
+          subdomain,
+          password,
+          claudeMdContent: "",
+        });
         await boxService.setCoolifyUuid(boxId, app.uuid);
 
-        await updateApplicationEnv(app.uuid, {
+        await coolifyClient.updateApplicationEnv(app.uuid, {
           CLAUDE_PASSWORD: password,
         });
 
-        await deployApplication(app.uuid);
+        await coolifyClient.deployApplication(app.uuid);
 
         let attempts = 0;
         const maxAttempts = WORKER_CONFIG.deployBox.maxAttempts;
@@ -49,7 +49,7 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
           await sleep(pollInterval);
           attempts++;
 
-          const status = await getApplication(app.uuid);
+          const status = await coolifyClient.getApplication(app.uuid);
 
           if (status.status === "running") {
             await boxService.updateStatus(boxId, "running");
@@ -76,7 +76,7 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
       }
     },
     {
-      connection: getRedis(),
+      connection: redis,
       concurrency: 5,
     }
   );
@@ -93,7 +93,7 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
 }
 
 export function createDeleteWorker({ deps }: { deps: WorkerDeps }) {
-  const { logger } = deps;
+  const { coolifyClient, redis, logger } = deps;
 
   const worker = new Worker<DeleteBoxJobData>(
     WORKER_CONFIG.deleteBox.name,
@@ -101,7 +101,7 @@ export function createDeleteWorker({ deps }: { deps: WorkerDeps }) {
       const { coolifyApplicationUuid } = job.data;
 
       try {
-        await deleteApplication(coolifyApplicationUuid);
+        await coolifyClient.deleteApplication(coolifyApplicationUuid);
         return { success: true };
       } catch (error) {
         const message =
@@ -115,7 +115,7 @@ export function createDeleteWorker({ deps }: { deps: WorkerDeps }) {
       }
     },
     {
-      connection: getRedis(),
+      connection: redis,
       concurrency: 5,
     }
   );

@@ -15,7 +15,9 @@ describe("BoxService", () => {
 
   beforeAll(async () => {
     testSetup = await createTestSetup();
-    boxService = createBoxService({ deps: { db: testSetup.db } });
+    boxService = createBoxService({
+      deps: { db: testSetup.db, queueClient: testSetup.deps.queue },
+    });
   });
 
   afterAll(async () => {

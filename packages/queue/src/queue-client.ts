@@ -1,4 +1,4 @@
-import { getRedis } from "@vps-claude/redis";
+import type { Redis } from "@vps-claude/redis";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 import { Queue } from "bullmq";
 
@@ -8,42 +8,33 @@ export type { DeployBoxJobData, DeleteBoxJobData };
 export { DeployBoxJobData as DeployBoxJobDataSchema } from "./jobs";
 export { DeleteBoxJobData as DeleteBoxJobDataSchema } from "./jobs";
 
-let deployQueueInstance: Queue<DeployBoxJobData> | null = null;
-let deleteQueueInstance: Queue<DeleteBoxJobData> | null = null;
-
-export function getDeployQueue(): Queue<DeployBoxJobData> {
-  if (!deployQueueInstance) {
-    deployQueueInstance = new Queue<DeployBoxJobData>(
-      WORKER_CONFIG.deployBox.name,
-      {
-        connection: getRedis(),
-      }
-    );
-  }
-  return deployQueueInstance;
+export interface QueueClientConfig {
+  redis: Redis;
 }
 
-export function getDeleteQueue(): Queue<DeleteBoxJobData> {
-  if (!deleteQueueInstance) {
-    deleteQueueInstance = new Queue<DeleteBoxJobData>(
-      WORKER_CONFIG.deleteBox.name,
-      {
-        connection: getRedis(),
-      }
-    );
-  }
-  return deleteQueueInstance;
+export function createQueueClient(config: QueueClientConfig) {
+  const { redis } = config;
+
+  const deployQueue = new Queue<DeployBoxJobData>(
+    WORKER_CONFIG.deployBox.name,
+    { connection: redis }
+  );
+
+  const deleteQueue = new Queue<DeleteBoxJobData>(
+    WORKER_CONFIG.deleteBox.name,
+    { connection: redis }
+  );
+
+  return {
+    deployQueue,
+    deleteQueue,
+    async close() {
+      await deployQueue.close();
+      await deleteQueue.close();
+    },
+  };
 }
 
-export async function closeQueues(): Promise<void> {
-  if (deployQueueInstance) {
-    await deployQueueInstance.close();
-    deployQueueInstance = null;
-  }
-  if (deleteQueueInstance) {
-    await deleteQueueInstance.close();
-    deleteQueueInstance = null;
-  }
-}
+export type QueueClient = ReturnType<typeof createQueueClient>;
 
 export { Queue, Worker, Job } from "bullmq";

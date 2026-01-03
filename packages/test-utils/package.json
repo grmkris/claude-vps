@@ -15,8 +15,11 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@vps-claude/db": "workspace:*",
+    "@vps-claude/queue": "workspace:*",
     "@vps-claude/shared": "workspace:*",
-    "drizzle-orm": "catalog:"
+    "drizzle-orm": "catalog:",
+    "ioredis": "catalog:",
+    "redis-memory-server": "^0.14.1"
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",

@@ -1,8 +1,10 @@
 {
   "extends": "@vps-claude/config/base.json",
   "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
     "outDir": "./dist",
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "disableSizeLimit": true
   },
   "include": ["src/**/*"]
 }

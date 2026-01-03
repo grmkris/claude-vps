@@ -10,7 +10,6 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@vps-claude/env": "workspace:*",
     "@vps-claude/logger": "workspace:*"
   },
   "devDependencies": {

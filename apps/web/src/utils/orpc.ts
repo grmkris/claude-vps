@@ -4,8 +4,9 @@ import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
-import { env } from "@vps-claude/env/web";
 import { toast } from "sonner";
+
+import { env } from "@/env";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({

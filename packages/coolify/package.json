@@ -3,15 +3,16 @@
   "type": "module",
   "exports": {
     ".": {
-      "default": "./src/index.ts"
+      "default": "./src/coolify-client.ts"
     }
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
-    "@vps-claude/env": "workspace:*",
-    "zod": "catalog:"
+    "@vps-claude/shared": "workspace:*",
+    "fets": "^0.8.5"
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",
