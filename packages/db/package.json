@@ -10,6 +10,8 @@
     }
   },
   "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
@@ -33,6 +35,7 @@
     "@types/pg": "^8.15.6",
     "@vps-claude/config": "workspace:*",
     "drizzle-kit": "^0.31.8",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   }
 }

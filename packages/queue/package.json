@@ -9,6 +9,9 @@
       "default": "./src/jobs.ts"
     }
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@vps-claude/redis": "workspace:*",
     "@vps-claude/shared": "workspace:*",

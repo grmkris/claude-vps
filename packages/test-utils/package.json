@@ -9,6 +9,9 @@
       "default": "./src/*.ts"
     }
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@vps-claude/db": "workspace:*",

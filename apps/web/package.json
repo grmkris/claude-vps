@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --port 33001",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

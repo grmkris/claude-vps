@@ -16,6 +16,7 @@
     }
   },
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "db:auth:generate": "npx @better-auth/cli generate --config ./src/auth.ts -y"
   },
   "dependencies": {

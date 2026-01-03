@@ -9,6 +9,9 @@
       "default": "./src/*.ts"
     }
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "typeid-js": "^1.2.0",
     "zod": "catalog:"

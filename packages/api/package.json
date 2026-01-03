@@ -9,7 +9,10 @@
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "@vps-claude/config": "workspace:*",
+    "tsdown": "catalog:",
     "typescript": "catalog:"
   }
 }

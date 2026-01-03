@@ -6,6 +6,9 @@
       "default": "./src/index.ts"
     }
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@vps-claude/env": "workspace:*",
     "zod": "catalog:"

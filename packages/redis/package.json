@@ -6,6 +6,9 @@
       "default": "./src/redis.ts"
     }
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@vps-claude/env": "workspace:*",
     "ioredis": "^5.6.1"
