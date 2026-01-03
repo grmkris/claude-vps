@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@vps-claude/redis": "workspace:*",
@@ -19,7 +19,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@vps-claude/config": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@vps-claude/config": "workspace:*"
   }
 }

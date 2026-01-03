@@ -10,14 +10,14 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "typeid-js": "^1.2.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@vps-claude/config": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@vps-claude/config": "workspace:*"
   }
 }

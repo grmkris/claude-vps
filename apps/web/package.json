@@ -6,7 +6,7 @@
     "dev": "next dev --port 33001",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
@@ -41,8 +41,8 @@
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
-    "tailwindcss": "^4.1.10",
-    "typescript": "catalog:"
+    "tailwindcss": "^4.1.10"
   }
 }

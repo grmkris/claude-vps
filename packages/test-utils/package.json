@@ -10,16 +10,16 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
     "@vps-claude/db": "workspace:*",
     "@vps-claude/shared": "workspace:*",
-    "drizzle-orm": "^0.45.1"
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
-    "@vps-claude/config": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@vps-claude/config": "workspace:*"
   }
 }

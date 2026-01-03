@@ -11,12 +11,12 @@
       },
       "devDependencies": {
         "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
         "oxfmt": "^0.21.0",
         "oxlint": "^1.36.0",
         "oxlint-tsgolint": "^0.10.1",
         "turbo": "^2.7.2",
-        "typescript": "catalog:",
         "ultracite": "7.0.5",
       },
     },
@@ -40,10 +40,10 @@
       },
       "devDependencies": {
         "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
         "@vps-claude/test-utils": "workspace:*",
         "tsdown": "^0.19.0-beta.1",
-        "typescript": "catalog:",
       },
     },
     "apps/web": {
@@ -82,9 +82,9 @@
         "@types/node": "^25.0.3",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.3",
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
         "tailwindcss": "^4.1.10",
-        "typescript": "catalog:",
       },
     },
     "packages/api": {
@@ -103,15 +103,15 @@
         "@vps-claude/redis": "workspace:*",
         "@vps-claude/shared": "workspace:*",
         "dotenv": "catalog:",
-        "drizzle-orm": "^0.45.1",
+        "drizzle-orm": "catalog:",
         "hono": "catalog:",
         "neverthrow": "^8.1.1",
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
         "tsdown": "catalog:",
-        "typescript": "catalog:",
       },
     },
     "packages/auth": {
@@ -125,8 +125,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/config": {
@@ -140,8 +140,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/db": {
@@ -150,7 +150,7 @@
         "@vps-claude/env": "workspace:*",
         "@vps-claude/shared": "workspace:*",
         "dotenv": "catalog:",
-        "drizzle-orm": "^0.45.1",
+        "drizzle-orm": "catalog:",
         "drizzle-zod": "^0.8.3",
         "pg": "^8.16.3",
         "zod": "catalog:",
@@ -158,10 +158,10 @@
       "devDependencies": {
         "@electric-sql/pglite": "^0.3.14",
         "@types/pg": "^8.15.6",
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
         "drizzle-kit": "^0.31.8",
         "tsdown": "catalog:",
-        "typescript": "catalog:",
       },
     },
     "packages/env": {
@@ -175,8 +175,8 @@
       },
       "devDependencies": {
         "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/logger": {
@@ -201,8 +201,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/redis": {
@@ -212,8 +212,8 @@
         "ioredis": "^5.6.1",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/shared": {
@@ -223,8 +223,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/storage": {
@@ -235,8 +235,8 @@
       },
       "devDependencies": {
         "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
     "packages/test-utils": {
@@ -245,11 +245,11 @@
         "@electric-sql/pglite": "^0.3.14",
         "@vps-claude/db": "workspace:*",
         "@vps-claude/shared": "workspace:*",
-        "drizzle-orm": "^0.45.1",
+        "drizzle-orm": "catalog:",
       },
       "devDependencies": {
+        "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
-        "typescript": "catalog:",
       },
     },
   },
@@ -269,6 +269,7 @@
     "@types/node": "^25.0.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "@typescript/native-preview": "^7.0.0-dev.20260103.1",
     "better-auth": "^1.4.10",
     "bullmq": "^5.66.4",
     "dotenv": "^17.2.2",
@@ -287,7 +288,6 @@
     "tailwindcss": "^4.1.18",
     "tsdown": "^0.18.4",
     "typeid-js": "^1.2.0",
-    "typescript": "^5.8.2",
     "zod": "^4.3.4",
   },
   "packages": {
@@ -770,6 +770,22 @@
     "@types/react-dom": ["@types/react-dom@19.2.3", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ=="],
 
     "@types/statuses": ["@types/statuses@2.0.6", "", {}, "sha512-xMAgYwceFhRA2zY+XbEA7mxYbA093wdiW8Vu6gZPGWy9cmOyU9XesH1tNcEWsKFd5Vzrqx5T3D38PWx1FIIXkA=="],
+
+    "@typescript/native-preview": ["@typescript/native-preview@7.0.0-dev.20260103.1", "", { "optionalDependencies": { "@typescript/native-preview-darwin-arm64": "7.0.0-dev.20260103.1", "@typescript/native-preview-darwin-x64": "7.0.0-dev.20260103.1", "@typescript/native-preview-linux-arm": "7.0.0-dev.20260103.1", "@typescript/native-preview-linux-arm64": "7.0.0-dev.20260103.1", "@typescript/native-preview-linux-x64": "7.0.0-dev.20260103.1", "@typescript/native-preview-win32-arm64": "7.0.0-dev.20260103.1", "@typescript/native-preview-win32-x64": "7.0.0-dev.20260103.1" }, "bin": { "tsgo": "bin/tsgo.js" } }, "sha512-gx+q8yi8GgvbKpQYJB2EBI0jHk8OJOySJ4xnVn019R6t5UhNkj6xcuArp+y1BJ3Mx8PigpURb+6WVGbSwuLWXQ=="],
+
+    "@typescript/native-preview-darwin-arm64": ["@typescript/native-preview-darwin-arm64@7.0.0-dev.20260103.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-uQba8AUGOJhYLBFhlHb6CCdswijEQNg9pNxriv3bRC6qyxRZKusDZk9+aLRIMKEOmza1t2ZT6rIR7yZV1SS/yg=="],
+
+    "@typescript/native-preview-darwin-x64": ["@typescript/native-preview-darwin-x64@7.0.0-dev.20260103.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-N/KRr6+Rs1On9gKMOQgg/cryLzDXdkUdy5TQz+kOzoZ5gtW7yx5to6hW2IS8RS3z8zcicn1awDnFcqBl5xL2hw=="],
+
+    "@typescript/native-preview-linux-arm": ["@typescript/native-preview-linux-arm@7.0.0-dev.20260103.1", "", { "os": "linux", "cpu": "arm" }, "sha512-vznk92yXxmRZQa6vM5cntI0DLg2dwRIVX/Ok7Mga+RCNspgC8RpstFxhSHJUp7wxqNTfhLnd0bEReJXbMLW1TQ=="],
+
+    "@typescript/native-preview-linux-arm64": ["@typescript/native-preview-linux-arm64@7.0.0-dev.20260103.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-ukDB/N8TkC3hvZyixdrDua7xfmtAbQbjicbK51toqaQCdgZtPWaq1+ttjTa9AN+TT36a4GFmXu/uEzMgHuUWug=="],
+
+    "@typescript/native-preview-linux-x64": ["@typescript/native-preview-linux-x64@7.0.0-dev.20260103.1", "", { "os": "linux", "cpu": "x64" }, "sha512-YRNUYt/G8q7E0UPEqOhUFg+5e5Kh0pBQ+0VbaEbHZHGo0XxzR5z1BcesXUa8yphCzF3JX/GiWPb+umHjYRARoA=="],
+
+    "@typescript/native-preview-win32-arm64": ["@typescript/native-preview-win32-arm64@7.0.0-dev.20260103.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-h5J4eVIXew7t6PStU9M3uueCoZ0+hDbNF8AvZtl1oKO2+fOiiA/k4krgz9Mfi2hb+yhemS3ZrLvrbW6FOlHmYA=="],
+
+    "@typescript/native-preview-win32-x64": ["@typescript/native-preview-win32-x64@7.0.0-dev.20260103.1", "", { "os": "win32", "cpu": "x64" }, "sha512-EvT+ll/jP08iYhjaCgzJHta/ObGv7vBuPU24gHKPbBLBVvFJuzXWK6jnYqcGnQcGrVFh3o37dcBhLR7LdTKatw=="],
 
     "@vps-claude/api": ["@vps-claude/api@workspace:packages/api"],
 

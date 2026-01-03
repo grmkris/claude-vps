@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@orpc/client": "catalog:",
@@ -27,14 +27,14 @@
     "@vps-claude/redis": "workspace:*",
     "@vps-claude/shared": "workspace:*",
     "dotenv": "catalog:",
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "catalog:",
     "hono": "catalog:",
     "neverthrow": "^8.1.1",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
-    "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "tsdown": "catalog:"
   }
 }

@@ -4,6 +4,7 @@
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
   "emmet.showExpandedAbbreviation": "never",
+  "typescript.experimental.useTsgo": true,
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },

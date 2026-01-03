@@ -4,7 +4,7 @@
   "main": "src/server.ts",
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/server.ts --outfile server",
     "dev": "bun run --hot src/server.ts",
     "start": "bun run dist/server.js",
@@ -29,9 +29,9 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
     "@vps-claude/test-utils": "workspace:*",
-    "tsdown": "^0.19.0-beta.1",
-    "typescript": "catalog:"
+    "tsdown": "^0.19.0-beta.1"
   }
 }

@@ -8,7 +8,7 @@
     "./web": "./src/web.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.13.1",
@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "@vps-claude/config": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@vps-claude/config": "workspace:*"
   }
 }

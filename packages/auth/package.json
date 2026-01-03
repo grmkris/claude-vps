@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "db:auth:generate": "npx @better-auth/cli generate --config ./src/auth.ts -y"
   },
   "dependencies": {
@@ -28,7 +28,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@vps-claude/config": "workspace:*",
-    "typescript": "catalog:"
+    "@typescript/native-preview": "catalog:",
+    "@vps-claude/config": "workspace:*"
   }
 }

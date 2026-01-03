@@ -1,5 +1,7 @@
 "use client";
 
+import type { BoxId } from "@vps-claude/shared";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -9,8 +11,8 @@ export function useBoxes() {
   return useQuery(orpc.box.list.queryOptions());
 }
 
-export function useBox(id: string) {
-  return useQuery(orpc.box.byId.queryOptions({ id }));
+export function useBox(id: BoxId) {
+  return useQuery(orpc.box.byId.queryOptions({ input: { id } }));
 }
 
 export function useCreateBox() {
@@ -20,7 +22,7 @@ export function useCreateBox() {
     mutationFn: async (input: { name: string; password: string }) =>
       client.box.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: orpc.box.list.queryOptions().queryKey,
       });
       toast.success("Box created!");
@@ -40,7 +42,7 @@ export function useDeployBox() {
     mutationFn: async (input: { id: string; password: string }) =>
       client.box.deploy(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: orpc.box.list.queryOptions().queryKey,
       });
       toast.success("Deployment started!");
@@ -57,7 +59,7 @@ export function useDeleteBox() {
   return useMutation({
     mutationFn: async (id: string) => client.box.delete({ id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: orpc.box.list.queryOptions().queryKey,
       });
       toast.success("Box deleted!");
@@ -68,9 +70,9 @@ export function useDeleteBox() {
   });
 }
 
-export function useBoxUrl(id: string) {
+export function useBoxUrl(id: BoxId) {
   return useQuery({
-    ...orpc.box.getUrl.queryOptions({ id }),
+    ...orpc.box.getUrl.queryOptions({ input: { id } }),
     enabled: !!id,
   });
 }

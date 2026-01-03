@@ -38,7 +38,11 @@ async function coolifyFetch<T>(
     headers: {
       Authorization: `Bearer ${config.apiToken}`,
       "Content-Type": "application/json",
-      ...options.headers,
+      ...(options.headers instanceof Headers
+        ? Object.fromEntries(options.headers.entries())
+        : Array.isArray(options.headers)
+          ? Object.fromEntries(options.headers)
+          : options.headers),
     },
   });
 
