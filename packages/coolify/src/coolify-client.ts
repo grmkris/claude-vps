@@ -50,7 +50,7 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           server_uuid: props.serverUuid,
           environment_name: props.environmentName,
           environment_uuid: props.environmentUuid,
-          dockerfile,
+          dockerfile: Buffer.from(dockerfile).toString("base64"),
           autogenerate_domain: false,
           ports_exposes: "8080,3000",
           name: params.subdomain,
