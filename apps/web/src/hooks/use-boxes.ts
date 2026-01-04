@@ -1,17 +1,26 @@
 "use client";
 
-import type { BoxId } from "@vps-claude/shared";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+
+import type { CreateBoxInput, DeployBoxInput, Box } from "@/lib/orpc-types";
 
 import { client, orpc } from "@/utils/orpc";
 
 export function useBoxes() {
-  return useQuery(orpc.box.list.queryOptions());
+  return useQuery({
+    ...orpc.box.list.queryOptions(),
+    // Auto-poll every 5s while any box is deploying
+    refetchInterval: (query) => {
+      const hasDeploying = query.state.data?.boxes?.some(
+        (b: Box) => b.status === "deploying"
+      );
+      return hasDeploying ? 5000 : false;
+    },
+  });
 }
 
-export function useBox(id: BoxId) {
+export function useBox(id: string) {
   return useQuery(orpc.box.byId.queryOptions({ input: { id } }));
 }
 
@@ -19,8 +28,7 @@ export function useCreateBox() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { name: string; password: string }) =>
-      client.box.create(input),
+    mutationFn: (input: CreateBoxInput) => client.box.create(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: orpc.box.list.queryOptions().queryKey,
@@ -39,8 +47,7 @@ export function useDeployBox() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { id: string; password: string }) =>
-      client.box.deploy(input),
+    mutationFn: (input: DeployBoxInput) => client.box.deploy(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: orpc.box.list.queryOptions().queryKey,
@@ -70,7 +77,7 @@ export function useDeleteBox() {
   });
 }
 
-export function useBoxUrl(id: BoxId) {
+export function useBoxUrl(id: string) {
   return useQuery({
     ...orpc.box.getUrl.queryOptions({ input: { id } }),
     enabled: !!id,

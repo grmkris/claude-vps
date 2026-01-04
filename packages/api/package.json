@@ -28,12 +28,13 @@
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
-    "neverthrow": "^8.1.1",
+    "neverthrow": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
+    "@vps-claude/test-utils": "workspace:*",
     "tsdown": "catalog:"
   }
 }

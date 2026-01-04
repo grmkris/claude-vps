@@ -18,7 +18,6 @@ export const env = createEnv({
     COOLIFY_ENVIRONMENT_NAME: z.string().min(1),
     COOLIFY_ENVIRONMENT_UUID: z.string().min(1),
     AGENTS_DOMAIN: z.string().min(1),
-    AGENT_REPO_URL: z.url(),
     INBOUND_EMAIL_API_KEY: z.string().min(1),
     APP_ENV: z.enum(["dev", "prod"]).default("dev"),
   },

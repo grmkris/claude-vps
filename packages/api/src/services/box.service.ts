@@ -1,7 +1,7 @@
 import type { Database } from "@vps-claude/db";
+import type { QueueClient } from "@vps-claude/queue";
 
 import { box, type Box } from "@vps-claude/db";
-import type { QueueClient } from "@vps-claude/queue";
 import { BoxId } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
 import { and, eq, ne } from "drizzle-orm";

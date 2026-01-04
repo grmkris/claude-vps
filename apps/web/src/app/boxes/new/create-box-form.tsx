@@ -1,19 +1,12 @@
 "use client";
 
 import { slugify } from "@vps-claude/shared";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Box } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateBox } from "@/hooks/use-boxes";
@@ -49,68 +42,84 @@ export default function CreateBoxForm() {
   const isValid = name.length >= 1 && name.length <= 50 && password.length >= 8;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2 mb-4">
-          <Link href="/boxes">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
-            </Button>
-          </Link>
+    <div className="w-full max-w-md">
+      {/* Back link */}
+      <Link
+        href="/boxes"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to boxes
+      </Link>
+
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+          <Box className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle>Create Box</CardTitle>
-        <CardDescription>Deploy a new Claude Code box</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name">Box Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="My Workspace"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={50}
-              required
-            />
-            {subdomainPreview && (
-              <p className="text-sm text-gray-500">
-                Subdomain preview:{" "}
-                <span className="font-mono">
-                  {subdomainPreview}.agents.grm.wtf
-                </span>
-              </p>
-            )}
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Create Box</h1>
+          <p className="text-muted-foreground">
+            Deploy a new Claude Code environment
+          </p>
+        </div>
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Minimum 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              maxLength={100}
-              required
-            />
-            <p className="text-sm text-gray-500">
-              This password will be used to access your Claude Code box
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="name" className="text-sm font-medium">
+            Box Name
+          </Label>
+          <Input
+            id="name"
+            type="text"
+            placeholder="my-project"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={50}
+            required
+            className="h-12"
+          />
+          {subdomainPreview && (
+            <p className="text-sm text-muted-foreground">
+              Your box will be available at{" "}
+              <span className="font-mono text-primary">
+                {subdomainPreview}.agents.grm.wtf
+              </span>
             </p>
-          </div>
+          )}
+        </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={!isValid || createMutation.isPending}
-          >
-            {createMutation.isPending ? "Creating..." : "Create Box"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-medium">
+            Password
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="Minimum 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            maxLength={100}
+            required
+            className="h-12"
+          />
+          <p className="text-sm text-muted-foreground">
+            Used to access your Claude Code box via browser
+          </p>
+        </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full h-12"
+          disabled={!isValid || createMutation.isPending}
+        >
+          {createMutation.isPending ? "Creating..." : "Create Box"}
+        </Button>
+      </form>
+    </div>
   );
 }

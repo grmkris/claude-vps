@@ -18,7 +18,7 @@ export default async function BoxesPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="mx-auto max-w-6xl px-6 lg:px-8 py-12">
       <BoxesList />
     </div>
   );

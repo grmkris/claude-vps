@@ -12,7 +12,7 @@ export const SERVICE_URLS: Record<
     api: string;
     web: string;
     emailFrom: string;
-    coolify: 'https://c.grm.wtf/api/v1';
+    coolify: "https://c.grm.wtf/api/v1";
   }
 > = {
   dev: {

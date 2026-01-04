@@ -86,7 +86,6 @@ COOLIFY_ENVIRONMENT_NAME=production
 
 # New - Domain
 AGENTS_DOMAIN=agents.grm.wtf
-AGENT_REPO_URL=https://github.com/grmkris/agent
 ```
 
 ---

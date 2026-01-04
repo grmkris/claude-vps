@@ -1,9 +1,12 @@
+import { createLogger } from "@vps-claude/logger";
 import { Environment } from "@vps-claude/shared/services.schema";
 import { env } from "bun";
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 import { createCoolifyClient } from "./coolify-client";
+
+const logger = createLogger({ appName: "coolify-test" });
 
 const TestEnvSchema = z.object({
   APP_ENV: Environment,
@@ -26,33 +29,88 @@ describe("CoolifyClient", () => {
     environmentName: testEnv.COOLIFY_ENVIRONMENT_NAME,
     environmentUuid: testEnv.COOLIFY_ENVIRONMENT_UUID,
     agentsDomain: testEnv.AGENTS_DOMAIN,
+    logger,
   });
 
-  test("full lifecycle: create -> get -> delete", async () => {
-    const testSubdomain = `test-${Date.now()}`;
+  test(
+    "full lifecycle: create -> deploy -> wait -> get",
+    async () => {
+      const testSubdomain = `test-${Date.now()}`;
 
-    // Create
-    console.log("Creating application...");
-    const created = await client.createApplication({
-      subdomain: testSubdomain,
-      password: "test-password-123",
-      claudeMdContent: "# Test Agent\n\nThis is a test agent for integration testing.",
-    });
-    console.log("Created:", created);
-    expect(created.uuid).toBeDefined();
-    if (!created.uuid) throw new Error("No UUID returned");
-    const uuid = created.uuid;
+      // Create
+      const createResult = await client.createApplication({
+        subdomain: testSubdomain,
+        password: "test-password-123",
+        claudeMdContent:
+          "# Test Agent\n\nThis is a test agent for integration testing.",
+      });
+      expect(createResult.isOk()).toBe(true);
+      const created = createResult._unsafeUnwrap();
+      expect(created.uuid).toBeDefined();
+      const uuid = created.uuid;
 
-    // Get
-    console.log("Getting application...");
-    const app = await client.getApplication(uuid);
-    console.log("Got:", app);
-    expect(app.uuid).toBe(uuid);
-    expect(app.name).toBe(testSubdomain);
+      // Deploy
+      const deployResult = await client.deployApplication(uuid);
+      expect(deployResult.isOk()).toBe(true);
+      const { deploymentUuid } = deployResult._unsafeUnwrap();
 
-    // Delete
-    console.log("Deleting application...");
-    await client.deleteApplication(uuid);
-    console.log("Deleted");
-  });
+      // Wait for deployment to complete
+      const waitResult = await client.waitForDeployment(deploymentUuid, {
+        pollIntervalMs: 3000,
+        timeoutMs: 300000, // 5 min timeout
+      });
+      expect(waitResult.isOk()).toBe(true);
+      const deployment = waitResult._unsafeUnwrap();
+      expect(deployment.status).toBe("finished");
+
+      // Get application
+      const getResult = await client.getApplication(uuid);
+      expect(getResult.isOk()).toBe(true);
+      const app = getResult._unsafeUnwrap();
+      expect(app.uuid).toBe(uuid);
+      expect(app.name).toBe(testSubdomain);
+
+      // Get deploy logs
+      logger.info(
+        { deployLogs: deployment.logs?.slice(0, 500) },
+        "Deploy logs (first 500 chars)"
+      );
+
+      // Wait for container to be healthy (detect crash loops)
+      const healthResult = await client.waitForHealthy(uuid, {
+        pollIntervalMs: 5000,
+        timeoutMs: 120000, // 2 min timeout
+      });
+      expect(healthResult.isOk()).toBe(true);
+      const health = healthResult._unsafeUnwrap();
+      // Status can be "running", "running:unknown", "running:healthy"
+      expect(health.status.startsWith("running")).toBe(true);
+
+      // Get runtime logs
+      const logsResult = await client.getApplicationLogs(uuid, 50);
+      if (logsResult.isOk()) {
+        logger.info(
+          { runtimeLogs: logsResult.value.logs.slice(0, 500) },
+          "Runtime logs (first 500 chars)"
+        );
+      } else {
+        logger.warn({ error: logsResult.error }, "Failed to get runtime logs");
+      }
+
+      // Cleanup - delete the test application
+      const deleteResult = await client.deleteApplication(uuid);
+      expect(deleteResult.isOk()).toBe(true);
+
+      logger.info(
+        {
+          uuid,
+          fqdn: created.fqdn,
+          status: deployment.status,
+          containerStatus: health.status,
+        },
+        "Test complete - app deleted"
+      );
+    },
+    { timeout: 360000 }
+  );
 });

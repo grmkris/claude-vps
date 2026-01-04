@@ -4,7 +4,8 @@
 // - {{ADDITIONAL_NPM_PACKAGES}} - Space-separated npm packages
 // - {{CLAUDE_MD_CONTENT}} - Client-specific CLAUDE.md content
 
-export const DOCKERFILE_TEMPLATE = `FROM codercom/code-server:latest
+export const DOCKERFILE_TEMPLATE = `# syntax=docker/dockerfile:1
+FROM codercom/code-server:latest
 
 # Switch to root to install packages
 USER root
@@ -57,8 +58,43 @@ RUN usermod -aG sudo coder \\
     && echo "coder ALL=(ALL) NOPASSWD: /bin/chown, /bin/mkdir, /bin/chmod" >> /etc/sudoers.d/coder \\
     && echo "coder ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/mkdir, /usr/bin/chmod" >> /etc/sudoers.d/coder
 
-# Create entrypoint script inline
-RUN cat > /entrypoint.sh << 'ENTRYPOINT_EOF'
+# Create workspace-init directory for initialization files
+RUN mkdir -p /home/coder/workspace-init
+
+# Create README template for workspace initialization
+COPY <<EOF /home/coder/workspace-init/README.md
+# Welcome to Your Development Environment
+
+This workspace is persistent across container restarts!
+
+## Available Tools
+- **jq** - JSON processor
+- **lsof** - List open files
+- **htop** - Interactive process viewer
+- **ncdu** - Disk usage analyzer
+- **tree** - Directory tree viewer
+- **tmux** - Terminal multiplexer
+- **bat** - Better cat with syntax highlighting
+- **fd** - Better find
+- **ripgrep (rg)** - Fast text search
+- **ast-grep (sg)** - AST-based code search
+- **fzf** - Fuzzy finder
+
+## Standard Linux Commands
+This environment uses standard Linux commands without custom aliases.
+Use commands like \`ls -la\`, \`git status\`, \`netstat -tulanp\`, etc.
+
+## Persistent Directories
+- \`/home/coder/workspace\` - Your projects (this directory)
+- \`/home/coder/.config\` - Configuration files
+- \`/home/coder/.local\` - Local binaries and data
+- \`/home/coder/.cache\` - Cache files
+
+Happy coding!
+EOF
+
+# Create entrypoint script (use quoted heredoc to prevent variable expansion)
+COPY --chmod=755 <<'EOF' /entrypoint.sh
 #!/bin/bash
 set -e
 
@@ -78,49 +114,22 @@ sudo chown -R coder:coder /home/coder
 
 if [ -d "/home/coder/workspace" ] && [ -z "$(ls -A /home/coder/workspace)" ]; then
     echo "Initializing workspace..."
-    cat > /home/coder/workspace/README.md << 'README_EOF'
-# Welcome to Your Development Environment
-
-This workspace is persistent across container restarts!
-
-## Available Tools
-- **jq** - JSON processor
-- **lsof** - List open files
-- **htop** - Interactive process viewer
-- **ncdu** - Disk usage analyzer
-- **tree** - Directory tree viewer
-- **tmux** - Terminal multiplexer
-- **bat** - Better cat with syntax highlighting
-- **fd** - Better find
-- **ripgrep (rg)** - Fast text search
-- **ast-grep (sg)** - AST-based code search
-- **fzf** - Fuzzy finder
-
-## Persistent Directories
-- /home/coder/workspace - Your projects (this directory)
-- /home/coder/.config - Configuration files
-- /home/coder/.local - Local binaries and data
-- /home/coder/.cache - Cache files
-README_EOF
+    cp /home/coder/workspace-init/README.md /home/coder/workspace/
     sudo chown coder:coder /home/coder/workspace/README.md
 fi
 
 exec "$@"
-ENTRYPOINT_EOF
-
-RUN chmod +x /entrypoint.sh
+EOF
 
 # Create CLAUDE.md with client-specific content
-RUN cat > /home/coder/CLAUDE.md << 'CLAUDE_EOF'
+COPY --chown=coder:coder <<EOF /home/coder/CLAUDE.md
 {{CLAUDE_MD_CONTENT}}
-CLAUDE_EOF
-
-RUN chown coder:coder /home/coder/CLAUDE.md
+EOF
 
 # Install Bun for the coder user
 USER coder
 RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/home/coder/.bun/bin:\$PATH"
+ENV PATH="/home/coder/.bun/bin:$PATH"
 
 # Set working directory
 WORKDIR /home/coder

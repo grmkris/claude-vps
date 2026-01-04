@@ -31,6 +31,7 @@ const emailClient = createEmailClient({
 });
 
 const coolifyClient = createCoolifyClient({
+  logger,
   env: env.APP_ENV,
   apiToken: env.COOLIFY_API_TOKEN,
   projectUuid: env.COOLIFY_PROJECT_UUID,

@@ -1,10 +1,10 @@
 import type { PGlite } from "@electric-sql/pglite";
 import type { Database } from "@vps-claude/db";
-import { createQueueClient, type QueueClient } from "@vps-claude/queue";
-import { Redis } from "ioredis";
 
 import * as schema from "@vps-claude/db";
+import { createQueueClient, type QueueClient } from "@vps-claude/queue";
 import { typeIdGenerator } from "@vps-claude/shared";
+import { Redis } from "ioredis";
 
 import { createTestDatabase, cleanupTestDatabase } from "./pg-lite";
 import { createTestRedisSetup, type RedisTestSetup } from "./redis-test-server";

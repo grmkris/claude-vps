@@ -18,7 +18,7 @@ export default async function NewBoxPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-md">
+    <div className="flex-1 flex items-start justify-center px-6 py-12">
       <CreateBoxForm />
     </div>
   );

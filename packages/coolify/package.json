@@ -11,8 +11,10 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@vps-claude/logger": "workspace:*",
     "@vps-claude/shared": "workspace:*",
-    "fets": "^0.8.5"
+    "fets": "^0.8.5",
+    "neverthrow": "catalog:"
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",

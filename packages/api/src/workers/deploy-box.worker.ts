@@ -28,46 +28,75 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
       const { boxId, subdomain, password } = job.data;
 
       try {
-        const app = await coolifyClient.createApplication({
-          subdomain,
-          password,
-          claudeMdContent: "",
-        });
+        // Create application (PASSWORD env is set automatically inside createApplication)
+        const app = (
+          await coolifyClient.createApplication({
+            subdomain,
+            password,
+            claudeMdContent: "",
+          })
+        ).match(
+          (v) => v,
+          (e) => {
+            throw new Error(`${e.type}: ${e.message}`);
+          }
+        );
         await boxService.setCoolifyUuid(boxId, app.uuid);
 
-        await coolifyClient.updateApplicationEnv(app.uuid, {
-          CLAUDE_PASSWORD: password,
-        });
-
-        await coolifyClient.deployApplication(app.uuid);
-
-        let attempts = 0;
-        const maxAttempts = WORKER_CONFIG.deployBox.maxAttempts;
-        const pollInterval = WORKER_CONFIG.deployBox.pollInterval;
-
-        while (attempts < maxAttempts) {
-          await sleep(pollInterval);
-          attempts++;
-
-          const status = await coolifyClient.getApplication(app.uuid);
-
-          if (status.status === "running") {
-            await boxService.updateStatus(boxId, "running");
-            return { success: true };
+        // Deploy and get deployment UUID
+        const { deploymentUuid } = (
+          await coolifyClient.deployApplication(app.uuid)
+        ).match(
+          (v) => v,
+          (e) => {
+            throw new Error(`${e.type}: ${e.message}`);
           }
+        );
 
-          if (status.status === "error" || status.status === "exited") {
-            await boxService.updateStatus(
-              boxId,
-              "error",
-              `Deployment failed: ${status.status}`
-            );
-            return { success: false, error: status.status };
+        // Wait for Docker build to complete
+        const deployResult = await coolifyClient.waitForDeployment(
+          deploymentUuid,
+          {
+            pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
+            timeoutMs: WORKER_CONFIG.deployBox.timeout,
           }
+        );
+
+        if (deployResult.isErr()) {
+          await boxService.updateStatus(
+            boxId,
+            "error",
+            deployResult.error.message
+          );
+          return { success: false, error: deployResult.error.message };
         }
 
-        await boxService.updateStatus(boxId, "error", "Deployment timed out");
-        return { success: false, error: "timeout" };
+        if (deployResult.value.status === "failed") {
+          await boxService.updateStatus(
+            boxId,
+            "error",
+            "Deployment build failed"
+          );
+          return { success: false, error: "build_failed" };
+        }
+
+        // Wait for container to be healthy
+        const healthResult = await coolifyClient.waitForHealthy(app.uuid, {
+          pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
+          timeoutMs: 120000, // 2 min for container to start
+        });
+
+        if (healthResult.isErr()) {
+          await boxService.updateStatus(
+            boxId,
+            "error",
+            healthResult.error.message
+          );
+          return { success: false, error: healthResult.error.message };
+        }
+
+        await boxService.updateStatus(boxId, "running");
+        return { success: true };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
@@ -101,7 +130,12 @@ export function createDeleteWorker({ deps }: { deps: WorkerDeps }) {
       const { coolifyApplicationUuid } = job.data;
 
       try {
-        await coolifyClient.deleteApplication(coolifyApplicationUuid);
+        (await coolifyClient.deleteApplication(coolifyApplicationUuid)).match(
+          (v) => v,
+          (e) => {
+            throw new Error(`${e.type}: ${e.message}`);
+          }
+        );
         return { success: true };
       } catch (error) {
         const message =
@@ -129,8 +163,4 @@ export function createDeleteWorker({ deps }: { deps: WorkerDeps }) {
   });
 
   return worker;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

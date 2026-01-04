@@ -1,4 +1,5 @@
 import type { Redis } from "@vps-claude/redis";
+
 import { WORKER_CONFIG } from "@vps-claude/shared";
 import { Queue } from "bullmq";
 
