@@ -52,12 +52,22 @@ The API is running at [http://localhost:3000](http://localhost:3000).
 ```
 vps-claude/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   └── server/      # Backend API (Hono, ORPC)
+│   ├── web/           # Next.js frontend (port 33001)
+│   ├── server/        # Hono API server (port 33000)
+│   └── box-agent/     # In-container agent
 ├── packages/
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/           # ORPC routers, services, workers
+│   ├── auth/          # better-auth configuration
+│   ├── db/            # Drizzle schema + client
+│   ├── ssh-bastion/   # SSH reverse proxy (sshpiper)
+│   ├── docker/        # Box base Dockerfiles
+│   ├── queue/         # BullMQ job definitions
+│   ├── email/         # Email client (Resend)
+│   ├── coolify/       # Coolify API client
+│   ├── logger/        # Pino logger factory
+│   ├── redis/         # Redis client factory
+│   ├── shared/        # TypeIDs, constants
+│   └── config/        # Shared tsconfig
 ```
 
 ## Available Scripts

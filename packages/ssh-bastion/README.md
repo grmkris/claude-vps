@@ -75,11 +75,13 @@ ssh connection → my-box-a1b2-uuid:22
 
 Docker's internal DNS resolves the name to the container's IP.
 
-### How sync-boxes.sh Works
+### How sync.ts Works
+
+The sync service is implemented in TypeScript/Bun (`src/sync.ts`).
 
 ```bash
 # Every 30 seconds:
-1. Call API: GET /internal/ssh/boxes
+1. Call API: GET /platform/ssh/boxes
    Response: [
      { subdomain: "my-box-a1b2", containerName: "my-box-a1b2-uuid" },
      { subdomain: "other-box", containerName: "other-box-xyz" }
@@ -164,7 +166,7 @@ Ensure port 22 (or your chosen port) is open on the server.
 4. sshpiper receives, extracts username "my-box-a1b2"
               │
 5. Reads /workingdir/my-box-a1b2/sshpiper.yaml
-   (created by sync-boxes.sh from API data)
+   (created by sync.ts from API data)
               │
 6. Routes to: my-box-a1b2-uuid:22 (Docker network DNS)
               │
