@@ -7,6 +7,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 import { createBoxService, type BoxService } from "../services/box.service";
+import { createEmailService } from "../services/email.service";
+import { createSecretService } from "../services/secret.service";
+import { createSkillService } from "../services/skill.service";
 import { createDeployWorker, createDeleteWorker } from "./deploy-box.worker";
 
 const TestEnvSchema = z.object({
@@ -47,13 +50,22 @@ describe("Deploy Worker E2E", () => {
       deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
     });
 
-    // Start real workers with real Coolify
+    const emailService = createEmailService({
+      deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
+    });
+    const secretService = createSecretService({ deps: { db: testEnv.db } });
+    const skillService = createSkillService({ deps: { db: testEnv.db } });
+
     deployWorker = createDeployWorker({
       deps: {
         boxService,
+        emailService,
+        secretService,
+        skillService,
         coolifyClient,
         redis: testEnv.deps.redis,
         logger,
+        serverUrl: "http://localhost:33000",
       },
     });
 

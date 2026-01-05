@@ -10,7 +10,7 @@
     "dev:email": "email dev",
     "lint": "ultracite check",
     "fix": "ultracite fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@react-email/components": "^1.0.1",

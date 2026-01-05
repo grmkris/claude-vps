@@ -65,7 +65,12 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
   return {
     async createApplication(
       params: CreateApplicationParams
-    ): Promise<Result<{ uuid: string; fqdn: string }, CoolifyError>> {
+    ): Promise<
+      Result<
+        { uuid: string; fqdn: string; containerName: string },
+        CoolifyError
+      >
+    > {
       const fqdn = `https://${params.subdomain}.${props.agentsDomain}`;
       props.logger.info(
         { subdomain: params.subdomain },
@@ -73,6 +78,8 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
       );
       const dockerfile = buildDockerfile({
         claudeMdContent: params.claudeMdContent,
+        skillPackages: params.skillPackages,
+        skillMdFiles: params.skillMdFiles,
         additionalAptPackages: params.additionalAptPackages,
         additionalNpmPackages: params.additionalNpmPackages,
       });
@@ -85,9 +92,11 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           environment_uuid: props.environmentUuid,
           dockerfile: Buffer.from(dockerfile).toString("base64"),
           autogenerate_domain: false,
-          ports_exposes: "8080,3000",
+          ports_exposes: "22,8080,3000",
           name: params.subdomain,
           domains: fqdn,
+          connect_to_docker_network: true,
+          instant_deploy: false,
         },
       });
       if (!response.ok) {
@@ -111,7 +120,8 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
         });
       }
 
-      // Set PASSWORD env var for code-server authentication
+      const containerName = `${params.subdomain}-${data.uuid}`.toLowerCase();
+
       props.logger.info({ uuid: data.uuid }, "Setting PASSWORD env var");
       const envResult = await this.updateApplicationEnv(data.uuid, {
         PASSWORD: params.password,
@@ -124,8 +134,11 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
         return err(envResult.error);
       }
 
-      props.logger.info({ uuid: data.uuid, fqdn }, "Application created");
-      return ok({ uuid: data.uuid, fqdn });
+      props.logger.info(
+        { uuid: data.uuid, fqdn, containerName },
+        "Application created"
+      );
+      return ok({ uuid: data.uuid, fqdn, containerName });
     },
 
     async getApplication(uuid: string) {
@@ -155,7 +168,6 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
       if (result.isErr()) return result;
 
       const status = (result.value as { status?: string }).status ?? "unknown";
-      // Status can be "running", "running:unknown", "running:healthy", etc.
       const isHealthy = status.startsWith("running");
       const isRestarting = status.startsWith("restarting");
       const isExited = status === "exited" || status.includes("exited");
@@ -198,7 +210,6 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           return ok({ status });
         }
 
-        // Detect crash loop
         if (status.startsWith("restarting")) {
           props.logger.error({ uuid, status }, "Container in crash loop");
           return err({
@@ -208,7 +219,6 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           });
         }
 
-        // Detect stopped/exited
         if (status === "exited" || status.includes("exited")) {
           props.logger.error({ uuid, status }, "Container exited");
           return err({
@@ -411,7 +421,6 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
         value: string;
         real_value?: string;
       }>;
-      // Convert array to record, prefer real_value if available
       const envs: Record<string, string> = {};
       for (const env of data) {
         envs[env.key] = env.real_value ?? env.value;

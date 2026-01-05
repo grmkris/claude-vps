@@ -6,14 +6,14 @@ import {
   UserId,
   VerificationId,
 } from "@vps-claude/shared";
-import { createSelectSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 import { account, session, user, verification } from "./auth.db";
 
 export const SelectUserSchema = createSelectSchema(user, { id: UserId });
 export type SelectUserSchema = z.infer<typeof SelectUserSchema>;
 
-export const InsertUserSchema = createSelectSchema(user).omit({
+export const InsertUserSchema = createInsertSchema(user).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -26,7 +26,7 @@ export const SelectSessionSchema = createSelectSchema(session, {
 });
 export type SelectSessionSchema = z.infer<typeof SelectSessionSchema>;
 
-export const InsertSessionSchema = createSelectSchema(session).omit({
+export const InsertSessionSchema = createInsertSchema(session).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -39,7 +39,7 @@ export const SelectAccountSchema = createSelectSchema(account, {
 });
 export type SelectAccountSchema = z.infer<typeof SelectAccountSchema>;
 
-export const InsertAccountSchema = createSelectSchema(account).omit({
+export const InsertAccountSchema = createInsertSchema(account).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -51,7 +51,7 @@ export const SelectVerificationSchema = createSelectSchema(verification, {
 });
 export type SelectVerificationSchema = z.infer<typeof SelectVerificationSchema>;
 
-export const InsertVerificationSchema = createSelectSchema(verification).omit({
+export const InsertVerificationSchema = createInsertSchema(verification).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

@@ -9,31 +9,72 @@ import {
   type Job,
 } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
+import { createHash } from "node:crypto";
 
 import type { BoxService } from "../services/box.service";
+import type { EmailService } from "../services/email.service";
+import type { SecretService } from "../services/secret.service";
+import type { SkillService } from "../services/skill.service";
 
-interface WorkerDeps {
+function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex");
+}
+
+interface DeployWorkerDeps {
+  boxService: BoxService;
+  emailService: EmailService;
+  secretService: SecretService;
+  skillService: SkillService;
+  coolifyClient: CoolifyClient;
+  redis: Redis;
+  logger: Logger;
+  serverUrl: string;
+}
+
+interface DeleteWorkerDeps {
   boxService: BoxService;
   coolifyClient: CoolifyClient;
   redis: Redis;
   logger: Logger;
 }
 
-export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
-  const { boxService, coolifyClient, redis, logger } = deps;
+export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
+  const {
+    boxService,
+    emailService,
+    secretService,
+    skillService,
+    coolifyClient,
+    redis,
+    logger,
+    serverUrl,
+  } = deps;
 
   const worker = new Worker<DeployBoxJobData>(
     WORKER_CONFIG.deployBox.name,
     async (job: Job<DeployBoxJobData>) => {
-      const { boxId, subdomain, password } = job.data;
+      const { boxId, userId, subdomain, password, skills: skillIds } = job.data;
 
       try {
-        // Create application (PASSWORD env is set automatically inside createApplication)
+        const skills = await skillService.getByIds(skillIds, userId);
+
+        const skillPackages = {
+          aptPackages: [...new Set(skills.flatMap((s) => s.aptPackages))],
+          npmPackages: [...new Set(skills.flatMap((s) => s.npmPackages))],
+          pipPackages: [...new Set(skills.flatMap((s) => s.pipPackages))],
+        };
+
+        const skillMdFiles = skills
+          .filter((s) => s.skillMdContent)
+          .map((s) => ({ slug: s.slug, content: s.skillMdContent! }));
+
         const app = (
           await coolifyClient.createApplication({
             subdomain,
             password,
             claudeMdContent: "",
+            skillPackages,
+            skillMdFiles,
           })
         ).match(
           (v) => v,
@@ -42,8 +83,36 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
           }
         );
         await boxService.setCoolifyUuid(boxId, app.uuid);
+        await boxService.setContainerInfo(
+          boxId,
+          app.containerName,
+          hashPassword(password)
+        );
 
-        // Deploy and get deployment UUID
+        const userSecrets = await secretService.getAll(userId);
+        const emailSettingsResult =
+          await emailService.getOrCreateSettings(boxId);
+        if (emailSettingsResult.isErr()) {
+          throw new Error(emailSettingsResult.error.message);
+        }
+        const emailSettings = emailSettingsResult.value;
+
+        const envVars = {
+          ...userSecrets,
+          BOX_AGENT_SECRET: emailSettings.agentSecret,
+          BOX_API_TOKEN: emailSettings.agentSecret, // Per-box auth token for box API
+          BOX_API_URL: `${serverUrl}/box`,
+          BOX_SUBDOMAIN: subdomain,
+        };
+
+        const envResult = await coolifyClient.updateApplicationEnv(
+          app.uuid,
+          envVars
+        );
+        if (envResult.isErr()) {
+          logger.warn({ uuid: app.uuid }, "Failed to inject env vars");
+        }
+
         const { deploymentUuid } = (
           await coolifyClient.deployApplication(app.uuid)
         ).match(
@@ -53,7 +122,6 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
           }
         );
 
-        // Wait for Docker build to complete
         const deployResult = await coolifyClient.waitForDeployment(
           deploymentUuid,
           {
@@ -80,10 +148,9 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
           return { success: false, error: "build_failed" };
         }
 
-        // Wait for container to be healthy
         const healthResult = await coolifyClient.waitForHealthy(app.uuid, {
           pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
-          timeoutMs: 120000, // 2 min for container to start
+          timeoutMs: 120000,
         });
 
         if (healthResult.isErr()) {
@@ -121,7 +188,7 @@ export function createDeployWorker({ deps }: { deps: WorkerDeps }) {
   return worker;
 }
 
-export function createDeleteWorker({ deps }: { deps: WorkerDeps }) {
+export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
   const { coolifyClient, redis, logger } = deps;
 
   const worker = new Worker<DeleteBoxJobData>(

@@ -55,11 +55,11 @@
     "test:watch": "turbo test:watch",
     "dev": "turbo dev",
     "build": "turbo build",
-    "db:studio": "turbo -F @vps-claude/db db:studio",
-    "db:generate": "turbo -F @vps-claude/db db:generate",
-    "db:start": "turbo -F @vps-claude/db db:start",
-    "db:stop": "turbo -F @vps-claude/db db:stop",
-    "db:clean": "turbo -F @vps-claude/db db:clean"
+    "db:studio": "bun run --filter=@vps-claude/db db:studio",
+    "db:generate": "bun run --filter=@vps-claude/db db:generate",
+    "db:start": "bun run --filter=@vps-claude/db db:start",
+    "db:stop": "bun run --filter=@vps-claude/db db:stop",
+    "db:clean": "bun run --filter=@vps-claude/db db:clean"
   },
   "dependencies": {
     "dotenv": "catalog:",

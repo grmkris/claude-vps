@@ -1,6 +1,7 @@
-import { typeIdGenerator } from "@vps-claude/shared";
-import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { type BoxId, typeIdGenerator, type UserId } from "@vps-claude/shared";
+import { index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
 
+import { baseEntityFields, typeId } from "../../utils/db-utils";
 import { user } from "../auth";
 
 export const boxStatusEnum = pgEnum("box_status", [
@@ -14,22 +15,22 @@ export const boxStatusEnum = pgEnum("box_status", [
 export const box = pgTable(
   "box",
   {
-    id: text("id")
+    id: typeId("box", "id")
       .primaryKey()
-      .$defaultFn(() => typeIdGenerator("box")),
+      .$defaultFn(() => typeIdGenerator("box"))
+      .$type<BoxId>(),
     name: text("name").notNull(),
     subdomain: text("subdomain").notNull().unique(),
     status: boxStatusEnum("status").notNull().default("pending"),
     coolifyApplicationUuid: text("coolify_application_uuid"),
+    containerName: text("container_name"),
+    passwordHash: text("password_hash"),
     errorMessage: text("error_message"),
-    userId: text("user_id")
+    userId: typeId("user", "user_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
+      .references(() => user.id, { onDelete: "cascade" })
+      .$type<UserId>(),
+    ...baseEntityFields,
   },
   (table) => [
     index("box_userId_idx").on(table.userId),

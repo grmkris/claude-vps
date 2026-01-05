@@ -1,4 +1,5 @@
 import { createBoxService } from "@vps-claude/api/services/box.service";
+import { typeIdGenerator } from "@vps-claude/shared";
 import { createTestSetup, type TestSetup } from "@vps-claude/test-utils";
 import {
   describe,
@@ -133,7 +134,7 @@ describe("BoxService", () => {
     });
 
     it("should return undefined for non-existent id", async () => {
-      const box = await boxService.getById("non-existent-id");
+      const box = await boxService.getById(typeIdGenerator("box"));
       expect(box).toBeUndefined();
     });
   });

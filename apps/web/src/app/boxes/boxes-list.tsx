@@ -31,7 +31,7 @@ function BoxCard({ box }: { box: BoxType }) {
   const deployMutation = useDeployBox();
   const deleteMutation = useDeleteBox();
 
-  const canDeploy = box.status === "pending" || box.status === "error";
+  const canRetry = box.status === "error"; // Only show retry for failed boxes
   const canOpen = box.status === "running";
 
   const handleDeploy = () => {
@@ -113,7 +113,7 @@ function BoxCard({ box }: { box: BoxType }) {
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        {showPasswordInput && canDeploy ? (
+        {showPasswordInput && canRetry ? (
           <div className="flex items-center gap-2 w-full">
             <Input
               type="password"
@@ -143,14 +143,15 @@ function BoxCard({ box }: { box: BoxType }) {
           </div>
         ) : (
           <>
-            {canDeploy && (
+            {canRetry && (
               <Button
                 onClick={() => setShowPasswordInput(true)}
                 disabled={deployMutation.isPending}
                 className="flex-1"
+                variant="secondary"
               >
                 <Rocket className="h-4 w-4 mr-2" />
-                Deploy
+                Retry
               </Button>
             )}
             {canOpen && (

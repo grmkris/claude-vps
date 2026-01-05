@@ -3,14 +3,14 @@ import type { Database } from "@vps-claude/db";
 
 import * as schema from "@vps-claude/db";
 import { createQueueClient, type QueueClient } from "@vps-claude/queue";
-import { typeIdGenerator } from "@vps-claude/shared";
+import { type UserId, typeIdGenerator } from "@vps-claude/shared";
 import { Redis } from "ioredis";
 
 import { createTestDatabase, cleanupTestDatabase } from "./pg-lite";
 import { createTestRedisSetup, type RedisTestSetup } from "./redis-test-server";
 
 export interface TestUser {
-  id: string;
+  id: UserId;
   email: string;
   name: string;
 }

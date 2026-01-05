@@ -19,6 +19,14 @@ export const WORKER_CONFIG = {
     name: "delete-box",
     timeout: 60000, // 1 min
   },
+  deliverEmail: {
+    name: "deliver-email",
+    timeout: 30000, // 30 sec
+  },
+  sendEmail: {
+    name: "send-email",
+    timeout: 30000, // 30 sec
+  },
 } as const;
 
 export const NUMERIC_CONSTANTS = {

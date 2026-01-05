@@ -1,0 +1,22 @@
+{
+  "name": "@vps-claude/ssh-bastion",
+  "version": "0.0.1",
+  "private": true,
+  "description": "SSH bastion service using sshpiper for routing",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/sync.ts",
+    "start": "bun run src/sync.ts",
+    "build": "docker build -t vps-claude-ssh-bastion ."
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@vps-claude/api": "workspace:*",
+    "@vps-claude/logger": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@vps-claude/config": "workspace:*"
+  }
+}

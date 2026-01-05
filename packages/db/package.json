@@ -34,6 +34,7 @@
     "@types/pg": "^8.15.6",
     "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
+    "@vps-claude/logger": "workspace:*",
     "drizzle-kit": "^0.31.8",
     "tsdown": "catalog:"
   }

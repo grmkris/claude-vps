@@ -1,9 +1,9 @@
 import "dotenv/config";
-import { createEnv } from "@t3-oss/env-core";
+import { env as bunEnv } from "bun";
 import { z } from "zod";
 
-export const env = createEnv({
-  server: {
+export const env = z
+  .object({
     DATABASE_URL: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
@@ -19,8 +19,8 @@ export const env = createEnv({
     COOLIFY_ENVIRONMENT_UUID: z.string().min(1),
     AGENTS_DOMAIN: z.string().min(1),
     INBOUND_EMAIL_API_KEY: z.string().min(1),
+    INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
+    INTERNAL_API_KEY: z.string().min(32),
     APP_ENV: z.enum(["dev", "prod"]).default("dev"),
-  },
-  runtimeEnv: process.env,
-  emptyStringAsUndefined: true,
-});
+  })
+  .parse(bunEnv);

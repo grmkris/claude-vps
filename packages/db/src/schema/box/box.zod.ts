@@ -1,5 +1,5 @@
 import { BoxId, UserId } from "@vps-claude/shared";
-import { createSelectSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 import { box, boxStatusEnum } from "./box.db";
@@ -10,7 +10,7 @@ export const SelectBoxSchema = createSelectSchema(box, {
 });
 export type SelectBoxSchema = z.infer<typeof SelectBoxSchema>;
 
-export const InsertBoxSchema = createSelectSchema(box).omit({
+export const InsertBoxSchema = createInsertSchema(box).omit({
   id: true,
   status: true,
   coolifyApplicationUuid: true,

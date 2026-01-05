@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { BoxId } from "@vps-claude/shared";
+import { BoxId, SkillId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -28,6 +28,7 @@ export const boxRouter = {
       z.object({
         name: z.string().min(1).max(50),
         password: z.string().min(8).max(100),
+        skills: z.array(SkillId).default([]),
       })
     )
     .handler(async ({ context, input }) => {

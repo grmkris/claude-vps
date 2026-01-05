@@ -24,6 +24,8 @@ export interface CreateApiOptions {
   auth: Auth;
   corsOrigin: string;
   agentsDomain: string;
+  internalApiKey: string;
+  inboundWebhookSecret?: string;
 }
 
 export function createApi({
@@ -32,6 +34,8 @@ export function createApi({
   auth,
   corsOrigin,
   agentsDomain,
+  internalApiKey,
+  inboundWebhookSecret,
 }: CreateApiOptions) {
   const app = new Hono<{ Variables: HonoVariables }>();
 
@@ -87,6 +91,59 @@ export function createApi({
   app.get("/", (c) => c.text("OK"));
   app.get("/health", (c) => c.text("OK"));
 
+  app.post("/webhooks/inbound-email", async (c) => {
+    if (inboundWebhookSecret) {
+      const token = c.req.header("X-Webhook-Verification-Token");
+      if (token !== inboundWebhookSecret) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+    }
+
+    const body = await c.req.json();
+    const emailData = body.email || body;
+    const toAddress = emailData.to as string;
+
+    if (!toAddress) {
+      return c.json({ error: "Missing to address" }, 400);
+    }
+
+    const match = toAddress.match(
+      new RegExp(`^[^@]+@([^.]+)\\.${agentsDomain.replace(".", "\\.")}$`, "i")
+    );
+
+    if (!match) {
+      return c.json({ message: "Unknown recipient" }, 200);
+    }
+
+    const subdomain = match[1];
+    if (!subdomain) {
+      return c.json({ message: "Invalid recipient format" }, 200);
+    }
+    const result = await services.emailService.processInbound(subdomain, {
+      messageId:
+        emailData.messageId || emailData.message_id || crypto.randomUUID(),
+      from: {
+        email:
+          typeof emailData.from === "string"
+            ? emailData.from
+            : emailData.from?.email || emailData.from_email,
+        name:
+          typeof emailData.from === "object" ? emailData.from?.name : undefined,
+      },
+      to: toAddress,
+      subject: emailData.subject,
+      textBody: emailData.text || emailData.text_body,
+      htmlBody: emailData.html || emailData.html_body,
+      rawEmail: emailData.raw,
+    });
+
+    if (result.isErr()) {
+      return c.json({ message: result.error.message }, 200);
+    }
+
+    return c.json({ success: true, emailId: result.value.id });
+  });
+
   const apiHandler = new OpenAPIHandler(appRouter, {
     plugins: [
       new OpenAPIReferencePlugin({
@@ -109,7 +166,7 @@ export function createApi({
   });
 
   app.use("/*", async (c, next) => {
-    const config = { agentsDomain };
+    const config = { agentsDomain, internalApiKey };
     const context = await createContext({ context: c, services, auth, config });
 
     const rpcResult = await rpcHandler.handle(c.req.raw, {
@@ -119,6 +176,19 @@ export function createApi({
 
     if (rpcResult.matched) {
       return c.newResponse(rpcResult.response.body, rpcResult.response);
+    }
+
+    // Handle platform routes (ssh-bastion, INTERNAL_API_KEY auth)
+    // Handle box routes (box-agent, per-box token auth)
+    if (c.req.path.startsWith("/platform/") || c.req.path.startsWith("/box/")) {
+      const apiResult = await apiHandler.handle(c.req.raw, {
+        prefix: "/",
+        context,
+      });
+
+      if (apiResult.matched) {
+        return c.newResponse(apiResult.response.body, apiResult.response);
+      }
     }
 
     const apiResult = await apiHandler.handle(c.req.raw, {

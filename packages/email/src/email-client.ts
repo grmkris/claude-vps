@@ -137,8 +137,17 @@ const emailTemplates = {
   }),
 } as const;
 
+export interface RawEmailParams {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  replyTo?: string;
+}
+
 export interface EmailClient {
   sendEmail: (params: EmailParams) => Promise<string>;
+  sendRawEmail: (params: RawEmailParams) => Promise<string>;
 }
 
 export interface EmailClientConfig {
@@ -174,11 +183,36 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
       logger?.info({ emailId: result.id, type: params.type }, "Email sent");
       return result.id;
     },
+
+    sendRawEmail: async (params) => {
+      logger?.debug(
+        { to: params.to, subject: params.subject },
+        "Sending raw email"
+      );
+
+      const result = await inbound.emails.send({
+        from,
+        to: params.to,
+        subject: params.subject,
+        text: params.text,
+        html: params.html,
+        reply_to: params.replyTo,
+      });
+
+      if (!result?.id) {
+        logger?.error({ result }, "Raw email send failed");
+        throw new Error("Failed to send email");
+      }
+
+      logger?.info({ emailId: result.id }, "Raw email sent");
+      return result.id;
+    },
   };
 }
 
 export function createMockEmailClient(): EmailClient {
   return {
     sendEmail: async () => "mock-email-id",
+    sendRawEmail: async () => "mock-email-id",
   };
 }
