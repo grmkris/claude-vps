@@ -11,13 +11,18 @@ export interface LoggerConfig {
   appName?: string;
 }
 
+type LogFn = {
+  (msg: string): void;
+  (obj: Record<string, unknown>, msg?: string): void;
+};
+
 export interface Logger {
-  info: (obj: Record<string, unknown>, msg?: string) => void;
-  error: (obj: Record<string, unknown>, msg?: string) => void;
-  warn: (obj: Record<string, unknown>, msg?: string) => void;
-  debug: (obj: Record<string, unknown>, msg?: string) => void;
-  fatal: (obj: Record<string, unknown>, msg?: string) => void;
-  trace: (obj: Record<string, unknown>, msg?: string) => void;
+  info: LogFn;
+  error: LogFn;
+  warn: LogFn;
+  debug: LogFn;
+  fatal: LogFn;
+  trace: LogFn;
 }
 
 export function createLogger(config: LoggerConfig = {}): Logger {

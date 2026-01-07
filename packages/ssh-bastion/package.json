@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun run --hot src/sync.ts",
     "start": "bun run src/sync.ts",
-    "build": "docker build -t vps-claude-ssh-bastion ."
+    "build": "docker build -t vps-claude-ssh-bastion .",
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@orpc/client": "catalog:",

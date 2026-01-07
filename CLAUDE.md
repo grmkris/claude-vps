@@ -49,11 +49,11 @@ packages/
 
 ### Three-Level Router Organization
 
-| Level | Prefix | Auth | Routers |
-|-------|--------|------|---------|
-| User | `/rpc/` | Session | box, secret, skill |
+| Level    | Prefix       | Auth             | Routers                  |
+| -------- | ------------ | ---------------- | ------------------------ |
+| User     | `/rpc/`      | Session          | box, secret, skill       |
 | Platform | `/platform/` | INTERNAL_API_KEY | platform (ssh endpoints) |
-| Box | `/box/` | Per-box token | boxApi (email) |
+| Box      | `/box/`      | Per-box token    | boxApi (email)           |
 
 ### Procedures (`packages/api/src/`)
 
@@ -96,16 +96,19 @@ const { data } = orpc.box.list.useQuery();
 ## Adding Features
 
 **New ORPC endpoint:**
+
 1. Add to router in `packages/api/src/routers/`
 2. Use appropriate procedure (protected, internal, box)
 3. Frontend: `orpc.routerName.endpoint.useQuery()`
 
 **New DB table:**
+
 1. Schema in `packages/db/src/schema/{name}/`
 2. Export from `packages/db/src/schema/index.ts`
 3. Run `bun run db:generate` then `bun run db:push`
 
 **New service:**
+
 1. Create `packages/api/src/services/{name}.service.ts`
 2. Add to Services interface in `context.ts`
 3. Initialize in `apps/server/src/server.ts`
