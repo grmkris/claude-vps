@@ -45,10 +45,10 @@ COPY apps/web ./apps/web
 COPY packages ./packages
 
 # Build arguments for public environment variables
-ARG NEXT_PUBLIC_SERVER_URL
+ARG NEXT_PUBLIC_ENV=prod
 
 # Set build-time environment variables
-ENV NEXT_PUBLIC_SERVER_URL=$NEXT_PUBLIC_SERVER_URL
+ENV NEXT_PUBLIC_ENV=$NEXT_PUBLIC_ENV
 
 # Build Next.js application
 WORKDIR /app/apps/web
@@ -83,8 +83,8 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=33001
 
 # Preserve public environment variables
-ARG NEXT_PUBLIC_SERVER_URL
-ENV NEXT_PUBLIC_SERVER_URL=$NEXT_PUBLIC_SERVER_URL
+ARG NEXT_PUBLIC_ENV
+ENV NEXT_PUBLIC_ENV=$NEXT_PUBLIC_ENV
 
 # Switch to non-root user
 USER nodejs

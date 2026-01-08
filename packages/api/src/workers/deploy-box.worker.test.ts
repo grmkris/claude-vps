@@ -1,6 +1,6 @@
 import { createCoolifyClient } from "@vps-claude/coolify";
 import { createLogger } from "@vps-claude/logger";
-import { Environment } from "@vps-claude/shared/services.schema";
+import { Environment, SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { createTestSetup, type TestSetup } from "@vps-claude/test-utils";
 import { env } from "bun";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -19,7 +19,6 @@ const TestEnvSchema = z.object({
   COOLIFY_SERVER_UUID: z.string(),
   COOLIFY_ENVIRONMENT_NAME: z.string(),
   COOLIFY_ENVIRONMENT_UUID: z.string(),
-  AGENTS_DOMAIN: z.string(),
 });
 
 const testEnvVars = TestEnvSchema.parse(env);
@@ -42,7 +41,7 @@ describe("Deploy Worker E2E", () => {
       serverUuid: testEnvVars.COOLIFY_SERVER_UUID,
       environmentName: testEnvVars.COOLIFY_ENVIRONMENT_NAME,
       environmentUuid: testEnvVars.COOLIFY_ENVIRONMENT_UUID,
-      agentsDomain: testEnvVars.AGENTS_DOMAIN,
+      agentsDomain: SERVICE_URLS[testEnvVars.APP_ENV].agentsDomain,
       logger,
     });
 

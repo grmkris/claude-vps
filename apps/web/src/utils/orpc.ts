@@ -1,4 +1,5 @@
 import type { AppRouterClient } from "@vps-claude/api/routers/index";
+import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
@@ -22,7 +23,7 @@ export const queryClient = new QueryClient({
 });
 
 export const link = new RPCLink({
-  url: `${env.NEXT_PUBLIC_SERVER_URL}/rpc`,
+  url: `${SERVICE_URLS[env.NEXT_PUBLIC_ENV].api}/rpc`,
   fetch(url, options) {
     return fetch(url, {
       ...options,

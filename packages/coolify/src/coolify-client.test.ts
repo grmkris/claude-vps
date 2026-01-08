@@ -1,5 +1,5 @@
 import { createLogger } from "@vps-claude/logger";
-import { Environment } from "@vps-claude/shared/services.schema";
+import { Environment, SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { env } from "bun";
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
@@ -15,7 +15,6 @@ const TestEnvSchema = z.object({
   COOLIFY_SERVER_UUID: z.string(),
   COOLIFY_ENVIRONMENT_NAME: z.string(),
   COOLIFY_ENVIRONMENT_UUID: z.string(),
-  AGENTS_DOMAIN: z.string(),
 });
 
 const testEnv = TestEnvSchema.parse(env);
@@ -28,7 +27,7 @@ describe("CoolifyClient", () => {
     serverUuid: testEnv.COOLIFY_SERVER_UUID,
     environmentName: testEnv.COOLIFY_ENVIRONMENT_NAME,
     environmentUuid: testEnv.COOLIFY_ENVIRONMENT_UUID,
-    agentsDomain: testEnv.AGENTS_DOMAIN,
+    agentsDomain: SERVICE_URLS[testEnv.APP_ENV].agentsDomain,
     logger,
   });
 

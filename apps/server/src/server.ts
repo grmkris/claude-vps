@@ -14,6 +14,7 @@ import {
 import { createAuth } from "@vps-claude/auth";
 import { createCoolifyClient } from "@vps-claude/coolify";
 import { createDb, runMigrations } from "@vps-claude/db";
+import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { createEmailClient } from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
 import { createQueueClient } from "@vps-claude/queue";
@@ -46,14 +47,14 @@ const coolifyClient = createCoolifyClient({
   serverUuid: env.COOLIFY_SERVER_UUID,
   environmentName: env.COOLIFY_ENVIRONMENT_NAME,
   environmentUuid: env.COOLIFY_ENVIRONMENT_UUID,
-  agentsDomain: env.AGENTS_DOMAIN,
+  agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
 });
 
 const auth = createAuth({
   db,
   secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL,
-  trustedOrigins: [env.CORS_ORIGIN],
+  baseURL: SERVICE_URLS[env.APP_ENV].auth,
+  trustedOrigins: [SERVICE_URLS[env.APP_ENV].web],
   emailClient,
   appEnv: env.APP_ENV,
 });
@@ -142,7 +143,7 @@ const deployWorker = createDeployWorker({
     coolifyClient,
     redis,
     logger,
-    serverUrl: env.BETTER_AUTH_URL,
+    serverUrl: SERVICE_URLS[env.APP_ENV].api,
   },
 });
 const deleteWorker = createDeleteWorker({
@@ -178,8 +179,8 @@ const { app } = createApi({
   logger,
   services,
   auth,
-  corsOrigin: env.CORS_ORIGIN,
-  agentsDomain: env.AGENTS_DOMAIN,
+  corsOrigin: SERVICE_URLS[env.APP_ENV].web,
+  agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
   internalApiKey: env.INTERNAL_API_KEY,
   inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET,
 });

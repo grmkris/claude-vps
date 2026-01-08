@@ -6,8 +6,6 @@ export const env = z
   .object({
     DATABASE_URL: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.url(),
-    CORS_ORIGIN: z.url(),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
@@ -17,7 +15,6 @@ export const env = z
     COOLIFY_SERVER_UUID: z.string().min(1),
     COOLIFY_ENVIRONMENT_NAME: z.string().min(1),
     COOLIFY_ENVIRONMENT_UUID: z.string().min(1),
-    AGENTS_DOMAIN: z.string().min(1),
     INBOUND_EMAIL_API_KEY: z.string().min(1),
     INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
     INTERNAL_API_KEY: z.string().min(32),

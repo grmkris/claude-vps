@@ -13,6 +13,7 @@ export const SERVICE_URLS: Record<
     web: string;
     emailFrom: string;
     coolify: "https://c.grm.wtf/api/v1";
+    agentsDomain: string;
   }
 > = {
   dev: {
@@ -21,6 +22,7 @@ export const SERVICE_URLS: Record<
     web: "http://localhost:33001",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     coolify: "https://c.grm.wtf/api/v1",
+    agentsDomain: "agents.grm.wtf",
   },
   prod: {
     auth: "https://api.vps.grm.wtf",
@@ -28,5 +30,6 @@ export const SERVICE_URLS: Record<
     web: "https://vps.grm.wtf",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     coolify: "https://c.grm.wtf/api/v1",
+    agentsDomain: "agents.grm.wtf",
   },
 } as const;
