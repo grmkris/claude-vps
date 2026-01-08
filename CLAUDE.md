@@ -10,12 +10,17 @@ bun run dev              # Start all apps (web:33001, server:33000)
 bun run dev:web          # Start web only
 bun run dev:server       # Start server only
 bun run build            # Build all apps
-bun run check-types      # TypeScript check across monorepo
-bun run check            # Biome lint + format (ultracite)
+bun run typecheck        # TypeScript check across monorepo
+bun run check            # Biome lint + format
+bun run fix              # Auto-fix lint issues
+bun run fix:unsafe       # Auto-fix including unsafe fixes
+bun run test             # Run tests
+bun run test:watch       # Run tests in watch mode
 
 # Database (packages/db)
 bun run db:start         # Start Postgres via docker-compose
-bun run db:push          # Push schema to database
+bun run db:stop          # Stop Postgres
+bun run db:clean         # Remove Postgres data
 bun run db:generate      # Generate migrations
 bun run db:studio        # Open Drizzle Studio
 ```
@@ -41,9 +46,11 @@ packages/
   coolify/      → Coolify API client
   logger/       → Pino logger factory
   redis/        → Redis client factory
-  shared/       → TypeIDs, constants
+  shared/       → SERVICE_URLS, TypeIDs, constants
   config/       → Shared tsconfig
 ```
+
+**URL Config:** All service URLs centralized in `packages/shared/src/services.schema.ts` via `SERVICE_URLS[APP_ENV]`.
 
 ## API Architecture
 
@@ -113,48 +120,8 @@ const { data } = orpc.box.list.useQuery();
 2. Add to Services interface in `context.ts`
 3. Initialize in `apps/server/src/server.ts`
 
-## Environment Variables
+## Deployment
 
-### Server (`apps/server/.env`)
+Dockerfiles: `apps/web/Dockerfile`, `apps/server/Dockerfile`
 
-```
-DATABASE_URL              # Postgres connection
-BETTER_AUTH_SECRET        # Min 32 chars
-REDIS_URL                 # Redis for BullMQ
-INTERNAL_API_KEY          # Platform service auth (min 32 chars)
-COOLIFY_API_TOKEN         # Coolify API access
-COOLIFY_PROJECT_UUID      # Coolify project
-COOLIFY_SERVER_UUID       # Coolify server
-COOLIFY_ENVIRONMENT_NAME  # Coolify env name
-COOLIFY_ENVIRONMENT_UUID  # Coolify env uuid
-INBOUND_EMAIL_API_KEY     # Email webhook auth
-APP_ENV                   # "dev" or "prod" (determines SERVICE_URLS)
-```
-
-### Box Agent (injected by deploy worker)
-
-```
-BOX_API_URL           # Server /box endpoint
-BOX_API_TOKEN         # Per-box auth token
-BOX_AGENT_SECRET      # Email receive auth
-BOX_SUBDOMAIN         # Box identifier
-```
-
-### SSH Bastion
-
-```
-API_URL               # Server URL
-INTERNAL_API_KEY      # Same as server
-```
-
-## DB Schemas
-
-```
-packages/db/src/schema/
-├── auth/        # better-auth tables (user, session, account)
-├── box/         # Box definitions
-├── box-email/   # Email settings, messages
-├── box-skill/   # Box-skill associations
-├── secret/      # User secrets (env vars)
-└── skill/       # Custom skills
-```
+Env vars: See `.env.example` in each app.

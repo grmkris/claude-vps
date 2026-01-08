@@ -327,6 +327,7 @@
     "tailwindcss": "^4.1.18",
     "tsdown": "^0.18.4",
     "typeid-js": "^1.2.0",
+    "typescript": "^5.8.2",
     "zod": "^4.3.4",
   },
   "packages": {
