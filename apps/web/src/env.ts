@@ -1,5 +1,5 @@
-import { Environment } from "@vps-claude/shared/services.schema";
 import { createEnv } from "@t3-oss/env-nextjs";
+import { Environment } from "@vps-claude/shared/services.schema";
 
 export const env = createEnv({
   client: {

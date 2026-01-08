@@ -1,10 +1,10 @@
 import type { AppRouterClient } from "@vps-claude/api/routers/index";
-import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
+import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { toast } from "sonner";
 
 import { env } from "@/env";

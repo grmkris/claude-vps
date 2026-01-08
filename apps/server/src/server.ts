@@ -14,11 +14,11 @@ import {
 import { createAuth } from "@vps-claude/auth";
 import { createCoolifyClient } from "@vps-claude/coolify";
 import { createDb, runMigrations } from "@vps-claude/db";
-import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { createEmailClient } from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
 import { createQueueClient } from "@vps-claude/queue";
 import { createRedisClient } from "@vps-claude/redis";
+import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 
 import { env } from "./env";
 
