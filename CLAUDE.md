@@ -118,15 +118,17 @@ const { data } = orpc.box.list.useQuery();
 ### Server (`apps/server/.env`)
 
 ```
-DATABASE_URL          # Postgres connection
-BETTER_AUTH_SECRET    # Min 32 chars
-BETTER_AUTH_URL       # Server URL
-CORS_ORIGIN           # Web app URL
-REDIS_URL             # Redis for BullMQ
-INTERNAL_API_KEY      # Platform service auth (min 32 chars)
-COOLIFY_API_TOKEN     # Coolify API access
-COOLIFY_PROJECT_UUID  # Coolify project
-AGENTS_DOMAIN         # Box subdomain base (e.g., agents.grm.wtf)
+DATABASE_URL              # Postgres connection
+BETTER_AUTH_SECRET        # Min 32 chars
+REDIS_URL                 # Redis for BullMQ
+INTERNAL_API_KEY          # Platform service auth (min 32 chars)
+COOLIFY_API_TOKEN         # Coolify API access
+COOLIFY_PROJECT_UUID      # Coolify project
+COOLIFY_SERVER_UUID       # Coolify server
+COOLIFY_ENVIRONMENT_NAME  # Coolify env name
+COOLIFY_ENVIRONMENT_UUID  # Coolify env uuid
+INBOUND_EMAIL_API_KEY     # Email webhook auth
+APP_ENV                   # "dev" or "prod" (determines SERVICE_URLS)
 ```
 
 ### Box Agent (injected by deploy worker)
