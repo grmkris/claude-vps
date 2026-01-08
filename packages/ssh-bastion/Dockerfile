@@ -1,7 +1,7 @@
 # SSH Bastion using sshpiper
 # Build context: monorepo root
 
-FROM golang:1.22-alpine AS builder
+FROM golang:alpine AS builder
 RUN go install github.com/tg123/sshpiper/cmd/sshpiperd@latest
 
 FROM oven/bun:alpine AS runtime

@@ -103,6 +103,7 @@
         "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
         "tailwindcss": "^4.1.10",
+        "typescript": "catalog:",
       },
     },
     "packages/api": {

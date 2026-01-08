@@ -43,6 +43,7 @@
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
-    "tailwindcss": "^4.1.10"
+    "tailwindcss": "^4.1.10",
+    "typescript": "catalog:"
   }
 }
