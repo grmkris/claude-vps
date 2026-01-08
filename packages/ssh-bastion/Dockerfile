@@ -1,37 +1,49 @@
 # SSH Bastion using sshpiper
-# This routes SSH connections to the appropriate box container
+# Build context: monorepo root
 
 FROM golang:1.22-alpine AS builder
-
-# Install sshpiper
 RUN go install github.com/tg123/sshpiper/cmd/sshpiperd@latest
 
 FROM oven/bun:alpine AS runtime
 
-# Install dependencies
-RUN apk add --no-cache \
-    bash \
-    openssh-keygen
+RUN apk add --no-cache bash openssh-keygen
 
-# Copy sshpiper binary
 COPY --from=builder /go/bin/sshpiperd /usr/local/bin/sshpiperd
 
-# Create directories
 RUN mkdir -p /etc/sshpiper/workingdir /var/run/sshpiper /app
 
-# Generate host keys
 RUN ssh-keygen -t rsa -b 4096 -f /etc/sshpiper/ssh_host_rsa_key -N "" && \
     ssh-keygen -t ed25519 -f /etc/sshpiper/ssh_host_ed25519_key -N ""
 
-# Copy app source
 WORKDIR /app
-COPY package.json bun.lock* ./
+
+# Copy root workspace files
+COPY package.json bun.lock turbo.json ./
+
+# Copy ALL package.json files for workspace resolution
+COPY packages/api/package.json ./packages/api/
+COPY packages/auth/package.json ./packages/auth/
+COPY packages/config/package.json ./packages/config/
+COPY packages/coolify/package.json ./packages/coolify/
+COPY packages/db/package.json ./packages/db/
+COPY packages/email/package.json ./packages/email/
+COPY packages/logger/package.json ./packages/logger/
+COPY packages/queue/package.json ./packages/queue/
+COPY packages/redis/package.json ./packages/redis/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ssh-bastion/package.json ./packages/ssh-bastion/
+
+# Install deps
 RUN bun install --frozen-lockfile
-COPY src ./src
+
+# Copy all package sources (needed for workspace deps)
+COPY packages ./packages
 
 # Copy entrypoint
-COPY entrypoint.sh /entrypoint.sh
+COPY packages/ssh-bastion/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+WORKDIR /app/packages/ssh-bastion
 
 EXPOSE 22
 

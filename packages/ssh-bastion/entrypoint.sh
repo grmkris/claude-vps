@@ -6,7 +6,7 @@ echo "Host keys:"
 ls -la /etc/sshpiper/
 
 # Start the sync service in background
-cd /app && bun run src/sync.ts &
+cd /app/packages/ssh-bastion && bun run src/sync.ts &
 
 # Start sshpiper with workingdir plugin
 # Users connect as: ssh subdomain@ssh.domain.com
