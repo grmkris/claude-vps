@@ -30,14 +30,6 @@ export const link = new RPCLink({
       credentials: "include",
     });
   },
-  headers: async () => {
-    if (typeof window !== "undefined") {
-      return {};
-    }
-
-    const { headers } = await import("next/headers");
-    return Object.fromEntries(await headers());
-  },
 });
 
 export const client: AppRouterClient = createORPCClient(link);
