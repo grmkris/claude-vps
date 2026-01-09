@@ -14,6 +14,7 @@ export const SERVICE_URLS: Record<
     emailFrom: string;
     coolify: "https://c.grm.wtf/api/v1";
     agentsDomain: string;
+    sshBastion: string;
   }
 > = {
   dev: {
@@ -23,13 +24,15 @@ export const SERVICE_URLS: Record<
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.grm.wtf",
+    sshBastion: "http://localhost:33002",
   },
   prod: {
-    auth: "https://api.vps.grm.wtf",
-    api: "https://api.vps.grm.wtf",
-    web: "https://vps.grm.wtf",
+    auth: "https://api.claude-vps.grm.wtf",
+    api: "https://api.claude-vps.grm.wtf",
+    web: "https://claude-vps.grm.wtf",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.grm.wtf",
+    sshBastion: "https://ssh.claude-vps.grm.wtf",
   },
 } as const;
