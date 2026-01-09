@@ -31,6 +31,12 @@ export const createAuth = (config: AuthConfig) => {
     emailAndPassword: {
       enabled: true,
     },
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60, // 5 minutes - avoids DB call on every getSession()
+      },
+    },
     advanced: {
       database: {
         generateId: false,
