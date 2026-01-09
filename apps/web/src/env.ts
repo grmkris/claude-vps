@@ -5,7 +5,7 @@ export const env = createEnv({
   client: {
     NEXT_PUBLIC_ENV: Environment,
   },
-  runtimeEnv: {
+  experimental__runtimeEnv: {
     NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
   },
   emptyStringAsUndefined: true,
