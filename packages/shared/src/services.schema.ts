@@ -32,7 +32,7 @@ export const SERVICE_URLS: Record<
     web: "https://claude-vps.grm.wtf",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     coolify: "https://c.grm.wtf/api/v1",
-    agentsDomain: "agents.grm.wtf",
+    agentsDomain: "agents.claude-vps.grm.wtf",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
   },
 } as const;

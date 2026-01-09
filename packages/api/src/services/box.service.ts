@@ -196,18 +196,17 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
     },
 
     async listRunningBoxes(): Promise<
-      Array<{ subdomain: string; containerName: string; passwordHash: string }>
+      Array<{ subdomain: string; containerName: string }>
     > {
       const result = await db.query.box.findMany({
         where: eq(box.status, "running"),
       });
 
       return result
-        .filter((b) => b.containerName !== null && b.passwordHash !== null)
+        .filter((b) => b.containerName !== null)
         .map((b) => ({
           subdomain: b.subdomain,
           containerName: b.containerName!,
-          passwordHash: b.passwordHash!,
         }));
     },
   };

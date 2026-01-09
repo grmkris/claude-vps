@@ -14,7 +14,6 @@ export const platformRouter = {
       .output(
         z.object({
           containerName: z.string(),
-          passwordHash: z.string(),
         })
       )
       .handler(async ({ context, input }) => {
@@ -30,7 +29,7 @@ export const platformRouter = {
           throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
         }
 
-        if (!boxRecord.containerName || !boxRecord.passwordHash) {
+        if (!boxRecord.containerName) {
           throw new ORPCError("BAD_REQUEST", {
             message: "Box not fully configured",
           });
@@ -38,7 +37,6 @@ export const platformRouter = {
 
         return {
           containerName: boxRecord.containerName,
-          passwordHash: boxRecord.passwordHash,
         };
       }),
 
@@ -50,7 +48,6 @@ export const platformRouter = {
             z.object({
               subdomain: z.string(),
               containerName: z.string(),
-              passwordHash: z.string(),
             })
           ),
         })

@@ -8,7 +8,6 @@ import { env } from "./env";
 export interface BoxInfo {
   subdomain: string;
   containerName: string;
-  passwordHash: string;
 }
 
 const link = new RPCLink({
