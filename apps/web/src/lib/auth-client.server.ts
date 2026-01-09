@@ -13,7 +13,10 @@ export const authServerClient = createAuthServerClient({
 export const getSession = cache(async () => {
   const h = await headers();
   const result = await authServerClient.getSession({
-    fetchOptions: { headers: h },
+    fetchOptions: {
+      headers: h,
+      baseURL: SERVICE_URLS[env.NEXT_PUBLIC_ENV].authInternal,
+    },
   });
   return result.data;
 });
