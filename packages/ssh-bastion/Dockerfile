@@ -34,8 +34,8 @@ COPY packages/ssh-bastion/package.json ./packages/ssh-bastion/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/test-utils/package.json ./packages/test-utils/
 
-# Install deps
-RUN bun install --frozen-lockfile
+# Install deps (ignore-scripts: test-utils postinstall needs make)
+RUN bun install --filter=@vps-claude/ssh-bastion --ignore-scripts
 
 # Copy all package sources (needed for workspace deps)
 COPY packages ./packages

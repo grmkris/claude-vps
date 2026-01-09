@@ -38,7 +38,7 @@ COPY packages/storage/package.json ./packages/storage/
 COPY packages/test-utils/package.json ./packages/test-utils/
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install --filter=web --frozen-lockfile
 
 # Copy source code
 COPY apps/web ./apps/web
@@ -80,7 +80,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/apps/web/public ./apps/web/public
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
-ENV PORT=33001
+ENV PORT=3000
 
 # Preserve public environment variables
 ARG NEXT_PUBLIC_ENV
@@ -91,9 +91,9 @@ USER nodejs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:33001/ || exit 1
+    CMD curl -f http://localhost:3000/ || exit 1
 
-EXPOSE 33001
+EXPOSE 3000
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]

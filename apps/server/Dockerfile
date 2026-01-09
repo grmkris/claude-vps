@@ -38,7 +38,7 @@ COPY packages/storage/package.json ./packages/storage/
 COPY packages/test-utils/package.json ./packages/test-utils/
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install --filter=server --frozen-lockfile
 
 # Copy source code
 COPY apps/server ./apps/server
