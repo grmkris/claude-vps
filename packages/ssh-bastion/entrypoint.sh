@@ -15,5 +15,5 @@ exec /usr/local/bin/sshpiperd \
     --log-level debug \
     --server-key /etc/sshpiper/ssh_host_rsa_key \
     --server-key /etc/sshpiper/ssh_host_ed25519_key \
-    pipe \
-    --workingdir /etc/sshpiper/workingdir
+    workingdir \
+    --root /etc/sshpiper/workingdir

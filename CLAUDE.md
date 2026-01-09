@@ -40,10 +40,9 @@ packages/
   auth/         → better-auth config
   db/           → Drizzle schema + client
   ssh-bastion/  → SSH reverse proxy (sshpiper sync)
-  docker/       → Box base Dockerfiles
   queue/        → BullMQ job definitions
   email/        → Email client (Resend)
-  coolify/      → Coolify API client
+  coolify/      → Coolify API client + box-base Dockerfile
   logger/       → Pino logger factory
   redis/        → Redis client factory
   shared/       → SERVICE_URLS, TypeIDs, constants

@@ -5,9 +5,12 @@ FROM oven/bun:alpine AS runtime
 
 RUN apk add --no-cache bash openssh-keygen curl
 
-# Download pre-built sshpiper binary (go install broken due to replace directives)
+# Download pre-built sshpiper binary + plugins
 RUN curl -fsSL https://github.com/tg123/sshpiper/releases/download/v1.5.1/sshpiperd_with_plugins_linux_x86_64.tar.gz \
-    | tar -xz -C /usr/local/bin sshpiperd
+    | tar -xz -C /tmp && \
+    mv /tmp/sshpiperd /usr/local/bin/ && \
+    mv /tmp/plugins/* /usr/local/bin/ && \
+    rm -rf /tmp/plugins /tmp/LICENSE /tmp/README.md
 
 RUN mkdir -p /etc/sshpiper/workingdir /var/run/sshpiper /app
 
