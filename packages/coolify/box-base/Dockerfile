@@ -38,7 +38,7 @@ COPY apps/box-agent /tmp/build/apps/box-agent
 RUN cd /tmp/build \
     && bun install --filter=box-agent \
     && cd apps/box-agent \
-    && bun build --compile --minify ./src/index.ts --outfile /usr/local/bin/box-agent \
+    && bun build --compile --minify ./src/server.ts --outfile /usr/local/bin/box-agent \
     && chmod +x /usr/local/bin/box-agent \
     && rm -rf /tmp/build
 
