@@ -109,7 +109,7 @@ First add the TypeID prefix to `packages/shared/src/typeid.schema.ts`:
 ```typescript
 export const idTypesMapNameToPrefix = {
   // ... existing
-  xxx: "xxx",  // 3-char prefix
+  xxx: "xxx", // 3-char prefix
 } as const;
 
 // ... at bottom:

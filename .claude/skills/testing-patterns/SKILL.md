@@ -29,7 +29,11 @@ Expected packages:
 ```typescript
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { type TestSetup, createTestSetup } from "../test/test.setup";
-import { createTestContext, createTestItem, fundUser } from "../test/test-helpers";
+import {
+  createTestContext,
+  createTestItem,
+  fundUser,
+} from "../test/test-helpers";
 import { UserId } from "@project/shared/typeid";
 
 describe("Feature Name", () => {

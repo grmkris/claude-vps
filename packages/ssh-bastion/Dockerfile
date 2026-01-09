@@ -19,18 +19,21 @@ WORKDIR /app
 # Copy root workspace files
 COPY package.json bun.lock turbo.json ./
 
-# Copy ALL package.json files for workspace resolution
+# Copy ALL package.json files for workspace resolution (14 packages)
 COPY packages/api/package.json ./packages/api/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
 COPY packages/coolify/package.json ./packages/coolify/
 COPY packages/db/package.json ./packages/db/
+COPY packages/docker/package.json ./packages/docker/
 COPY packages/email/package.json ./packages/email/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/queue/package.json ./packages/queue/
 COPY packages/redis/package.json ./packages/redis/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ssh-bastion/package.json ./packages/ssh-bastion/
+COPY packages/storage/package.json ./packages/storage/
+COPY packages/test-utils/package.json ./packages/test-utils/
 
 # Install deps
 RUN bun install --frozen-lockfile

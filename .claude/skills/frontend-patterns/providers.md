@@ -83,7 +83,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
 ```typescript
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, staleTime: 5 * 60 * 1000 } },
+  defaultOptions: {
+    queries: { refetchOnWindowFocus: false, staleTime: 5 * 60 * 1000 },
+  },
 });
 
 export const link = new RPCLink({

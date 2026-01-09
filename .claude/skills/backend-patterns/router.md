@@ -119,9 +119,12 @@ Error type mapping:
 ## Common Input Patterns
 
 ```typescript
-z.object({ limit: z.number().min(1).max(100).default(20), offset: z.number().min(0).default(0) })
-z.object({ id: XxxId })
-z.object({ status: z.enum(["ACTIVE", "COMPLETED"]) })
+z.object({
+  limit: z.number().min(1).max(100).default(20),
+  offset: z.number().min(0).default(0),
+});
+z.object({ id: XxxId });
+z.object({ status: z.enum(["ACTIVE", "COMPLETED"]) });
 ```
 
 ## Register Router

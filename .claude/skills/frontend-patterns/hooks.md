@@ -29,8 +29,12 @@ export function useCreateItem() {
       client.item.create(input),
 
     onSuccess: (_data, input) => {
-      queryClient.invalidateQueries({ queryKey: orpc.item.list.queryOptions({ input: {} }).queryKey });
-      queryClient.invalidateQueries({ queryKey: orpc.user.me.queryOptions({ input: {} }).queryKey });
+      queryClient.invalidateQueries({
+        queryKey: orpc.item.list.queryOptions({ input: {} }).queryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: orpc.user.me.queryOptions({ input: {} }).queryKey,
+      });
       toast.success(`Created ${input.name}!`);
     },
 
@@ -78,11 +82,17 @@ switch (code) {
 ## Cache Invalidation
 
 ```typescript
-queryClient.invalidateQueries({ queryKey: orpc.item.list.queryOptions({ input: {} }).queryKey });
+queryClient.invalidateQueries({
+  queryKey: orpc.item.list.queryOptions({ input: {} }).queryKey,
+});
 
 await Promise.all([
-  queryClient.invalidateQueries({ queryKey: orpc.item.list.queryOptions({ input: {} }).queryKey }),
-  queryClient.invalidateQueries({ queryKey: orpc.user.me.queryOptions({ input: {} }).queryKey }),
+  queryClient.invalidateQueries({
+    queryKey: orpc.item.list.queryOptions({ input: {} }).queryKey,
+  }),
+  queryClient.invalidateQueries({
+    queryKey: orpc.user.me.queryOptions({ input: {} }).queryKey,
+  }),
 ]);
 ```
 

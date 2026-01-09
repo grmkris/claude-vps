@@ -15,7 +15,9 @@ interface TestSetup {
     redis: RedisSetup;
     queue: QueueClient;
     // ... your services
-    userService, itemService, orderService
+    userService;
+    itemService;
+    orderService;
   };
   users: {
     authenticated: TestUser;
@@ -42,13 +44,21 @@ All reset between test files. No network calls needed.
 const userId = UserId.parse(testSetup.users.authenticated.id);
 const token = testSetup.users.authenticated.token;
 
-const user = await createTestUserWithBalance(testSetup, "Test User", "test@example.com", 100);
+const user = await createTestUserWithBalance(
+  testSetup,
+  "Test User",
+  "test@example.com",
+  100
+);
 ```
 
 ## Testing with Context
 
 ```typescript
-const ctx = await createTestContext({ token: users.authenticated.token, testSetup });
+const ctx = await createTestContext({
+  token: users.authenticated.token,
+  testSetup,
+});
 expect(ctx.session?.user.id).toBe(users.authenticated.id);
 
 const ctx = createUnauthenticatedContext(testSetup);

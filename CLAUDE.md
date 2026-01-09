@@ -65,10 +65,10 @@ packages/
 ### Procedures (`packages/api/src/`)
 
 ```typescript
-publicProcedure      // No auth
-protectedProcedure   // User session required
-internalProcedure    // INTERNAL_API_KEY (platform services)
-boxProcedure         // Per-box token (box-agent)
+publicProcedure; // No auth
+protectedProcedure; // User session required
+internalProcedure; // INTERNAL_API_KEY (platform services)
+boxProcedure; // Per-box token (box-agent)
 ```
 
 ### Services (`packages/api/src/services/`)

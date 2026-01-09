@@ -10,7 +10,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "ioredis": "^5.6.1"
+    "ioredis": "catalog:"
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",

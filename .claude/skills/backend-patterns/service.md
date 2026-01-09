@@ -51,7 +51,10 @@ export function createXxxService({ deps }: { deps: XxxServiceDeps }) {
         return err({ type: "ALREADY_EXISTS", message: "Already exists" });
       }
 
-      const result = await db.insert(DB_SCHEMA.xxx).values({ userId, ...input }).returning();
+      const result = await db
+        .insert(DB_SCHEMA.xxx)
+        .values({ userId, ...input })
+        .returning();
       logger.info({ userId }, "Created xxx");
       return ok(result[0]);
     },

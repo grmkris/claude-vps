@@ -15,7 +15,7 @@
   "dependencies": {
     "@vps-claude/redis": "workspace:*",
     "@vps-claude/shared": "workspace:*",
-    "bullmq": "^5.55.0",
+    "bullmq": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

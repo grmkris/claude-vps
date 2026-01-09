@@ -39,7 +39,10 @@ Create helpers for each entity in your domain:
 ## Usage Examples
 
 ```typescript
-const item = await createTestItem(deps.db, { title: "Test Item", category: "default" });
+const item = await createTestItem(deps.db, {
+  title: "Test Item",
+  category: "default",
+});
 const expiredItem = await createExpiredTestItem(deps.db);
 await fundUser(deps.userService, userId, 500);
 const order = await createTestOrder({ db: deps.db, userId, itemId: item.id });
