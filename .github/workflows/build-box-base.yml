@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: vps-claude/box-base
+  IMAGE_NAME: grmkris/box-base
 
 jobs:
   build:

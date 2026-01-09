@@ -1,4 +1,4 @@
-export const BOX_BASE_IMAGE = "ghcr.io/vps-claude/box-base:latest";
+export const BOX_BASE_IMAGE = "ghcr.io/grmkris/box-base:latest";
 
 export const DOCKERFILE_TEMPLATE = `# syntax=docker/dockerfile:1
 FROM ${BOX_BASE_IMAGE}
