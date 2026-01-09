@@ -1,14 +1,13 @@
 # SSH Bastion using sshpiper
 # Build context: monorepo root
 
-FROM golang:alpine AS builder
-RUN go install github.com/tg123/sshpiper/cmd/sshpiperd@latest
-
 FROM oven/bun:alpine AS runtime
 
-RUN apk add --no-cache bash openssh-keygen
+RUN apk add --no-cache bash openssh-keygen curl
 
-COPY --from=builder /go/bin/sshpiperd /usr/local/bin/sshpiperd
+# Download pre-built sshpiper binary (go install broken due to replace directives)
+RUN curl -fsSL https://github.com/tg123/sshpiper/releases/download/v1.5.1/sshpiperd_with_plugins_linux_x86_64.tar.gz \
+    | tar -xz -C /usr/local/bin sshpiperd
 
 RUN mkdir -p /etc/sshpiper/workingdir /var/run/sshpiper /app
 
