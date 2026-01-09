@@ -40,6 +40,10 @@ export const createAuth = (config: AuthConfig) => {
         secure: true,
         httpOnly: true,
       },
+      crossSubDomainCookies: {
+        enabled: true,
+        domain: SERVICE_URLS[config.appEnv].cookieDomain,
+      },
     },
     plugins: [
       emailOTP({

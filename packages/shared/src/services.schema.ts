@@ -17,6 +17,7 @@ export const SERVICE_URLS: Record<
     coolify: "https://c.grm.wtf/api/v1";
     agentsDomain: string;
     sshBastion: string;
+    cookieDomain: string;
   }
 > = {
   dev: {
@@ -29,6 +30,7 @@ export const SERVICE_URLS: Record<
     coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.grm.wtf",
     sshBastion: "http://localhost:33002",
+    cookieDomain: "localhost",
   },
   prod: {
     auth: "https://api.claude-vps.grm.wtf",
@@ -40,5 +42,6 @@ export const SERVICE_URLS: Record<
     coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.claude-vps.grm.wtf",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
+    cookieDomain: ".claude-vps.grm.wtf",
   },
 } as const;

@@ -1,17 +1,11 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { authClient } from "@/lib/auth-client";
+import { getSession } from "@/lib/auth-client.server";
 
 import BoxesList from "./boxes-list";
 
 export default async function BoxesPage() {
-  const session = await authClient.getSession({
-    fetchOptions: {
-      headers: await headers(),
-      throw: true,
-    },
-  });
+  const session = await getSession();
 
   if (!session?.user) {
     redirect("/login");
