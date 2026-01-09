@@ -29,12 +29,18 @@ RUN curl -fsSL https://bun.sh/install | bash \
     && mv /root/.bun/bin/bun /usr/local/bin/bun \
     && chmod +x /usr/local/bin/bun
 
-COPY apps/box-agent /tmp/box-agent
-RUN cd /tmp/box-agent \
-    && bun install \
+# Copy workspace files needed for box-agent build
+COPY package.json bun.lock /tmp/build/
+COPY packages/config /tmp/build/packages/config
+COPY apps/box-agent /tmp/build/apps/box-agent
+
+# Build box-agent with workspace context
+RUN cd /tmp/build \
+    && bun install --filter=box-agent \
+    && cd apps/box-agent \
     && bun build --compile --minify ./src/index.ts --outfile /usr/local/bin/box-agent \
     && chmod +x /usr/local/bin/box-agent \
-    && rm -rf /tmp/box-agent
+    && rm -rf /tmp/build
 
 COPY --chown=coder:coder <<EOF /home/coder/workspace-init/README.md
 # Development Environment
