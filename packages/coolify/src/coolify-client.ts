@@ -95,7 +95,7 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           ports_exposes: "22,8080,3000",
           name: params.subdomain,
           domains: fqdn,
-          connect_to_docker_network: true,
+          // connect_to_docker_network: true,
           instant_deploy: false,
         },
       });
