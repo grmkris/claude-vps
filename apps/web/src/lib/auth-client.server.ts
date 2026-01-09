@@ -7,7 +7,7 @@ import { cache } from "react";
 import { env } from "@/env";
 
 export const authServerClient = createAuthServerClient({
-  baseUrl: SERVICE_URLS[env.NEXT_PUBLIC_ENV].apiInternal,
+  baseUrl: SERVICE_URLS[env.NEXT_PUBLIC_ENV].authInternal,
 });
 
 export const getSession = cache(async () => {

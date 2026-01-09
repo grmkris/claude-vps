@@ -22,7 +22,7 @@ export const SERVICE_URLS: Record<
 > = {
   dev: {
     auth: "http://localhost:33000",
-    authInternal: "http://localhost:33000",
+    authInternal: "http://localhost:33000/api/auth",
     api: "http://localhost:33000",
     apiInternal: "http://localhost:33000",
     web: "http://localhost:33001",
@@ -34,7 +34,7 @@ export const SERVICE_URLS: Record<
   },
   prod: {
     auth: "https://api.claude-vps.grm.wtf",
-    authInternal: "http://api.internal:33000",
+    authInternal: "http://api.internal:33000/api/auth",
     api: "https://api.claude-vps.grm.wtf",
     apiInternal: "http://api.internal:33000",
     web: "https://claude-vps.grm.wtf",
