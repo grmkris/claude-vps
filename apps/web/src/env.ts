@@ -8,5 +8,4 @@ export const env = createEnv({
   experimental__runtimeEnv: {
     NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
   },
-  emptyStringAsUndefined: true,
 });
