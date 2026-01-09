@@ -19,13 +19,12 @@ WORKDIR /app
 # Copy root workspace files
 COPY package.json bun.lock turbo.json ./
 
-# Copy ALL package.json files for workspace resolution (14 packages)
+# Copy ALL package.json files for workspace resolution (13 packages)
 COPY packages/api/package.json ./packages/api/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
 COPY packages/coolify/package.json ./packages/coolify/
 COPY packages/db/package.json ./packages/db/
-COPY packages/docker/package.json ./packages/docker/
 COPY packages/email/package.json ./packages/email/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/queue/package.json ./packages/queue/
