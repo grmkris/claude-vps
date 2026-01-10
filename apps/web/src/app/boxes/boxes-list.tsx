@@ -7,6 +7,9 @@ import {
   Rocket,
   Box,
   MoreHorizontal,
+  Terminal,
+  Copy,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -24,6 +27,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoxes, useDeployBox, useDeleteBox } from "@/hooks/use-boxes";
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="p-0.5 hover:bg-secondary rounded transition-colors"
+      title="Copy to clipboard"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-green-500" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground" />
+      )}
+    </button>
+  );
+}
 
 function BoxCard({ box }: { box: BoxType }) {
   const [password, setPassword] = useState("");
@@ -63,6 +91,17 @@ function BoxCard({ box }: { box: BoxType }) {
             <p className="text-sm font-mono text-muted-foreground">
               {box.subdomain}.agents.grm.wtf
             </p>
+            {box.status === "running" && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <Terminal className="h-3 w-3 text-muted-foreground" />
+                <code className="text-xs font-mono text-muted-foreground">
+                  ssh {box.subdomain}@ssh.claude-vps.grm.wtf
+                </code>
+                <CopyButton
+                  text={`ssh ${box.subdomain}@ssh.claude-vps.grm.wtf`}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -80,7 +119,7 @@ function BoxCard({ box }: { box: BoxType }) {
               <DropdownMenuItem
                 onClick={() =>
                   window.open(
-                    `https://${box.subdomain}.agents.grm.wtf`,
+                    `https://${box.subdomain}.claude-vps.agents.grm.wtf`,
                     "_blank"
                   )
                 }
