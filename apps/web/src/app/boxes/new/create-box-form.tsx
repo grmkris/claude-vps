@@ -33,7 +33,7 @@ export default function CreateBoxForm() {
       { name, password },
       {
         onSuccess: () => {
-          router.push("/boxes");
+          router.push("/");
         },
       }
     );
@@ -45,11 +45,11 @@ export default function CreateBoxForm() {
     <div className="w-full max-w-md">
       {/* Back link */}
       <Link
-        href="/boxes"
+        href="/"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to boxes
+        Back
       </Link>
 
       {/* Header */}
