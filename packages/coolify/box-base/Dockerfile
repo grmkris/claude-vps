@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm install -g @ast-grep/cli --force \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && chmod +x /usr/local/bin/uv
+
 RUN usermod -aG sudo coder \
     && echo "coder ALL=(ALL) NOPASSWD: /bin/chown, /bin/mkdir, /bin/chmod" >> /etc/sudoers.d/coder \
     && echo "coder ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/mkdir, /usr/bin/chmod" >> /etc/sudoers.d/coder
@@ -50,6 +54,49 @@ Persistent workspace with Claude Code, ripgrep, ast-grep, jq, htop, tmux, fzf, a
 Volumes: ~/workspace, ~/.config, ~/.local, ~/.cache
 EOF
 
+COPY --chmod=755 <<'EOF' /usr/local/bin/setup-takopi
+#!/bin/bash
+# Installs Takopi (if needed) and generates config from environment variables
+
+# Exit if no Telegram token configured
+[ -z "$TAKOPI_BOT_TOKEN" ] && exit 0
+
+# Install Takopi if not already installed (lazy installation)
+if [ ! -f "/home/coder/.local/bin/takopi" ]; then
+    echo "Installing Takopi (first run, ~30s)..."
+    /usr/local/bin/uv python install 3.14
+    /usr/local/bin/uv tool install -U takopi
+fi
+
+# Generate Takopi config
+mkdir -p /home/coder/.takopi
+
+cat > /home/coder/.takopi/takopi.toml <<TOML
+default_engine = "claude"
+watch_config = false
+transport = "telegram"
+
+[transports.telegram]
+bot_token = "$TAKOPI_BOT_TOKEN"
+chat_id = ${TAKOPI_CHAT_ID:-0}
+voice_transcription = true
+
+[transports.telegram.files]
+enabled = true
+auto_put = true
+
+[claude]
+model = "sonnet"
+use_api_billing = false
+
+[projects.workspace]
+path = "/home/coder/workspace"
+default_engine = "claude"
+TOML
+
+chown -R coder:coder /home/coder/.takopi /home/coder/.local
+EOF
+
 COPY --chmod=755 <<'EOF' /entrypoint.sh
 #!/bin/bash
 set -e
@@ -65,15 +112,21 @@ sudo chown -R coder:coder /home/coder
 
 [ -n "$PASSWORD" ] && echo "coder:$PASSWORD" | sudo chpasswd
 
+# Install Takopi (if needed) and generate config
+/usr/local/bin/setup-takopi
+
 sudo /usr/sbin/sshd
 [ -f "/usr/local/bin/box-agent" ] && /usr/local/bin/box-agent &
+
+# Start Takopi if configured (PATH includes ~/.local/bin from setup-takopi)
+[ -n "$TAKOPI_BOT_TOKEN" ] && cd /home/coder/workspace && /home/coder/.local/bin/takopi &
 
 exec "$@"
 EOF
 
 USER coder
 RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/home/coder/.bun/bin:$PATH"
+ENV PATH="/home/coder/.bun/bin:/home/coder/.local/bin:$PATH"
 
 WORKDIR /home/coder
 

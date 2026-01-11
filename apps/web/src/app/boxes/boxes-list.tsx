@@ -89,7 +89,7 @@ function BoxCard({ box }: { box: BoxType }) {
           <div>
             <h3 className="font-semibold text-foreground">{box.name}</h3>
             <p className="text-sm font-mono text-muted-foreground">
-              {box.subdomain}.agents.grm.wtf
+              {box.subdomain}.agents.claude-vps.grm.wtf
             </p>
             {box.status === "running" && (
               <div className="flex items-center gap-1.5 mt-1">
@@ -119,7 +119,7 @@ function BoxCard({ box }: { box: BoxType }) {
               <DropdownMenuItem
                 onClick={() =>
                   window.open(
-                    `https://${box.subdomain}.claude-vps.agents.grm.wtf`,
+                    `https://${box.subdomain}.agents.claude-vps.grm.wtf`,
                     "_blank"
                   )
                 }
@@ -199,7 +199,7 @@ function BoxCard({ box }: { box: BoxType }) {
                 className="flex-1"
                 onClick={() =>
                   window.open(
-                    `https://${box.subdomain}.agents.grm.wtf`,
+                    `https://${box.subdomain}.agents.claude-vps.grm.wtf`,
                     "_blank"
                   )
                 }

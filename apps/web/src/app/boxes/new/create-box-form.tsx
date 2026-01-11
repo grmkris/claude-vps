@@ -85,7 +85,7 @@ export default function CreateBoxForm() {
             <p className="text-sm text-muted-foreground">
               Your box will be available at{" "}
               <span className="font-mono text-primary">
-                {subdomainPreview}.agents.grm.wtf
+                {subdomainPreview}.agents.claude-vps.grm.wtf
               </span>
             </p>
           )}

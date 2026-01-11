@@ -39,7 +39,13 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
     async create(
       userId: UserId,
-      input: { name: string; password: string; skills?: SkillId[] }
+      input: {
+        name: string;
+        password: string;
+        skills?: SkillId[];
+        telegramBotToken?: string;
+        telegramChatId?: string;
+      }
     ): Promise<Result<Box, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
         where: eq(box.name, input.name),
@@ -62,6 +68,8 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           subdomain,
           status: "deploying",
           userId,
+          telegramBotToken: input.telegramBotToken,
+          telegramChatId: input.telegramChatId,
         })
         .returning();
 
@@ -158,6 +166,41 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       }
 
       return ok({ success: true });
+    },
+
+    async updateTelegramConfig(
+      boxId: BoxId,
+      config: { telegramBotToken?: string; telegramChatId?: string }
+    ): Promise<Result<void, BoxServiceError>> {
+      const existing = await getById(boxId);
+
+      if (!existing) {
+        return err({ type: "NOT_FOUND", message: "Box not found" });
+      }
+
+      await db
+        .update(box)
+        .set({
+          telegramBotToken: config.telegramBotToken,
+          telegramChatId: config.telegramChatId,
+        })
+        .where(eq(box.id, boxId));
+
+      // Queue redeploy to inject new env vars
+      const skills = await db
+        .select({ skillId: boxSkill.skillId })
+        .from(boxSkill)
+        .where(eq(boxSkill.boxId, boxId));
+
+      await queueClient.deployQueue.add("deploy", {
+        boxId,
+        userId: existing.userId,
+        subdomain: existing.subdomain,
+        password: "",
+        skills: skills.map((s) => s.skillId),
+      });
+
+      return ok(undefined);
     },
 
     async updateStatus(

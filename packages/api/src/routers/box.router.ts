@@ -29,6 +29,8 @@ export const boxRouter = {
         name: z.string().min(1).max(50),
         password: z.string().min(8).max(100),
         skills: z.array(SkillId).default([]),
+        telegramBotToken: z.string().optional(),
+        telegramChatId: z.string().optional(),
       })
     )
     .handler(async ({ context, input }) => {
@@ -81,6 +83,35 @@ export const boxRouter = {
           if (error.type === "NOT_FOUND") {
             throw new ORPCError("NOT_FOUND", { message: error.message });
           }
+          throw new ORPCError("BAD_REQUEST", { message: error.message });
+        }
+      );
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: BoxId,
+        telegramBotToken: z.string().optional(),
+        telegramChatId: z.string().optional(),
+      })
+    )
+    .handler(async ({ context, input }) => {
+      const userId = context.session.user.id;
+      const box = await context.boxService.getById(input.id);
+
+      if (!box || box.userId !== userId) {
+        throw new ORPCError("NOT_FOUND", { message: "Box not found" });
+      }
+
+      const result = await context.boxService.updateTelegramConfig(input.id, {
+        telegramBotToken: input.telegramBotToken,
+        telegramChatId: input.telegramChatId,
+      });
+
+      return result.match(
+        () => ({ success: true }),
+        (error) => {
           throw new ORPCError("BAD_REQUEST", { message: error.message });
         }
       );

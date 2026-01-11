@@ -3,7 +3,7 @@
 ## Overview
 
 Deploy Claude Code environments from `grmkris/agent` repo via Coolify API.
-Users get dedicated subdomains at `*.agents.grm.wtf`.
+Users get dedicated subdomains at `*.agents.claude-vps.grm.wtf`.
 
 **V1 Scope:** Create → Deploy → Delete. No skills/MCP.
 
@@ -101,5 +101,5 @@ AGENTS_DOMAIN=agents.grm.wtf
 7. Click Create → see in list with "pending" status
 8. Click Deploy → status changes to "deploying"
 9. Worker polls Coolify → status changes to "running"
-10. Click Open → opens test-workspace-x7k9.agents.grm.wtf
+10. Click Open → opens test-workspace-x7k9.agents.claude-vps.grm.wtf
 11. Click Delete → removes from Coolify + DB

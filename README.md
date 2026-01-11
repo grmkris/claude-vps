@@ -15,7 +15,7 @@ Traditional development environments require manual setup, configuration, and ma
 - **User Secrets**: Environment variables injected across all your boxes
 - **Isolated Environments**: Each box runs in its own container with persistent storage
 
-Boxes are deployed via [Coolify](https://coolify.io) and accessible through unique subdomains (e.g., `my-project.agents.grm.wtf`).
+Boxes are deployed via [Coolify](https://coolify.io) and accessible through unique subdomains (e.g., `my-project.agents.claude-vps.grm.wtf`).
 
 ## How It Works
 

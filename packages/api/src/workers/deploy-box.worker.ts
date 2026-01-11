@@ -56,6 +56,11 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
       const { boxId, userId, subdomain, password, skills: skillIds } = job.data;
 
       try {
+        const box = await boxService.getById(boxId);
+        if (!box) {
+          throw new Error("Box not found");
+        }
+
         const skills = await skillService.getByIds(skillIds, userId);
 
         const skillPackages = {
@@ -103,6 +108,10 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           BOX_API_TOKEN: emailSettings.agentSecret, // Per-box auth token for box API
           BOX_API_URL: `${serverUrl}/box`,
           BOX_SUBDOMAIN: subdomain,
+          ...(box.telegramBotToken && {
+            TAKOPI_BOT_TOKEN: box.telegramBotToken,
+          }),
+          ...(box.telegramChatId && { TAKOPI_CHAT_ID: box.telegramChatId }),
         };
 
         const envResult = await coolifyClient.updateApplicationEnv(
