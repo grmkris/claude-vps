@@ -66,14 +66,13 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
     async createApplication(
       params: CreateApplicationParams
     ): Promise<
-      Result<
-        { uuid: string; fqdn: string; containerName: string },
-        CoolifyError
-      >
+      Result<{ uuid: string; fqdn: string; containerName: string }, CoolifyError>
     > {
       const fqdn = `https://${params.subdomain}.${props.agentsDomain}`;
+      // Use network alias for stable DNS name (container names are unpredictable)
+      const networkAlias = `box-${params.subdomain}`;
       props.logger.info(
-        { subdomain: params.subdomain },
+        { subdomain: params.subdomain, networkAlias },
         "Creating application"
       );
       const dockerfile = buildDockerfile({
@@ -95,7 +94,7 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           ports_exposes: "22,8080,3000",
           name: params.subdomain,
           domains: fqdn,
-          // connect_to_docker_network: true,
+          custom_network_aliases: networkAlias,
           instant_deploy: false,
         },
       });
@@ -120,8 +119,6 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
         });
       }
 
-      const containerName = `${params.subdomain}-${data.uuid}`.toLowerCase();
-
       props.logger.info({ uuid: data.uuid }, "Setting PASSWORD env var");
       const envResult = await this.updateApplicationEnv(data.uuid, {
         PASSWORD: params.password,
@@ -135,10 +132,10 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
       }
 
       props.logger.info(
-        { uuid: data.uuid, fqdn, containerName },
+        { uuid: data.uuid, fqdn, containerName: networkAlias },
         "Application created"
       );
-      return ok({ uuid: data.uuid, fqdn, containerName });
+      return ok({ uuid: data.uuid, fqdn, containerName: networkAlias });
     },
 
     async getApplication(uuid: string) {
