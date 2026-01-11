@@ -97,7 +97,8 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           ports_exposes: "22,8080,3000",
           name: params.subdomain,
           domains: fqdn,
-          custom_network_aliases: networkAlias,
+          // Use docker run options for network alias (custom_network_aliases not in Coolify API $allowedFields)
+          custom_docker_run_options: `--network-alias=${networkAlias}`,
           instant_deploy: false,
         },
       });
