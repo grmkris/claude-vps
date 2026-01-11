@@ -94,7 +94,7 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           environment_uuid: props.environmentUuid,
           dockerfile: Buffer.from(dockerfile).toString("base64"),
           autogenerate_domain: false,
-          ports_exposes: "22,8080,3000",
+          ports_exposes: "22,8080,3000,9999",
           name: params.subdomain,
           domains: fqdn,
           // Use docker run options for network alias (custom_network_aliases not in Coolify API $allowedFields)
