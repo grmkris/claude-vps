@@ -19,7 +19,8 @@
     "db:start": "docker compose up -d",
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:clean": "docker compose down -v"
   },
   "dependencies": {
     "@vps-claude/shared": "workspace:*",

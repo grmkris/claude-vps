@@ -4,7 +4,7 @@ import type { QueueClient } from "@vps-claude/queue";
 import { box, boxSkill, type Box } from "@vps-claude/db";
 import { type UserId, BoxId, type SkillId } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
-import { and, eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Result, ok, err } from "neverthrow";
 
 export type BoxServiceError =
@@ -32,7 +32,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
     async listByUser(userId: UserId): Promise<Box[]> {
       return db.query.box.findMany({
-        where: and(eq(box.userId, userId), ne(box.status, "deleted")),
+        where: eq(box.userId, userId),
         orderBy: box.createdAt,
       });
     },
@@ -42,7 +42,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       input: { name: string; password: string; skills?: SkillId[] }
     ): Promise<Result<Box, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
-        where: and(eq(box.name, input.name), ne(box.status, "deleted")),
+        where: eq(box.name, input.name),
       });
 
       if (existingByName) {
@@ -144,14 +144,18 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
       }
 
-      if (boxRecord.coolifyApplicationUuid) {
+      const coolifyUuid = boxRecord.coolifyApplicationUuid;
+
+      // Hard delete - cascades to boxEmail, boxEmailSettings, boxSkill
+      await db.delete(box).where(eq(box.id, id));
+
+      // Queue Coolify cleanup async (fire-and-forget)
+      if (coolifyUuid) {
         await queueClient.deleteQueue.add("delete", {
           boxId: id,
-          coolifyApplicationUuid: boxRecord.coolifyApplicationUuid,
+          coolifyApplicationUuid: coolifyUuid,
         });
       }
-
-      await db.update(box).set({ status: "deleted" }).where(eq(box.id, id));
 
       return ok({ success: true });
     },

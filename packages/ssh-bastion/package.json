@@ -5,7 +5,6 @@
   "description": "SSH bastion service using sshpiper for routing",
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/sync.ts",
     "start": "bun run src/sync.ts",
     "build": "docker build -t vps-claude-ssh-bastion .",
     "typecheck": "tsgo --noEmit"

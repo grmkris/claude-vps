@@ -29,7 +29,7 @@ export const SERVICE_URLS: Record<
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.grm.wtf",
-    sshBastion: "http://localhost:33002",
+    sshBastion: "https://ssh.claude-vps.grm.wtf",
     cookieDomain: "localhost",
   },
   prod: {
