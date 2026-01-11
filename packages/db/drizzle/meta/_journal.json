@@ -8,6 +8,13 @@
       "when": 1767916469762,
       "tag": "0000_misty_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768142346110,
+      "tag": "0001_wooden_paladin",
+      "breakpoints": true
     }
   ]
 }
