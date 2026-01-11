@@ -76,6 +76,7 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 ## Features
 
 ### Platform Features
+
 - **One-Click Deployment**: Create boxes with custom skills and secrets
 - **Email Integration**: Receive emails in-container, process with Claude AI
 - **SSH Bastion**: Route connections by subdomain (e.g., `ssh my-box@ssh.domain`)
@@ -84,6 +85,7 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 - **Status Tracking**: Monitor deployment and health
 
 ### Tech Stack
+
 - **TypeScript** - Type safety across the entire stack
 - **Next.js** - Full-stack React framework
 - **TailwindCSS** + **shadcn/ui** - UI components
@@ -99,6 +101,7 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 ## Getting Started
 
 ### Prerequisites
+
 - Bun runtime
 - Docker (for local PostgreSQL)
 - Coolify instance (for deployment)
@@ -121,6 +124,7 @@ bun run dev
 ```
 
 **Development URLs:**
+
 - Web UI: http://localhost:33001
 - API Server: http://localhost:33000
 - Drizzle Studio: `bun run db:studio`
@@ -130,6 +134,7 @@ bun run dev
 Copy `.env.example` to `.env` in `apps/server/` and `apps/web/`:
 
 **Critical variables:**
+
 - `DATABASE_URL` - PostgreSQL connection
 - `REDIS_URL` - Redis connection (BullMQ)
 - `COOLIFY_API_TOKEN` - Coolify API key

@@ -126,7 +126,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           deploymentUuid,
           {
             pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
-            timeoutMs: WORKER_CONFIG.deployBox.timeout,
+            timeoutMs: WORKER_CONFIG.deployBox.buildTimeout,
           }
         );
 
@@ -150,7 +150,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
 
         const healthResult = await coolifyClient.waitForHealthy(app.uuid, {
           pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
-          timeoutMs: 120000,
+          timeoutMs: WORKER_CONFIG.deployBox.healthCheckTimeout,
         });
 
         if (healthResult.isErr()) {
@@ -174,6 +174,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
     {
       connection: redis,
       concurrency: 5,
+      lockDuration: WORKER_CONFIG.deployBox.timeout,
     }
   );
 

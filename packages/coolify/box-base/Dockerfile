@@ -79,6 +79,9 @@ WORKDIR /home/coder
 
 VOLUME ["/home/coder/workspace", "/home/coder/.config", "/home/coder/.local", "/home/coder/.cache"]
 
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -sf http://localhost:8080/healthz || exit 1
+
 EXPOSE 22 8080 3000 9999
 
 ENTRYPOINT ["/entrypoint.sh"]

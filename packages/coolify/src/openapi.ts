@@ -361,6 +361,10 @@ export default {
                     description:
                       "If true and domains is empty, auto-generate a domain using the server's wildcard domain or sslip.io fallback. Default: true.",
                   },
+                  custom_network_aliases: {
+                    type: "string",
+                    description: "Network aliases for Docker container.",
+                  },
                 },
                 type: "object",
               },
@@ -770,6 +774,10 @@ export default {
                     default: true,
                     description:
                       "If true and domains is empty, auto-generate a domain using the server's wildcard domain or sslip.io fallback. Default: true.",
+                  },
+                  custom_network_aliases: {
+                    type: "string",
+                    description: "Network aliases for Docker container.",
                   },
                 },
                 type: "object",
@@ -1181,6 +1189,10 @@ export default {
                     description:
                       "If true and domains is empty, auto-generate a domain using the server's wildcard domain or sslip.io fallback. Default: true.",
                   },
+                  custom_network_aliases: {
+                    type: "string",
+                    description: "Network aliases for Docker container.",
+                  },
                 },
                 type: "object",
               },
@@ -1520,6 +1532,10 @@ export default {
                     description:
                       "If true and domains is empty, auto-generate a domain using the server's wildcard domain or sslip.io fallback. Default: true.",
                   },
+                  custom_network_aliases: {
+                    type: "string",
+                    description: "Network aliases for Docker container.",
+                  },
                 },
                 type: "object",
               },
@@ -1846,6 +1862,10 @@ export default {
                     default: true,
                     description:
                       "If true and domains is empty, auto-generate a domain using the server's wildcard domain or sslip.io fallback. Default: true.",
+                  },
+                  custom_network_aliases: {
+                    type: "string",
+                    description: "Network aliases for Docker container.",
                   },
                 },
                 type: "object",

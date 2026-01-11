@@ -66,7 +66,10 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
     async createApplication(
       params: CreateApplicationParams
     ): Promise<
-      Result<{ uuid: string; fqdn: string; containerName: string }, CoolifyError>
+      Result<
+        { uuid: string; fqdn: string; containerName: string },
+        CoolifyError
+      >
     > {
       const fqdn = `https://${params.subdomain}.${props.agentsDomain}`;
       // Use network alias for stable DNS name (container names are unpredictable)
