@@ -72,8 +72,8 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
       >
     > {
       const fqdn = `https://${params.subdomain}.${props.agentsDomain}`;
-      // Use network alias for stable DNS name (container names are unpredictable)
-      const networkAlias = `box-${params.subdomain}`;
+      // Coolify uses application name as network alias (ignores --network-alias option)
+      const networkAlias = params.subdomain;
       props.logger.info(
         { subdomain: params.subdomain, networkAlias },
         "Creating application"
@@ -94,11 +94,9 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
           environment_uuid: props.environmentUuid,
           dockerfile: Buffer.from(dockerfile).toString("base64"),
           autogenerate_domain: false,
-          ports_exposes: "22,8080,3000,9999",
+          ports_exposes: "8080,3000,9999", // Don't expose port 22 to host (conflicts with host SSH)
           name: params.subdomain,
           domains: fqdn,
-          // Use docker run options for network alias (custom_network_aliases not in Coolify API $allowedFields)
-          custom_docker_run_options: `--network-alias=${networkAlias}`,
           instant_deploy: false,
         },
       });
