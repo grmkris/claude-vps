@@ -123,9 +123,10 @@ export function createCoolifyClient(props: CoolifyClientConfig) {
         });
       }
 
-      props.logger.info({ uuid: data.uuid }, "Setting PASSWORD env var");
+      props.logger.info({ uuid: data.uuid }, "Setting initial env vars");
       const envResult = await this.updateApplicationEnv(data.uuid, {
         PASSWORD: params.password,
+        PORT: "8080", // Override Coolify's PORT (set to first port in ports_exposes) - code-server uses $PORT to override --bind-addr
       });
       if (envResult.isErr()) {
         props.logger.error(
