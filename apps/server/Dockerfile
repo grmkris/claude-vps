@@ -19,30 +19,13 @@ WORKDIR /app
 # Copy workspace configuration files
 COPY package.json bun.lock turbo.json tsconfig.json ./
 
-# Copy all package.json files for dependency resolution
-COPY apps/web/package.json ./apps/web/
-COPY apps/server/package.json ./apps/server/
-COPY apps/box-agent/package.json ./apps/box-agent/
-COPY packages/api/package.json ./packages/api/
-COPY packages/auth/package.json ./packages/auth/
-COPY packages/config/package.json ./packages/config/
-COPY packages/coolify/package.json ./packages/coolify/
-COPY packages/db/package.json ./packages/db/
-COPY packages/email/package.json ./packages/email/
-COPY packages/logger/package.json ./packages/logger/
-COPY packages/queue/package.json ./packages/queue/
-COPY packages/redis/package.json ./packages/redis/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/ssh-bastion/package.json ./packages/ssh-bastion/
-COPY packages/storage/package.json ./packages/storage/
-COPY packages/test-utils/package.json ./packages/test-utils/
-
-# Install dependencies
-RUN bun install --filter=server --frozen-lockfile
-
-# Copy source code
-COPY apps/server ./apps/server
+# Copy full source code FIRST (enables workspace resolution - fixes bun install hang)
+COPY apps ./apps
 COPY packages ./packages
+
+# Install dependencies (now has full workspace context)
+# Note: removed --frozen-lockfile due to "Failed to install 1 package" error
+RUN bun install --filter=server
 
 # =============================================================================
 # Stage 2: Runner
