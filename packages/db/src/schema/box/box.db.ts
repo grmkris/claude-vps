@@ -1,5 +1,5 @@
 import { type BoxId, typeIdGenerator, type UserId } from "@vps-claude/shared";
-import { index, pgEnum, pgTable, text } from "drizzle-orm/pg-core";
+import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { baseEntityFields, typeId } from "../../utils/db-utils";
 import { user } from "../auth";
@@ -8,6 +8,7 @@ export const boxStatusEnum = pgEnum("box_status", [
   "pending",
   "deploying",
   "running",
+  "stopped",
   "error",
   "deleted",
 ]);
@@ -22,12 +23,21 @@ export const box = pgTable(
     name: text("name").notNull(),
     subdomain: text("subdomain").notNull().unique(),
     status: boxStatusEnum("status").notNull().default("pending"),
-    coolifyApplicationUuid: text("coolify_application_uuid"),
+
+    // Docker Engine fields
+    dockerContainerId: text("docker_container_id"),
     containerName: text("container_name"),
+    imageName: text("image_name"),
+
+    // Metadata
     passwordHash: text("password_hash"),
     errorMessage: text("error_message"),
+    lastHealthCheck: timestamp("last_health_check"),
+
+    // Telegram integration
     telegramBotToken: text("telegram_bot_token"),
     telegramChatId: text("telegram_chat_id"),
+
     userId: typeId("user", "user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" })

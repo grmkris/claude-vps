@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/coolify/box-base/**"
+      - "packages/docker-engine/box-base/**"
       - "apps/box-agent/**"
       - ".github/workflows/build-box-base.yml"
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: packages/coolify/box-base/Dockerfile
+          file: packages/docker-engine/box-base/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

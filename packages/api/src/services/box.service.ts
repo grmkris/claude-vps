@@ -152,16 +152,17 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
       }
 
-      const coolifyUuid = boxRecord.coolifyApplicationUuid;
+      const dockerContainerId = boxRecord.dockerContainerId;
 
       // Hard delete - cascades to boxEmail, boxEmailSettings, boxSkill
       await db.delete(box).where(eq(box.id, id));
 
-      // Queue Coolify cleanup async (fire-and-forget)
-      if (coolifyUuid) {
+      // Queue Docker cleanup async (fire-and-forget)
+      if (dockerContainerId) {
         await queueClient.deleteQueue.add("delete", {
           boxId: id,
-          coolifyApplicationUuid: coolifyUuid,
+          userId: boxRecord.userId,
+          dockerContainerId,
         });
       }
 
@@ -217,10 +218,15 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         .where(eq(box.id, id));
     },
 
-    async setCoolifyUuid(id: BoxId, uuid: string): Promise<void> {
+    async setDockerInfo(
+      id: BoxId,
+      dockerContainerId: string,
+      containerName: string,
+      imageName: string
+    ): Promise<void> {
       await db
         .update(box)
-        .set({ coolifyApplicationUuid: uuid })
+        .set({ dockerContainerId, containerName, imageName })
         .where(eq(box.id, id));
     },
 

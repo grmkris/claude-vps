@@ -1,0 +1,28 @@
+{
+  "name": "@vps-claude/docker-engine",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test __tests__/**/*.test.ts",
+    "test:watch": "bun test --watch __tests__/**/*.test.ts",
+    "test:integration": "bun test __tests__/**/*.integration.test.ts",
+    "test:unit": "bun test __tests__/{container-config,traefik-labels}.test.ts",
+    "pretest": "docker build -q -t box-test:latest __tests__/fixtures/test-image/ || true",
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "dockerode": "^4.0.2",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^4.0.0",
+    "@types/node": "catalog:",
+    "@vps-claude/config": "workspace:*"
+  }
+}

@@ -14,7 +14,6 @@ export const SERVICE_URLS: Record<
     apiInternal: string;
     web: string;
     emailFrom: string;
-    coolify: "https://c.grm.wtf/api/v1";
     agentsDomain: string;
     sshBastion: string;
     cookieDomain: string;
@@ -27,7 +26,6 @@ export const SERVICE_URLS: Record<
     apiInternal: "http://localhost:33000",
     web: "http://localhost:33001",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
-    coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.grm.wtf",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
     cookieDomain: "localhost",
@@ -39,7 +37,6 @@ export const SERVICE_URLS: Record<
     apiInternal: "http://api.internal:33000",
     web: "https://claude-vps.grm.wtf",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
-    coolify: "https://c.grm.wtf/api/v1",
     agentsDomain: "agents.claude-vps.grm.wtf",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
     cookieDomain: ".claude-vps.grm.wtf",

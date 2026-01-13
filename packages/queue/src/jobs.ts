@@ -13,7 +13,8 @@ export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;
 
 export const DeleteBoxJobData = z.object({
   boxId: BoxId,
-  coolifyApplicationUuid: z.string(),
+  userId: UserId,
+  dockerContainerId: z.string(),
 });
 
 export type DeleteBoxJobData = z.infer<typeof DeleteBoxJobData>;

@@ -10,11 +10,9 @@ export const env = z
       .enum(["development", "production", "test"])
       .default("development"),
     REDIS_URL: z.string().min(1),
-    COOLIFY_API_TOKEN: z.string().min(1),
-    COOLIFY_PROJECT_UUID: z.string().min(1),
-    COOLIFY_SERVER_UUID: z.string().min(1),
-    COOLIFY_ENVIRONMENT_NAME: z.string().min(1),
-    COOLIFY_ENVIRONMENT_UUID: z.string().min(1),
+    // Docker Engine
+    BOX_BASE_IMAGE: z.string().default("box-base:v1"),
+    // Email
     INBOUND_EMAIL_API_KEY: z.string().min(1),
     INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
     INTERNAL_API_KEY: z.string().min(32),

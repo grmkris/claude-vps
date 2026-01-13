@@ -6,11 +6,11 @@ SSH reverse proxy using [sshpiper](https://github.com/tg123/sshpiper) for routin
 
 ### The Problem
 
-Boxes run on Coolify as Docker containers. Each has SSH on port 22, but:
+Boxes run as Docker containers via Docker Engine. Each has SSH on port 22, but:
 
 - Containers don't have public IPs
 - Can't expose port 22 for each box (port collision)
-- Coolify's proxy only handles HTTP/HTTPS, not raw TCP/SSH
+- Traefik proxy handles HTTP/HTTPS, not raw TCP/SSH
 
 ### The Solution: SSH Reverse Proxy
 
@@ -31,7 +31,7 @@ sshpiper is like nginx but for SSH. One entry point, routes to many backends.
 │   Proxies the connection                              │
 └───────────────────────┬───────────────────────────────┘
                         │
-        Docker Network ("coolify" network)
+        Docker Network ("traefik-public" network)
                         │
         ┌───────────────┼───────────────┐
         ▼               ▼               ▼
@@ -43,11 +43,11 @@ sshpiper is like nginx but for SSH. One entry point, routes to many backends.
 
 ### The Network
 
-Coolify creates a Docker network. When `connect_to_docker_network: true` is enabled:
+Docker Engine manages the network topology. When `connect_to_docker_network: true` is enabled:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│              COOLIFY DOCKER NETWORK                 │
+│           TRAEFIK DOCKER NETWORK                    │
 │                                                     │
 │   ┌──────────────┐  DNS: my-box-a1b2-uuid          │
 │   │   Box A      │◄─────────────────────┐          │
@@ -98,11 +98,11 @@ The sync service is implemented in TypeScript/Bun (`src/sync.ts`).
 3. sshpiper reads these on each connection
 ```
 
-## Deploying to Coolify
+## Deployment
 
 ### Step 1: Build the Docker Image
 
-Option A - Build locally and push:
+Build locally and push:
 
 ```bash
 cd packages/ssh-bastion
@@ -110,45 +110,41 @@ docker build -t your-registry/ssh-bastion:latest .
 docker push your-registry/ssh-bastion:latest
 ```
 
-Option B - Let Coolify build from Dockerfile (paste content in UI)
+### Step 2: Deploy Container
 
-### Step 2: Create Application in Coolify
+**Environment Variables:**
 
-1. **New Resource** → **Docker Image** (or Dockerfile)
+```
+API_URL=https://api.grm.wtf  (your server URL)
+INTERNAL_API_KEY=<same key as in server .env>
+SYNC_INTERVAL=30
+```
 
-2. **General Settings:**
-   - Name: `ssh-bastion`
-   - No domain needed for SSH (it's not HTTP)
+**Network Settings (CRITICAL):**
 
-3. **Environment Variables:**
+Connect to the shared Traefik network where your boxes live:
 
-   ```
-   API_URL=https://api.grm.wtf  (your server URL)
-   INTERNAL_API_KEY=<same key as in server .env>
-   SYNC_INTERVAL=30
-   ```
+```bash
+docker network connect traefik-public ssh-bastion
+```
 
-4. **Network Settings (CRITICAL):**
+**Port Configuration:**
 
-   ```
-   ☑ Connect to Predefined Network
-   ```
+Expose port 22 and map to host:
 
-   This joins the shared Coolify network where your boxes live.
-
-5. **Port Configuration:**
-   - Expose port `22`
-   - Map to host port `22` (or another port if 22 is taken)
-
-   In Coolify this might be under "Ports Mappings":
-
-   ```
-   22:22
-   ```
+```bash
+docker run -d \
+  --name ssh-bastion \
+  --network traefik-public \
+  -p 22:22 \
+  -e API_URL=https://api.grm.wtf \
+  -e INTERNAL_API_KEY=your-key \
+  your-registry/ssh-bastion:latest
+```
 
 ### Step 3: DNS
 
-Point `ssh.grm.wtf` A record → your Coolify server IP
+Point `ssh.grm.wtf` A record → your Docker host IP
 
 ### Step 4: Firewall
 
@@ -159,7 +155,7 @@ Ensure port 22 (or your chosen port) is open on the server.
 ```
 1. User: ssh my-box-a1b2@ssh.grm.wtf
               │
-2. DNS resolves ssh.grm.wtf → Coolify server IP
+2. DNS resolves ssh.grm.wtf → Docker host IP
               │
 3. TCP connection to server:22
               │

@@ -121,9 +121,12 @@ export default function CreateBoxForm() {
         {/* Telegram Configuration (Optional) */}
         <div className="space-y-4 pt-6 border-t">
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Telegram Integration (Optional)</h3>
+            <h3 className="text-sm font-medium">
+              Telegram Integration (Optional)
+            </h3>
             <p className="text-sm text-muted-foreground">
-              Connect your box to Telegram for chat-based Claude Code interaction
+              Connect your box to Telegram for chat-based Claude Code
+              interaction
             </p>
           </div>
 
@@ -140,7 +143,11 @@ export default function CreateBoxForm() {
               className="h-12"
             />
             <p className="text-xs text-muted-foreground">
-              Create a bot via <code className="text-xs bg-muted px-1 py-0.5 rounded">@BotFather</code> on Telegram
+              Create a bot via{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                @BotFather
+              </code>{" "}
+              on Telegram
             </p>
           </div>
 
@@ -157,7 +164,11 @@ export default function CreateBoxForm() {
               className="h-12"
             />
             <p className="text-xs text-muted-foreground">
-              Message your bot, then use <code className="text-xs bg-muted px-1 py-0.5 rounded">@userinfobot</code> to get your chat ID
+              Message your bot, then use{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                @userinfobot
+              </code>{" "}
+              to get your chat ID
             </p>
           </div>
         </div>

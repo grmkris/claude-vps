@@ -111,12 +111,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -204,12 +200,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -219,9 +211,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -284,9 +274,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -499,12 +487,8 @@
           "name": "box_user_id_user_id_fk",
           "tableFrom": "box",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -514,9 +498,7 @@
         "box_subdomain_unique": {
           "name": "box_subdomain_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "subdomain"
-          ]
+          "columns": ["subdomain"]
         }
       },
       "policies": {},
@@ -681,12 +663,8 @@
           "name": "box_email_box_id_box_id_fk",
           "tableFrom": "box_email",
           "tableTo": "box",
-          "columnsFrom": [
-            "box_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["box_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -763,12 +741,8 @@
           "name": "box_email_settings_box_id_box_id_fk",
           "tableFrom": "box_email_settings",
           "tableTo": "box",
-          "columnsFrom": [
-            "box_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["box_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -778,9 +752,7 @@
         "box_email_settings_box_id_unique": {
           "name": "box_email_settings_box_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "box_id"
-          ]
+          "columns": ["box_id"]
         }
       },
       "policies": {},
@@ -882,12 +854,8 @@
           "name": "box_skill_box_id_box_id_fk",
           "tableFrom": "box_skill",
           "tableTo": "box",
-          "columnsFrom": [
-            "box_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["box_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -895,12 +863,8 @@
           "name": "box_skill_skill_id_skill_id_fk",
           "tableFrom": "box_skill",
           "tableTo": "skill",
-          "columnsFrom": [
-            "skill_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["skill_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -982,12 +946,8 @@
           "name": "user_secret_user_id_user_id_fk",
           "tableFrom": "user_secret",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1117,12 +1077,8 @@
           "name": "skill_user_id_user_id_fk",
           "tableFrom": "skill",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1138,22 +1094,12 @@
     "public.box_status": {
       "name": "box_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "deploying",
-        "running",
-        "error",
-        "deleted"
-      ]
+      "values": ["pending", "deploying", "running", "error", "deleted"]
     },
     "public.box_email_status": {
       "name": "box_email_status",
       "schema": "public",
-      "values": [
-        "received",
-        "delivered",
-        "failed"
-      ]
+      "values": ["received", "delivered", "failed"]
     }
   },
   "schemas": {},

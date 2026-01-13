@@ -2,6 +2,8 @@
 
 > AI-powered development environments as a service
 
+**🚀 Now powered by Docker Engine!** We've migrated from Coolify to direct Docker Engine API for faster deployments, better resource management, and enhanced security. See [DOCKER_ENGINE_MIGRATION.md](./DOCKER_ENGINE_MIGRATION.md) for details.
+
 VPS-Claude is a platform that creates isolated, containerized development environments ("boxes") with built-in Claude AI integration. Each box comes pre-configured with VS Code, SSH access, and an AI agent that can autonomously process emails and help with development tasks.
 
 ## What is VPS-Claude?
@@ -14,8 +16,10 @@ Traditional development environments require manual setup, configuration, and ma
 - **Custom Skills**: Install package bundles (apt/npm/pip) and configuration files
 - **User Secrets**: Environment variables injected across all your boxes
 - **Isolated Environments**: Each box runs in its own container with persistent storage
+- **Resource Plans**: Choose from Hobby (0.5 CPU, 512MB), Pro (1 CPU, 2GB), or Enterprise (2 CPU, 4GB)
+- **Security Hardened**: Read-only root filesystem, dropped capabilities, seccomp filters, AppArmor
 
-Boxes are deployed via [Coolify](https://coolify.io) and accessible through unique subdomains (e.g., `my-project.agents.claude-vps.grm.wtf`).
+Boxes are deployed via Docker Engine API and accessible through unique subdomains (e.g., `my-project.agents.claude-vps.grm.wtf`).
 
 ## How It Works
 
@@ -23,10 +27,10 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 1. User creates box via web UI
    ↓ (name, password, skills)
 
-2. Deployment worker builds container
-   ↓ (custom Dockerfile with skills + secrets)
+2. Deployment worker creates container
+   ↓ (Docker Engine API + security hardening)
 
-3. Coolify deploys box
+3. Container starts with mounted volumes
    ↓ (SSH :22, code-server :8080, box-agent :9999)
 
 4. User accesses via SSH or HTTPS
@@ -39,10 +43,10 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   Web UI    │────▶│  API Server  │────▶│ Coolify (Deploy)│
-│ (Next.js)   │     │   (Hono)     │     │                 │
-└─────────────┘     └──────┬───────┘     └────────┬────────┘
+┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
+│   Web UI    │────▶│  API Server  │────▶│ Docker Engine API│
+│ (Next.js)   │     │   (Hono)     │     │                  │
+└─────────────┘     └──────┬───────┘     └────────┬─────────┘
                            │                      │
                     ┌──────▼────────┐     ┌───────▼────────┐
                     │  BullMQ Queue │     │   Box Fleet    │
@@ -68,7 +72,7 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 - **apps/box-agent**: In-container service handling email → AI integration
 - **packages/api**: Routers, services, and BullMQ workers
 - **packages/ssh-bastion**: sshpiper reverse proxy for SSH routing
-- **packages/coolify**: Coolify API client + Dockerfile builder
+- **packages/docker-engine**: Docker Engine API client + container management
 - **packages/db**: Drizzle ORM schema (PostgreSQL)
 - **packages/queue**: BullMQ job definitions
 - **packages/email**: Resend email client
@@ -103,8 +107,7 @@ Boxes are deployed via [Coolify](https://coolify.io) and accessible through uniq
 ### Prerequisites
 
 - Bun runtime
-- Docker (for local PostgreSQL)
-- Coolify instance (for deployment)
+- Docker Engine (for container deployment and local PostgreSQL)
 
 ### Installation
 
@@ -137,7 +140,7 @@ Copy `.env.example` to `.env` in `apps/server/` and `apps/web/`:
 
 - `DATABASE_URL` - PostgreSQL connection
 - `REDIS_URL` - Redis connection (BullMQ)
-- `COOLIFY_API_TOKEN` - Coolify API key
+- `BOX_BASE_IMAGE` - Docker base image for boxes
 - `INTERNAL_API_KEY` - Platform service authentication
 - `RESEND_API_KEY` - Email service
 - `ANTHROPIC_API_KEY` - Claude AI (for box-agent)
@@ -157,10 +160,9 @@ vps-claude/
 │   ├── auth/          # better-auth configuration
 │   ├── db/            # Drizzle schema + client
 │   ├── ssh-bastion/   # SSH reverse proxy (sshpiper sync)
-│   ├── docker/        # Box base Dockerfiles
+│   ├── docker-engine/ # Docker Engine API client + base image
 │   ├── queue/         # BullMQ job definitions
 │   ├── email/         # Email client (Resend)
-│   ├── coolify/       # Coolify API client + Dockerfile builder
 │   ├── logger/        # Pino logger factory
 │   ├── redis/         # Redis client factory
 │   ├── shared/        # TypeIDs, SERVICE_URLS, constants

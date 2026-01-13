@@ -175,7 +175,8 @@ export function createApi({
     });
 
     if (rpcResult.matched) {
-      return c.newResponse(rpcResult.response.body, rpcResult.response);
+      // biome-ignore lint/suspicious/noExplicitAny: ReadableStream type mismatch between node and web
+      return new Response(rpcResult.response.body as any, rpcResult.response);
     }
 
     // Handle platform routes (ssh-bastion, INTERNAL_API_KEY auth)
@@ -187,7 +188,8 @@ export function createApi({
       });
 
       if (apiResult.matched) {
-        return c.newResponse(apiResult.response.body, apiResult.response);
+        // biome-ignore lint/suspicious/noExplicitAny: ReadableStream type mismatch between node and web
+        return new Response(apiResult.response.body as any, apiResult.response);
       }
     }
 
@@ -197,7 +199,8 @@ export function createApi({
     });
 
     if (apiResult.matched) {
-      return c.newResponse(apiResult.response.body, apiResult.response);
+      // biome-ignore lint/suspicious/noExplicitAny: ReadableStream type mismatch between node and web
+      return new Response(apiResult.response.body as any, apiResult.response);
     }
 
     await next();

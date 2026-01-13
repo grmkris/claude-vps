@@ -1,0 +1,195 @@
+version: "3.8"
+
+# Production Docker Compose for VPS-Claude with Docker Engine
+#
+# Prerequisites:
+# 1. Build box-base image: docker build -t box-base:v1 packages/docker-engine/box-base/
+# 2. Create /mnt/devboxes directory: sudo mkdir -p /mnt/devboxes && sudo chown 1000:1000 /mnt/devboxes
+# 3. Deploy seccomp profile: sudo cp packages/docker-engine/seccomp-profile.json /etc/docker/seccomp-profiles/box-profile.json
+# 4. Copy .env.example to .env and configure
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: vps-claude-postgres
+    environment:
+      POSTGRES_DB: vps-claude
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - vps-claude
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: vps-claude-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - vps-claude
+
+  # API Server (Hono + Workers)
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: vps-claude-server
+    ports:
+      - "33000:33000"
+    volumes:
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      # Persistent storage for boxes
+      - /mnt/devboxes:/mnt/devboxes:rw
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/vps-claude
+
+      # Redis
+      - REDIS_URL=redis://redis:6379
+
+      # Authentication
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET required}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?INTERNAL_API_KEY required}
+
+      # Docker Engine
+      - BOX_BASE_IMAGE=${BOX_BASE_IMAGE:-box-base:v1}
+
+      # Email (Resend)
+      - INBOUND_EMAIL_API_KEY=${INBOUND_EMAIL_API_KEY:?INBOUND_EMAIL_API_KEY required}
+      - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
+
+      # Environment
+      - APP_ENV=prod
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vps-claude
+      - traefik-public
+    labels:
+      # Traefik labels for reverse proxy
+      - "traefik.enable=true"
+      - "traefik.http.routers.vps-claude-api.rule=Host(`api.${DOMAIN:?DOMAIN required}`)"
+      - "traefik.http.routers.vps-claude-api.entrypoints=websecure"
+      - "traefik.http.routers.vps-claude-api.tls=true"
+      - "traefik.http.routers.vps-claude-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.vps-claude-api.loadbalancer.server.port=33000"
+
+  # Web UI (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: vps-claude-web
+    ports:
+      - "33001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.${DOMAIN}
+      - NODE_ENV=production
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - vps-claude
+      - traefik-public
+    labels:
+      # Traefik labels
+      - "traefik.enable=true"
+      - "traefik.http.routers.vps-claude-web.rule=Host(`app.${DOMAIN}`)"
+      - "traefik.http.routers.vps-claude-web.entrypoints=websecure"
+      - "traefik.http.routers.vps-claude-web.tls=true"
+      - "traefik.http.routers.vps-claude-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.vps-claude-web.loadbalancer.server.port=3000"
+
+  # Traefik Reverse Proxy (optional, if not already running)
+  # traefik:
+  #   image: traefik:v3.0
+  #   container_name: traefik
+  #   command:
+  #     - "--api.dashboard=true"
+  #     - "--providers.docker=true"
+  #     - "--providers.docker.exposedbydefault=false"
+  #     - "--entrypoints.web.address=:80"
+  #     - "--entrypoints.websecure.address=:443"
+  #     - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+  #     - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+  #     - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+  #     - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #     - "8080:8080"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - traefik_letsencrypt:/letsencrypt
+  #   restart: unless-stopped
+  #   networks:
+  #     - traefik-public
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  # traefik_letsencrypt:
+  #   driver: local
+
+networks:
+  vps-claude:
+    driver: bridge
+  traefik-public:
+    external: true
+    # If traefik-public doesn't exist, create it:
+    # docker network create traefik-public
+
+# Usage:
+#
+# 1. Configure environment:
+#    cp .env.example .env
+#    nano .env  # Set required variables
+#
+# 2. Start services:
+#    docker-compose -f docker-compose.prod.yml up -d
+#
+# 3. Check logs:
+#    docker-compose -f docker-compose.prod.yml logs -f
+#
+# 4. Run migrations:
+#    docker-compose -f docker-compose.prod.yml exec server bun run db:push
+#
+# 5. Access:
+#    - Web UI: https://app.${DOMAIN}
+#    - API: https://api.${DOMAIN}
+#    - Boxes: https://*.agents.${DOMAIN}
+#
+# Monitoring:
+#    docker-compose -f docker-compose.prod.yml exec server \
+#      sh -c 'docker logs vps-claude-server | grep "worker"'
+#
+# Backup database:
+#    docker-compose -f docker-compose.prod.yml exec postgres \
+#      pg_dump -U postgres vps-claude | gzip > backup-$(date +%Y%m%d).sql.gz

@@ -9,6 +9,7 @@ const statusConfig = {
   pending: { label: "Pending", className: "status-dot--pending" },
   deploying: { label: "Deploying", className: "status-dot--deploying" },
   running: { label: "Running", className: "status-dot--running" },
+  stopped: { label: "Stopped", className: "status-dot--stopped" },
   error: { label: "Error", className: "status-dot--error" },
   deleted: { label: "Deleted", className: "status-dot--pending" },
 } as const;

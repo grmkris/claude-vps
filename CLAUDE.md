@@ -27,7 +27,7 @@ packages/
   ssh-bastion/  → SSH reverse proxy (sshpiper sync service)
   queue/        → BullMQ queue definitions + client factory
   email/        → Email client (Resend)
-  coolify/      → Coolify API client + box-base Dockerfile + dockerfile-builder
+  docker-engine/ → Docker Engine API client + security hardening
   logger/       → Pino logger factory
   redis/        → Redis client factory (ioredis)
   shared/       → SERVICE_URLS, TypeIDs, constants, schemas
@@ -70,7 +70,7 @@ packages/
 
 **Workers** (`packages/api/src/workers/`):
 
-- `deploy-box.worker.ts` - Deploys boxes via Coolify
+- `deploy-box.worker.ts` - Deploys boxes via Docker Engine
 - `delete-box.worker.ts` - Cleanup on deletion
 - `email-delivery.worker.ts` - Delivers email to box-agent
 - `email-send.worker.ts` - Sends email via Resend
@@ -82,7 +82,7 @@ packages/
 **Creating a box:**
 
 1. User → POST `/rpc/box/create` → `boxService.create()` → queue deploy job
-2. Worker: fetch skills → build Dockerfile → Coolify deploy → wait for health
+2. Worker: fetch skills → Docker Engine deploy → wait for health
 3. Status: `deploying` → `running` | `error`
 
 **Email inbound:**
@@ -100,13 +100,13 @@ User → `ssh subdomain@ssh.bastion` → sshpiper reads config → proxy to `con
 - Services: `packages/api/src/services/*.service.ts`
 - Workers: `packages/api/src/workers/*.worker.ts`
 - Database schema: `packages/db/src/schema/`
-- Box base image: `packages/coolify/box-base/Dockerfile`
+- Box base image: `packages/docker-engine/box-base/Dockerfile`
 
 ---
 
 ## Box Lifecycle
 
-**Flow:** User creates → queued → worker deploys → Coolify builds → health check → running
+**Flow:** User creates → queued → worker deploys → Docker Engine creates container → health check → running
 
 **Files:**
 
@@ -114,18 +114,18 @@ User → `ssh subdomain@ssh.bastion` → sshpiper reads config → proxy to `con
 - `packages/api/src/services/box.service.ts` - Business logic, subdomain generation (`{slug}-{4char}`)
 - `packages/api/src/workers/deploy-box.worker.ts` - Async deployment (5min timeout, 5 concurrency)
   - Fetch skills → aggregate packages
-  - Build Dockerfile → create Coolify app
+  - Create hardened container via Docker Engine
   - Inject env vars (user secrets + box secrets)
-  - Deploy → wait for build → wait for health
-- `packages/coolify/src/coolify-client.ts` - Coolify API wrapper
-- `packages/coolify/src/dockerfile-builder.ts` - Generates custom Dockerfile with skills
+  - Deploy → wait for health
+- `packages/docker-engine/src/docker-client.ts` - Docker Engine API wrapper
+- `packages/docker-engine/src/container-config.ts` - Security hardening configuration
 
 **Database:** `box` table (`packages/db/src/schema/box/`)
 
 - Status states: `deploying` → `running` | `error`
-- Fields: subdomain (unique), coolifyApplicationUuid, containerName, passwordHash
+- Fields: subdomain (unique), dockerContainerId, containerName, imageName, plan, passwordHash
 
-**Container:** `packages/coolify/box-base/Dockerfile`
+**Container:** `packages/docker-engine/box-base/Dockerfile`
 
 - Base: `codercom/code-server:latest`
 - Ports: 22 (SSH), 8080 (code-server), 9999 (box-agent), 3000 (user apps)
@@ -242,7 +242,7 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 **Docker Networking:**
 
-- All containers on Coolify's Docker network
+- All containers on Traefik bridge network
 - DNS resolution: `{containerName}` → container IP
 - ssh-bastion can reach any box via `http://{containerName}:9999`
 
@@ -268,7 +268,7 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 - `packages/api/src/services/skill.service.ts` - CRUD operations
 - `packages/api/src/routers/skill.router.ts` - API endpoints
-- `packages/coolify/src/dockerfile-builder.ts` - Applies skills to Dockerfile
+- `packages/docker-engine/src/container-config.ts` - Applies skills via environment configuration
 
 ---
 
@@ -289,7 +289,7 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 | BOX_API_URL      | Config (`SERVER_URL/box`) | Main API endpoint                |
 | BOX_SUBDOMAIN    | Box subdomain             | Identifier                       |
 
-**Injection:** `packages/coolify/src/coolify-client.ts:431-459` - POSTs each env var to Coolify
+**Injection:** `packages/docker-engine/src/docker-client.ts` - Environment variables passed to Docker container config
 
 ---
 
@@ -297,7 +297,7 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 **Core Tables:** `packages/db/src/schema/`
 
-- `box/` - Box records, status, subdomain, Coolify UUID, container name
+- `box/` - Box records, status, subdomain, Docker container ID, container name
 - `box_skill/` - Junction table (boxId ↔ skillId)
 - `box_email/` - Inbound email storage
 - `box_email_settings/` - Per-box auth tokens (agentSecret)
@@ -318,8 +318,8 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 **Workers:** `packages/api/src/workers/`
 
-- `deploy-box.worker.ts` - Deploy boxes via Coolify (5min timeout, 5 workers)
-- `delete-box.worker.ts` - Delete Coolify apps + DB records (1min timeout)
+- `deploy-box.worker.ts` - Deploy boxes via Docker Engine (5min timeout, 5 workers)
+- `delete-box.worker.ts` - Delete Docker containers + DB records (1min timeout)
 - `email-delivery.worker.ts` - POST emails to box-agent (30s timeout)
 - `email-send.worker.ts` - Send via Resend (30s timeout)
 

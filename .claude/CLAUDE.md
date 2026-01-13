@@ -25,10 +25,9 @@ packages/
   auth/         → better-auth config
   db/           → Drizzle schema + client
   ssh-bastion/  → SSH reverse proxy (sshpiper)
-  docker/       → Box base Dockerfiles
+  docker-engine/ → Docker Engine API client + base image
   queue/        → BullMQ job definitions
   email/        → Email client (Resend)
-  coolify/      → Coolify API client
   logger/       → Pino logger factory
   redis/        → Redis client factory
   shared/       → TypeIDs, constants

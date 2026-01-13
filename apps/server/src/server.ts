@@ -3,6 +3,7 @@ import { createBoxService } from "@vps-claude/api/services/box.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
 import { createSecretService } from "@vps-claude/api/services/secret.service";
 import { createSkillService } from "@vps-claude/api/services/skill.service";
+import { startMetricsWorker } from "@vps-claude/api/workers/collect-metrics.worker";
 import {
   createDeployWorker,
   createDeleteWorker,
@@ -11,9 +12,10 @@ import {
   createEmailDeliveryWorker,
   createEmailSendWorker,
 } from "@vps-claude/api/workers/email-delivery.worker";
+import { startHealthCheckWorker } from "@vps-claude/api/workers/health-check.worker";
 import { createAuth } from "@vps-claude/auth";
-import { createCoolifyClient } from "@vps-claude/coolify";
 import { createDb, runMigrations } from "@vps-claude/db";
+import { DockerEngineClient } from "@vps-claude/docker-engine";
 import { createEmailClient } from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
 import { createQueueClient } from "@vps-claude/queue";
@@ -39,14 +41,7 @@ const emailClient = createEmailClient({
   logger,
 });
 
-const coolifyClient = createCoolifyClient({
-  logger,
-  env: env.APP_ENV,
-  apiToken: env.COOLIFY_API_TOKEN,
-  projectUuid: env.COOLIFY_PROJECT_UUID,
-  serverUuid: env.COOLIFY_SERVER_UUID,
-  environmentName: env.COOLIFY_ENVIRONMENT_NAME,
-  environmentUuid: env.COOLIFY_ENVIRONMENT_UUID,
+const dockerClient = new DockerEngineClient({
   agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
 });
 
@@ -140,22 +135,27 @@ const deployWorker = createDeployWorker({
     emailService,
     secretService,
     skillService,
-    coolifyClient,
+    dockerClient,
     redis,
     logger,
     serverUrl: SERVICE_URLS[env.APP_ENV].api,
+    baseImageName: env.BOX_BASE_IMAGE || "box-base:v1",
   },
 });
 const deleteWorker = createDeleteWorker({
-  deps: { boxService, coolifyClient, redis, logger },
+  deps: { boxService, dockerClient, redis, logger },
 });
+
+// Start background monitoring workers
+startHealthCheckWorker({ dockerClient, db, logger });
+startMetricsWorker({ dockerClient, db, logger });
 
 const emailDeliveryWorker = createEmailDeliveryWorker({
   deps: {
     emailService,
     redis,
     logger,
-    dockerNetwork: env.APP_ENV === "prod" ? "coolify" : undefined,
+    dockerNetwork: env.APP_ENV === "prod" ? "traefik-public" : undefined,
   },
 });
 const emailSendWorker = createEmailSendWorker({

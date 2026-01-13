@@ -1,5 +1,7 @@
 # VPS-Claude Platform Plan - V1
 
+> **⚠️ DEPRECATED**: This document describes the original V1 plan using Coolify. The platform has since migrated to Docker Engine. See [DOCKER_ENGINE_MIGRATION.md](./DOCKER_ENGINE_MIGRATION.md) for current architecture.
+
 ## Overview
 
 Deploy Claude Code environments from `grmkris/agent` repo via Coolify API.

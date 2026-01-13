@@ -17,8 +17,8 @@
     "@orpc/zod": "catalog:",
     "@vps-claude/api": "workspace:*",
     "@vps-claude/auth": "workspace:*",
-    "@vps-claude/coolify": "workspace:*",
     "@vps-claude/db": "workspace:*",
+    "@vps-claude/docker-engine": "workspace:*",
     "@vps-claude/email": "workspace:*",
     "@vps-claude/logger": "workspace:*",
     "@vps-claude/queue": "workspace:*",
@@ -34,6 +34,6 @@
     "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
     "@vps-claude/test-utils": "workspace:*",
-    "tsdown": "^0.19.0-beta.5"
+    "tsdown": "^0.19.0"
   }
 }

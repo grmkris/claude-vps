@@ -1,7 +1,7 @@
-import type { CoolifyClient } from "@vps-claude/coolify";
 import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 
+import { DockerEngineClient } from "@vps-claude/docker-engine";
 import {
   type DeployBoxJobData,
   type DeleteBoxJobData,
@@ -25,15 +25,16 @@ interface DeployWorkerDeps {
   emailService: EmailService;
   secretService: SecretService;
   skillService: SkillService;
-  coolifyClient: CoolifyClient;
+  dockerClient: DockerEngineClient;
   redis: Redis;
   logger: Logger;
   serverUrl: string;
+  baseImageName: string;
 }
 
 interface DeleteWorkerDeps {
   boxService: BoxService;
-  coolifyClient: CoolifyClient;
+  dockerClient: DockerEngineClient;
   redis: Redis;
   logger: Logger;
 }
@@ -43,17 +44,17 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
     boxService,
     emailService,
     secretService,
-    skillService,
-    coolifyClient,
+    dockerClient,
     redis,
     logger,
     serverUrl,
+    baseImageName,
   } = deps;
 
   const worker = new Worker<DeployBoxJobData>(
     WORKER_CONFIG.deployBox.name,
     async (job: Job<DeployBoxJobData>) => {
-      const { boxId, userId, subdomain, password, skills: skillIds } = job.data;
+      const { boxId, userId, subdomain, password } = job.data;
 
       try {
         const box = await boxService.getById(boxId);
@@ -61,40 +62,10 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           throw new Error("Box not found");
         }
 
-        const skills = await skillService.getByIds(skillIds, userId);
-
-        const skillPackages = {
-          aptPackages: [...new Set(skills.flatMap((s) => s.aptPackages))],
-          npmPackages: [...new Set(skills.flatMap((s) => s.npmPackages))],
-          pipPackages: [...new Set(skills.flatMap((s) => s.pipPackages))],
-        };
-
-        const skillMdFiles = skills
-          .filter((s) => s.skillMdContent)
-          .map((s) => ({ slug: s.slug, content: s.skillMdContent! }));
-
-        const app = (
-          await coolifyClient.createApplication({
-            subdomain,
-            password,
-            claudeMdContent: "",
-            skillPackages,
-            skillMdFiles,
-          })
-        ).match(
-          (v) => v,
-          (e) => {
-            throw new Error(`${e.type}: ${e.message}`);
-          }
-        );
-        await boxService.setCoolifyUuid(boxId, app.uuid);
-        await boxService.setContainerInfo(
-          boxId,
-          app.containerName,
-          hashPassword(password)
-        );
-
+        // Get user secrets
         const userSecrets = await secretService.getAll(userId);
+
+        // Get or create email settings
         const emailSettingsResult =
           await emailService.getOrCreateSettings(boxId);
         if (emailSettingsResult.isErr()) {
@@ -102,80 +73,80 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
         }
         const emailSettings = emailSettingsResult.value;
 
-        const envVars = {
+        // Build environment variables
+        const envVars: Record<string, string> = {
+          PASSWORD: password,
           ...userSecrets,
           BOX_AGENT_SECRET: emailSettings.agentSecret,
-          BOX_API_TOKEN: emailSettings.agentSecret, // Per-box auth token for box API
+          BOX_API_TOKEN: emailSettings.agentSecret,
           BOX_API_URL: `${serverUrl}/box`,
           BOX_SUBDOMAIN: subdomain,
-          ...(box.telegramBotToken && {
-            TAKOPI_BOT_TOKEN: box.telegramBotToken,
-          }),
-          ...(box.telegramChatId && { TAKOPI_CHAT_ID: box.telegramChatId }),
         };
 
-        const envResult = await coolifyClient.updateApplicationEnv(
-          app.uuid,
-          envVars
-        );
-        if (envResult.isErr()) {
-          logger.warn({ uuid: app.uuid }, "Failed to inject env vars");
+        // Add Telegram config if present
+        if (box.telegramBotToken) {
+          envVars.TAKOPI_BOT_TOKEN = box.telegramBotToken;
+        }
+        if (box.telegramChatId) {
+          envVars.TAKOPI_CHAT_ID = box.telegramChatId;
         }
 
-        const { deploymentUuid } = (
-          await coolifyClient.deployApplication(app.uuid)
-        ).match(
-          (v) => v,
-          (e) => {
-            throw new Error(`${e.type}: ${e.message}`);
-          }
-        );
+        // Generate unique container name
+        const containerName = `box-${subdomain}`;
 
-        const deployResult = await coolifyClient.waitForDeployment(
-          deploymentUuid,
-          {
-            pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
-            timeoutMs: WORKER_CONFIG.deployBox.buildTimeout,
-          }
-        );
-
-        if (deployResult.isErr()) {
-          await boxService.updateStatus(
-            boxId,
-            "error",
-            deployResult.error.message
-          );
-          return { success: false, error: deployResult.error.message };
-        }
-
-        if (deployResult.value.status === "failed") {
-          await boxService.updateStatus(
-            boxId,
-            "error",
-            "Deployment build failed"
-          );
-          return { success: false, error: "build_failed" };
-        }
-
-        const healthResult = await coolifyClient.waitForHealthy(app.uuid, {
-          pollIntervalMs: WORKER_CONFIG.deployBox.pollInterval,
-          timeoutMs: WORKER_CONFIG.deployBox.healthCheckTimeout,
+        // Create and start container
+        logger.info({ boxId, subdomain }, "Creating Docker container");
+        const container = await dockerClient.createBox({
+          userId,
+          boxId,
+          subdomain,
+          name: containerName,
+          image: baseImageName,
+          envVars,
+          exposedPorts: [3000], // Default user app port
         });
 
-        if (healthResult.isErr()) {
+        // Update box record with Docker info
+        await boxService.setDockerInfo(
+          boxId,
+          container.id,
+          containerName,
+          baseImageName
+        );
+        await boxService.setContainerInfo(
+          boxId,
+          containerName,
+          hashPassword(password)
+        );
+
+        // Wait for container to become healthy
+        logger.info(
+          { boxId, containerId: container.id },
+          "Waiting for container health check"
+        );
+        const isHealthy = await dockerClient.waitForHealth(
+          container.id,
+          WORKER_CONFIG.deployBox.healthCheckTimeout
+        );
+
+        if (!isHealthy) {
           await boxService.updateStatus(
             boxId,
             "error",
-            healthResult.error.message
+            "Container failed health check"
           );
-          return { success: false, error: healthResult.error.message };
+          return { success: false, error: "health_check_failed" };
         }
 
+        // Mark as running
         await boxService.updateStatus(boxId, "running");
+        logger.info({ boxId, subdomain }, "Box deployed successfully");
+
         return { success: true };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
+        logger.error({ boxId, error: message }, "Deploy job failed");
         await boxService.updateStatus(boxId, "error", message);
         throw error;
       }
@@ -199,27 +170,27 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
 }
 
 export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
-  const { coolifyClient, redis, logger } = deps;
+  const { dockerClient, redis, logger } = deps;
 
   const worker = new Worker<DeleteBoxJobData>(
     WORKER_CONFIG.deleteBox.name,
     async (job: Job<DeleteBoxJobData>) => {
-      const { coolifyApplicationUuid } = job.data;
+      const { boxId, userId, dockerContainerId } = job.data;
 
       try {
-        (await coolifyClient.deleteApplication(coolifyApplicationUuid)).match(
-          (v) => v,
-          (e) => {
-            throw new Error(`${e.type}: ${e.message}`);
-          }
-        );
+        logger.info({ boxId, dockerContainerId }, "Deleting Docker container");
+
+        // Delete container and clean up resources
+        await dockerClient.deleteBox(dockerContainerId, userId, boxId);
+
+        logger.info({ boxId }, "Box deleted successfully");
         return { success: true };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
         logger.error({
-          msg: "Failed to delete application",
-          uuid: coolifyApplicationUuid,
+          msg: "Failed to delete box",
+          boxId,
           error: message,
         });
         throw error;

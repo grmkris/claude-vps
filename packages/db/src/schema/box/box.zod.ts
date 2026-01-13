@@ -13,8 +13,9 @@ export type SelectBoxSchema = z.infer<typeof SelectBoxSchema>;
 export const InsertBoxSchema = createInsertSchema(box).omit({
   id: true,
   status: true,
-  coolifyApplicationUuid: true,
+  dockerContainerId: true,
   errorMessage: true,
+  lastHealthCheck: true,
   createdAt: true,
   updatedAt: true,
 });
