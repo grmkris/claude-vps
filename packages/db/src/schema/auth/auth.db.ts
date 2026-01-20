@@ -1,11 +1,12 @@
 import {
   type AccountId,
+  type ApiKeyId,
   type SessionId,
   typeIdGenerator,
   type UserId,
   type VerificationId,
 } from "@vps-claude/shared";
-import { boolean, index, pgTable, text } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text } from "drizzle-orm/pg-core";
 
 import {
   baseEntityFields,
@@ -90,6 +91,42 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)]
 );
 
+export const apikey = pgTable(
+  "apikey",
+  {
+    id: typeId("apiKey", "id")
+      .primaryKey()
+      .$defaultFn(() => typeIdGenerator("apiKey"))
+      .$type<ApiKeyId>(),
+    name: text("name"),
+    start: text("start"),
+    prefix: text("prefix"),
+    key: text("key").notNull(),
+    userId: typeId("user", "user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" })
+      .$type<UserId>(),
+    refillInterval: integer("refill_interval"),
+    refillAmount: integer("refill_amount"),
+    lastRefillAt: createTimestampField("last_refill_at"),
+    enabled: boolean("enabled").default(true),
+    rateLimitEnabled: boolean("rate_limit_enabled").default(true),
+    rateLimitTimeWindow: integer("rate_limit_time_window").default(86400000),
+    rateLimitMax: integer("rate_limit_max").default(10),
+    requestCount: integer("request_count").default(0),
+    remaining: integer("remaining"),
+    lastRequest: createTimestampField("last_request"),
+    expiresAt: createTimestampField("expires_at"),
+    permissions: text("permissions"),
+    metadata: text("metadata"),
+    ...baseEntityFields,
+  },
+  (table) => [
+    index("apikey_key_idx").on(table.key),
+    index("apikey_userId_idx").on(table.userId),
+  ]
+);
+
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
 
@@ -101,3 +138,6 @@ export type NewAccount = typeof account.$inferInsert;
 
 export type Verification = typeof verification.$inferSelect;
 export type NewVerification = typeof verification.$inferInsert;
+
+export type ApiKey = typeof apikey.$inferSelect;
+export type NewApiKey = typeof apikey.$inferInsert;

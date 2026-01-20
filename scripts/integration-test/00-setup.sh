@@ -2,51 +2,48 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR/../.."
 
 echo "=== Integration Test Setup ==="
 echo ""
 
-# Load environment
-if [ -f config/.env.test ]; then
-  source config/.env.test
-  echo "✓ Loaded test environment"
+# 1. Verify dev services
+echo "Verifying dev services..."
+if nc -z localhost 54325 2>/dev/null; then
+  echo "✓ Postgres accessible on port 54325"
 else
-  echo "✗ config/.env.test not found"
-  exit 1
+  echo "⚠ Postgres not accessible on port 54325"
+  echo "  Start with: bun run db:start"
 fi
 
-# Create traefik-test network if doesn't exist
-echo ""
-echo "Checking traefik-test network..."
-if ! docker network inspect traefik-test >/dev/null 2>&1; then
-  echo "Creating traefik-test network..."
-  docker network create traefik-test
-  echo "✓ Network created"
+if nc -z localhost 63833 2>/dev/null; then
+  echo "✓ Redis accessible on port 63833"
 else
-  echo "✓ Network already exists"
+  echo "⚠ Redis not accessible on port 63833"
+  echo "  Start with: bun run db:start"
 fi
 
-# Build test image with SSH
+# 2. Check SPRITES_TOKEN
 echo ""
-echo "Building enhanced test image (box-test-ssh:latest)..."
-docker build -t box-test-ssh:latest fixtures/test-box-with-ssh/
-echo "✓ Test image built"
-
-# Create test directories
-echo ""
-echo "Creating test directories..."
-if mkdir -p "$BOX_BASE_DIR" 2>/dev/null; then
-  echo "✓ Directory created: $BOX_BASE_DIR"
-elif sudo -n mkdir -p "$BOX_BASE_DIR" 2>/dev/null; then
-  sudo -n chown $(whoami):$(id -gn) "$BOX_BASE_DIR" 2>/dev/null || sudo -n chown $(whoami):staff "$BOX_BASE_DIR" 2>/dev/null || true
-  echo "✓ Directory created: $BOX_BASE_DIR (with sudo)"
+echo "Checking environment..."
+if [ -f apps/server/.env ]; then
+  if grep -q "SPRITES_TOKEN=your-sprites-token-here" apps/server/.env 2>/dev/null; then
+    echo "⚠ SPRITES_TOKEN not configured in apps/server/.env"
+    echo "  Get a token from sprites.dev and add it"
+  elif grep -q "SPRITES_TOKEN=" apps/server/.env 2>/dev/null; then
+    echo "✓ SPRITES_TOKEN configured"
+  else
+    echo "⚠ SPRITES_TOKEN missing from apps/server/.env"
+  fi
 else
-  echo "⚠ Could not create $BOX_BASE_DIR (no sudo access)"
-  echo "  Please manually create: sudo mkdir -p $BOX_BASE_DIR && sudo chown $(whoami) $BOX_BASE_DIR"
+  echo "⚠ apps/server/.env not found"
+  echo "  Copy from .env.example"
 fi
 
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "Next step: Run ./01-start-services.sh to start the test stack"
+echo "Next steps:"
+echo "  1. bun run db:start"
+echo "  2. bun run dev"
+echo "  3. Create box via http://localhost:33001"

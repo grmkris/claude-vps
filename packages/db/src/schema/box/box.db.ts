@@ -24,17 +24,12 @@ export const box = pgTable(
     subdomain: text("subdomain").notNull().unique(),
     status: boxStatusEnum("status").notNull().default("pending"),
 
-    // Docker Engine fields
-    dockerContainerId: text("docker_container_id"),
-    containerName: text("container_name"),
-    imageName: text("image_name"),
-
-    // Metadata
+    spriteName: text("sprite_name"),
+    spriteUrl: text("sprite_url"),
+    lastCheckpointId: text("last_checkpoint_id"),
     passwordHash: text("password_hash"),
     errorMessage: text("error_message"),
     lastHealthCheck: timestamp("last_health_check"),
-
-    // Telegram integration
     telegramBotToken: text("telegram_bot_token"),
     telegramChatId: text("telegram_chat_id"),
 

@@ -24,13 +24,14 @@ packages/
   api/          → ORPC routers, services, workers
   auth/         → better-auth config
   db/           → Drizzle schema + client
-  ssh-bastion/  → SSH reverse proxy (sshpiper)
-  docker-engine/ → Docker Engine API client + base image
+  sprites/      → Sprites (Fly.io) client
   queue/        → BullMQ job definitions
   email/        → Email client (Resend)
   logger/       → Pino logger factory
   redis/        → Redis client factory
   shared/       → TypeIDs, constants
+  sdk/          → SDK package
+  storage/      → Storage utilities
   config/       → Shared tsconfig
 ```
 

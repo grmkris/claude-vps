@@ -1,7 +1,7 @@
 import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
+import type { SpritesClient } from "@vps-claude/sprites";
 
-import { DockerEngineClient } from "@vps-claude/docker-engine";
 import {
   type DeployBoxJobData,
   type DeleteBoxJobData,
@@ -25,16 +25,16 @@ interface DeployWorkerDeps {
   emailService: EmailService;
   secretService: SecretService;
   skillService: SkillService;
-  dockerClient: DockerEngineClient;
+  spritesClient: SpritesClient;
   redis: Redis;
   logger: Logger;
   serverUrl: string;
-  baseImageName: string;
+  boxAgentBinaryUrl: string;
 }
 
 interface DeleteWorkerDeps {
   boxService: BoxService;
-  dockerClient: DockerEngineClient;
+  spritesClient: SpritesClient;
   redis: Redis;
   logger: Logger;
 }
@@ -44,11 +44,11 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
     boxService,
     emailService,
     secretService,
-    dockerClient,
+    spritesClient,
     redis,
     logger,
     serverUrl,
-    baseImageName,
+    boxAgentBinaryUrl,
   } = deps;
 
   const worker = new Worker<DeployBoxJobData>(
@@ -57,15 +57,20 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
       const { boxId, userId, subdomain, password } = job.data;
 
       try {
-        const box = await boxService.getById(boxId);
+        const boxResult = await boxService.getById(boxId);
+        if (boxResult.isErr()) {
+          throw new Error(boxResult.error.message);
+        }
+        const box = boxResult.value;
         if (!box) {
           throw new Error("Box not found");
         }
 
-        // Get user secrets
-        const userSecrets = await secretService.getAll(userId);
-
-        // Get or create email settings
+        const userSecretsResult = await secretService.getAll(userId);
+        if (userSecretsResult.isErr()) {
+          throw new Error(userSecretsResult.error.message);
+        }
+        const userSecrets = userSecretsResult.value;
         const emailSettingsResult =
           await emailService.getOrCreateSettings(boxId);
         if (emailSettingsResult.isErr()) {
@@ -73,7 +78,6 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
         }
         const emailSettings = emailSettingsResult.value;
 
-        // Build environment variables
         const envVars: Record<string, string> = {
           PASSWORD: password,
           ...userSecrets,
@@ -83,7 +87,6 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           BOX_SUBDOMAIN: subdomain,
         };
 
-        // Add Telegram config if present
         if (box.telegramBotToken) {
           envVars.TAKOPI_BOT_TOKEN = box.telegramBotToken;
         }
@@ -91,56 +94,39 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           envVars.TAKOPI_CHAT_ID = box.telegramChatId;
         }
 
-        // Generate unique container name
-        const containerName = `box-${subdomain}`;
-
-        // Create and start container
-        logger.info({ boxId, subdomain }, "Creating Docker container");
-        const container = await dockerClient.createBox({
+        // Step 1: Create the sprite (blank VM)
+        logger.info({ boxId, subdomain }, "Creating Sprite");
+        const sprite = await spritesClient.createSprite({
+          name: subdomain,
           userId,
-          boxId,
           subdomain,
-          name: containerName,
-          image: baseImageName,
-          envVars,
-          exposedPorts: [3000], // Default user app port
+          envVars: {}, // Env vars set during setup
         });
 
-        // Update box record with Docker info
-        await boxService.setDockerInfo(
+        await boxService.setSpriteInfo(
           boxId,
-          container.id,
-          containerName,
-          baseImageName
-        );
-        await boxService.setContainerInfo(
-          boxId,
-          containerName,
+          sprite.spriteName,
+          sprite.url,
           hashPassword(password)
         );
 
-        // Wait for container to become healthy
+        // Step 2: Set up the sprite with SSH, code-server, box-agent
         logger.info(
-          { boxId, containerId: container.id },
-          "Waiting for container health check"
+          { boxId, subdomain, spriteName: sprite.spriteName },
+          "Setting up Sprite"
         );
-        const isHealthy = await dockerClient.waitForHealth(
-          container.id,
-          WORKER_CONFIG.deployBox.healthCheckTimeout
-        );
+        await spritesClient.setupSprite({
+          spriteName: sprite.spriteName,
+          password,
+          boxAgentBinaryUrl,
+          envVars,
+        });
 
-        if (!isHealthy) {
-          await boxService.updateStatus(
-            boxId,
-            "error",
-            "Container failed health check"
-          );
-          return { success: false, error: "health_check_failed" };
-        }
-
-        // Mark as running
         await boxService.updateStatus(boxId, "running");
-        logger.info({ boxId, subdomain }, "Box deployed successfully");
+        logger.info(
+          { boxId, subdomain, spriteName: sprite.spriteName },
+          "Sprite deployed and configured successfully"
+        );
 
         return { success: true };
       } catch (error) {
@@ -170,26 +156,37 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
 }
 
 export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
-  const { dockerClient, redis, logger } = deps;
+  const { boxService, spritesClient, redis, logger } = deps;
 
   const worker = new Worker<DeleteBoxJobData>(
     WORKER_CONFIG.deleteBox.name,
     async (job: Job<DeleteBoxJobData>) => {
-      const { boxId, userId, dockerContainerId } = job.data;
+      const { boxId } = job.data;
 
       try {
-        logger.info({ boxId, dockerContainerId }, "Deleting Docker container");
+        const boxResult = await boxService.getById(boxId);
+        if (boxResult.isErr()) {
+          throw new Error(boxResult.error.message);
+        }
+        const box = boxResult.value;
+        if (!box?.spriteName) {
+          logger.warn(
+            { boxId },
+            "Box has no sprite name, skipping sprite deletion"
+          );
+          return { success: true };
+        }
 
-        // Delete container and clean up resources
-        await dockerClient.deleteBox(dockerContainerId, userId, boxId);
+        logger.info({ boxId, spriteName: box.spriteName }, "Deleting Sprite");
+        await spritesClient.deleteSprite(box.spriteName);
 
-        logger.info({ boxId }, "Box deleted successfully");
+        logger.info({ boxId }, "Sprite deleted successfully");
         return { success: true };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
         logger.error({
-          msg: "Failed to delete box",
+          msg: "Failed to delete sprite",
           boxId,
           error: message,
         });

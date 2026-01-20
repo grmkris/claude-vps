@@ -5,12 +5,7 @@ import type { BoxId } from "@vps-claude/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import type {
-  CreateBoxInput,
-  DeployBoxInput,
-  UpdateBoxInput,
-  Box,
-} from "@/lib/orpc-types";
+import type { CreateBoxInput, DeployBoxInput, Box } from "@/lib/orpc-types";
 
 import { client, orpc } from "@/utils/orpc";
 
@@ -80,23 +75,6 @@ export function useDeleteBox() {
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to delete");
-    },
-  });
-}
-
-export function useUpdateBox() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: UpdateBoxInput) => client.box.update(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions().queryKey,
-      });
-      toast.success("Box updated! Redeploying...");
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update");
     },
   });
 }

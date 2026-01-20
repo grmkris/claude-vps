@@ -24,13 +24,14 @@ packages/
   api/          → ORPC routers, services, workers (BullMQ)
   auth/         → better-auth config
   db/           → Drizzle schema + client (PostgreSQL)
-  ssh-bastion/  → SSH reverse proxy (sshpiper sync service)
+  sprites/      → Sprites (Fly.io) client for VM deployment
   queue/        → BullMQ queue definitions + client factory
   email/        → Email client (Resend)
-  docker-engine/ → Docker Engine API client + security hardening
   logger/       → Pino logger factory
   redis/        → Redis client factory (ioredis)
   shared/       → SERVICE_URLS, TypeIDs, constants, schemas
+  sdk/          → SDK package
+  storage/      → Storage utilities
   config/       → Shared tsconfig
 ```
 
@@ -38,19 +39,17 @@ packages/
 
 ## API Architecture
 
-### Three-Tier Router Organization
+### Two-Tier Router Organization
 
-| Level    | Prefix       | Auth             | Example Endpoints     | Clients                        |
-| -------- | ------------ | ---------------- | --------------------- | ------------------------------ |
-| User     | `/rpc/`      | Session          | box, secret, skill    | Web UI (authenticated users)   |
-| Platform | `/platform/` | INTERNAL_API_KEY | ssh/boxes, ssh/lookup | SSH bastion, internal services |
-| Box      | `/box/`      | Per-box token    | email/send            | box-agent (in containers)      |
+| Level | Prefix  | Auth          | Example Endpoints  | Clients                      |
+| ----- | ------- | ------------- | ------------------ | ---------------------------- |
+| User  | `/rpc/` | Session       | box, secret, skill | Web UI (authenticated users) |
+| Box   | `/box/` | Per-box token | email/send         | box-agent (in sprites)       |
 
 **Procedures** (`packages/api/src/`):
 
 - `publicProcedure` - No auth
 - `protectedProcedure` - User session required
-- `internalProcedure` - INTERNAL_API_KEY (platform services)
 - `boxProcedure` - Per-box token (box-agent)
 
 **Routers** (`packages/api/src/routers/`):
@@ -58,7 +57,6 @@ packages/
 - `box.router.ts` - Create/list/delete boxes
 - `secret.router.ts` - User environment variables
 - `skill.router.ts` - Custom package bundles
-- `platform.router.ts` - SSH bastion endpoints
 - `box-api.router.ts` - Box-to-server communication
 
 **Services** (`packages/api/src/services/`):
@@ -70,8 +68,8 @@ packages/
 
 **Workers** (`packages/api/src/workers/`):
 
-- `deploy-box.worker.ts` - Deploys boxes via Docker Engine
-- `delete-box.worker.ts` - Cleanup on deletion
+- `deploy-box.worker.ts` - Deploys boxes via Sprites API
+- `delete-box.worker.ts` - Deletes sprites on box deletion
 - `email-delivery.worker.ts` - Delivers email to box-agent
 - `email-send.worker.ts` - Sends email via Resend
 
@@ -82,17 +80,14 @@ packages/
 **Creating a box:**
 
 1. User → POST `/rpc/box/create` → `boxService.create()` → queue deploy job
-2. Worker: fetch skills → Docker Engine deploy → wait for health
+2. Worker: fetch secrets → Sprites API creates VM → mark running
 3. Status: `deploying` → `running` | `error`
 
 **Email inbound:**
-Webhook → `emailService.processInbound()` → queue delivery → POST to `box-agent:9999/email/receive`
+Webhook → `emailService.processInbound()` → queue delivery → POST to `{spriteUrl}/email/receive`
 
 **Email outbound:**
 box-agent → POST `/box/email/send` → queue send → Resend API
-
-**SSH access:**
-User → `ssh subdomain@ssh.bastion` → sshpiper reads config → proxy to `container:22`
 
 **Files to know:**
 
@@ -100,38 +95,35 @@ User → `ssh subdomain@ssh.bastion` → sshpiper reads config → proxy to `con
 - Services: `packages/api/src/services/*.service.ts`
 - Workers: `packages/api/src/workers/*.worker.ts`
 - Database schema: `packages/db/src/schema/`
-- Box base image: `packages/docker-engine/box-base/Dockerfile`
+- Sprites client: `packages/sprites/src/sprites-client.ts`
 
 ---
 
 ## Box Lifecycle
 
-**Flow:** User creates → queued → worker deploys → Docker Engine creates container → health check → running
+**Flow:** User creates → queued → worker deploys via Sprites API → running
 
 **Files:**
 
 - `packages/api/src/routers/box.router.ts` - Create/list/delete endpoints
 - `packages/api/src/services/box.service.ts` - Business logic, subdomain generation (`{slug}-{4char}`)
-- `packages/api/src/workers/deploy-box.worker.ts` - Async deployment (5min timeout, 5 concurrency)
-  - Fetch skills → aggregate packages
-  - Create hardened container via Docker Engine
-  - Inject env vars (user secrets + box secrets)
-  - Deploy → wait for health
-- `packages/docker-engine/src/docker-client.ts` - Docker Engine API wrapper
-- `packages/docker-engine/src/container-config.ts` - Security hardening configuration
+- `packages/api/src/workers/deploy-box.worker.ts` - Async deployment via Sprites
+  - Fetch user secrets
+  - Create sprite via Sprites API with env vars
+  - Update box record with sprite info
+- `packages/sprites/src/sprites-client.ts` - Sprites API wrapper
 
 **Database:** `box` table (`packages/db/src/schema/box/`)
 
 - Status states: `deploying` → `running` | `error`
-- Fields: subdomain (unique), dockerContainerId, containerName, imageName, plan, passwordHash
+- Fields: subdomain (unique), spriteName, spriteUrl, lastCheckpointId, passwordHash
 
-**Container:** `packages/docker-engine/box-base/Dockerfile`
+**Sprites (Fly.io):**
 
-- Base: `codercom/code-server:latest`
-- Ports: 22 (SSH), 8080 (code-server), 9999 (box-agent), 3000 (user apps)
-- Volumes: `/home/coder/workspace`, `~/.config`, `~/.local`, `~/.cache`, `~/.inbox`
-- Pre-installed: Claude Code CLI, Node 20, Bun, Python 3, git, vim, tmux, fzf, ripgrep, jq
-- User: `coder` (password set via PASSWORD env var)
+- Boxes run as lightweight VMs on Fly.io infrastructure
+- Auto-sleep when idle, wake on demand
+- Pre-configured with VS Code, SSH, and box-agent
+- Accessible via unique URLs (e.g., `{subdomain}.sprites.dev`)
 
 **Deployment triggers:**
 
@@ -149,7 +141,7 @@ Resend webhook → /webhooks/inbound-email
   → emailService.processInbound(subdomain, emailData)
   → Insert box_email table (status: "received")
   → Queue delivery job
-  → Worker POSTs to http://{containerName}:9999/email/receive
+  → Worker POSTs to {spriteUrl}/email/receive
   → box-agent saves to ~/.inbox/{emailId}.json
   → Spawns Claude AI session (async)
 ```
@@ -166,7 +158,7 @@ box-agent → POST /box/email/send
 
 **Files:**
 
-- `apps/server/src/server.ts:147` - Inbound webhook handler
+- `apps/server/src/server.ts` - Inbound webhook handler
 - `packages/api/src/services/email.service.ts` - Email processing logic
 - `packages/api/src/workers/email-delivery.worker.ts` - Delivery to box-agent (30s timeout)
 - `packages/api/src/workers/email-send.worker.ts` - Send via Resend (30s timeout)
@@ -187,7 +179,7 @@ box-agent → POST /box/email/send
 
 ## Box-Agent Service
 
-**Purpose:** In-container HTTP server (port 9999) that:
+**Purpose:** In-sprite HTTP server (port 9999) that:
 
 - Receives emails from main API
 - Stores emails as JSON in `~/.inbox/`
@@ -196,7 +188,7 @@ box-agent → POST /box/email/send
 
 **Deployment:**
 
-- Compiled to standalone binary during image build: `/usr/local/bin/box-agent`
+- Compiled to standalone binary: `/usr/local/bin/box-agent`
 - Started in background by entrypoint script
 - Source: `apps/box-agent/`
 
@@ -216,38 +208,6 @@ box-agent → POST /box/email/send
 
 ---
 
-## SSH Bastion & Networking
-
-**Connection Flow:**
-
-```
-User runs: ssh my-project-a7x2@ssh.bastion.domain
-  → sshpiper extracts username "my-project-a7x2"
-  → Reads config: /etc/sshpiper/workingdir/my-project-a7x2/sshpiper.yaml
-  → Proxies to: my-project-a7x2-{uuid}:22 (container on Docker network)
-  → Container sshd authenticates with PASSWORD
-```
-
-**Sync Service:**
-
-- File: `packages/ssh-bastion/src/sync.ts`
-- Polls `GET /platform/ssh/boxes` every 30s (INTERNAL_API_KEY auth)
-- Generates sshpiper configs for each running box
-- Cleanup: Removes configs for deleted boxes
-
-**Platform Endpoints:**
-
-- `GET /platform/ssh/boxes` - List running boxes (returns `[{ subdomain, containerName }]`)
-- `GET /platform/ssh/lookup?subdomain=X` - Lookup container by subdomain
-
-**Docker Networking:**
-
-- All containers on Traefik bridge network
-- DNS resolution: `{containerName}` → container IP
-- ssh-bastion can reach any box via `http://{containerName}:9999`
-
----
-
 ## Skills System
 
 **What:** Package bundles (apt/npm/pip) + optional SKILL.md files
@@ -259,16 +219,15 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 **Application during deployment:**
 
-1. Worker fetches skills by ID (`packages/api/src/workers/deploy-box.worker.ts:29-48`)
+1. Worker fetches skills by ID
 2. Aggregates packages (deduplicated)
-3. Dockerfile builder installs packages and writes SKILL.md files
-4. Files placed in: `/home/coder/.claude/skills/{slug}/SKILL.md`
+3. Passes to Sprites API for installation
+4. SKILL.md files placed in: `/home/coder/.claude/skills/{slug}/SKILL.md`
 
 **Files:**
 
 - `packages/api/src/services/skill.service.ts` - CRUD operations
 - `packages/api/src/routers/skill.router.ts` - API endpoints
-- `packages/docker-engine/src/container-config.ts` - Applies skills via environment configuration
 
 ---
 
@@ -289,7 +248,7 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 | BOX_API_URL      | Config (`SERVER_URL/box`) | Main API endpoint                |
 | BOX_SUBDOMAIN    | Box subdomain             | Identifier                       |
 
-**Injection:** `packages/docker-engine/src/docker-client.ts` - Environment variables passed to Docker container config
+**Injection:** `packages/api/src/workers/deploy-box.worker.ts` - Environment variables passed to Sprites API
 
 ---
 
@@ -297,7 +256,7 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 **Core Tables:** `packages/db/src/schema/`
 
-- `box/` - Box records, status, subdomain, Docker container ID, container name
+- `box/` - Box records, status, subdomain, spriteName, spriteUrl
 - `box_skill/` - Junction table (boxId ↔ skillId)
 - `box_email/` - Inbound email storage
 - `box_email_settings/` - Per-box auth tokens (agentSecret)
@@ -318,8 +277,8 @@ User runs: ssh my-project-a7x2@ssh.bastion.domain
 
 **Workers:** `packages/api/src/workers/`
 
-- `deploy-box.worker.ts` - Deploy boxes via Docker Engine (5min timeout, 5 workers)
-- `delete-box.worker.ts` - Delete Docker containers + DB records (1min timeout)
+- `deploy-box.worker.ts` - Deploy boxes via Sprites API (5min timeout, 5 workers)
+- `delete-box.worker.ts` - Delete sprites (1min timeout)
 - `email-delivery.worker.ts` - POST emails to box-agent (30s timeout)
 - `email-send.worker.ts` - Send via Resend (30s timeout)
 
@@ -349,7 +308,7 @@ const { data } = orpc.box.list.useQuery();
 **New ORPC endpoint:**
 
 1. Add to router in `packages/api/src/routers/`
-2. Use appropriate procedure (protected, internal, box)
+2. Use appropriate procedure (protected, box)
 3. Frontend: `orpc.routerName.endpoint.useQuery()`
 
 **New DB table:**

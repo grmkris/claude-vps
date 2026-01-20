@@ -1,12 +1,10 @@
 version: "3.8"
 
-# Production Docker Compose for VPS-Claude with Docker Engine
+# Production Docker Compose for VPS-Claude with Sprites
 #
 # Prerequisites:
-# 1. Build box-base image: docker build -t box-base:v1 packages/docker-engine/box-base/
-# 2. Create /mnt/devboxes directory: sudo mkdir -p /mnt/devboxes && sudo chown 1000:1000 /mnt/devboxes
-# 3. Deploy seccomp profile: sudo cp packages/docker-engine/seccomp-profile.json /etc/docker/seccomp-profiles/box-profile.json
-# 4. Copy .env.example to .env and configure
+# 1. Get SPRITES_TOKEN from https://sprites.dev
+# 2. Copy .env.example to .env and configure
 
 services:
   # PostgreSQL Database
@@ -55,11 +53,6 @@ services:
     container_name: vps-claude-server
     ports:
       - "33000:33000"
-    volumes:
-      # Docker socket for container management
-      - /var/run/docker.sock:/var/run/docker.sock:rw
-      # Persistent storage for boxes
-      - /mnt/devboxes:/mnt/devboxes:rw
     environment:
       # Database
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/vps-claude
@@ -69,10 +62,9 @@ services:
 
       # Authentication
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET required}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:?INTERNAL_API_KEY required}
 
-      # Docker Engine
-      - BOX_BASE_IMAGE=${BOX_BASE_IMAGE:-box-base:v1}
+      # Sprites (Fly.io VMs)
+      - SPRITES_TOKEN=${SPRITES_TOKEN:?SPRITES_TOKEN required}
 
       # Email (Resend)
       - INBOUND_EMAIL_API_KEY=${INBOUND_EMAIL_API_KEY:?INBOUND_EMAIL_API_KEY required}

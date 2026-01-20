@@ -7,7 +7,7 @@ import { skill } from "./skill.db";
 
 export const SelectSkillSchema = createSelectSchema(skill, {
   id: SkillId,
-  userId: UserId,
+  userId: UserId.nullable(),
 });
 export type SelectSkillSchema = z.infer<typeof SelectSkillSchema>;
 

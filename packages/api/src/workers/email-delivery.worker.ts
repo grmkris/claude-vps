@@ -15,7 +15,6 @@ interface EmailDeliveryWorkerDeps {
   emailService: EmailService;
   redis: Redis;
   logger: Logger;
-  dockerNetwork?: string;
 }
 
 interface EmailSendWorkerDeps {
@@ -35,18 +34,17 @@ export function createEmailDeliveryWorker({
 }: {
   deps: EmailDeliveryWorkerDeps;
 }) {
-  const { emailService, redis, logger, dockerNetwork } = deps;
+  const { emailService, redis, logger } = deps;
 
   const worker = new Worker<DeliverEmailJobData>(
     WORKER_CONFIG.deliverEmail.name,
     async (job: Job<DeliverEmailJobData>) => {
-      const { emailId, containerName, agentSecret, email } = job.data;
+      const { emailId, spriteUrl, agentSecret, email } = job.data;
 
-      const boxAgentUrl = dockerNetwork
-        ? `http://${containerName}:9999/email/receive`
-        : `http://localhost:9999/email/receive`;
+      // Sprites: box-agent accessible via sprite's public URL
+      const boxAgentUrl = `${spriteUrl}/email/receive`;
 
-      logger.info({ emailId, containerName }, "Delivering email to box");
+      logger.info({ emailId, spriteUrl }, "Delivering email to box");
 
       const response = await fetch(boxAgentUrl, {
         method: "POST",
@@ -61,11 +59,32 @@ export function createEmailDeliveryWorker({
       if (!response.ok) {
         const text = await response.text();
         const message = `Box agent returned ${response.status}: ${text}`;
-        await emailService.updateStatus(emailId, "failed", message);
+        const updateResult = await emailService.updateStatus(
+          emailId,
+          "failed",
+          message
+        );
+        if (updateResult.isErr()) {
+          logger.error({
+            msg: "Failed to update email status",
+            emailId,
+            error: updateResult.error.message,
+          });
+        }
         throw new Error(message);
       }
 
-      await emailService.updateStatus(emailId, "delivered");
+      const updateResult = await emailService.updateStatus(
+        emailId,
+        "delivered"
+      );
+      if (updateResult.isErr()) {
+        logger.error({
+          msg: "Failed to update email status",
+          emailId,
+          error: updateResult.error.message,
+        });
+      }
       return { success: true };
     },
     {

@@ -1,67 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-# Load environment
-source config/.env.test
-
 if [ -z "${TEST_BOX_SUBDOMAIN:-}" ]; then
-  echo "✗ ERROR: TEST_BOX_SUBDOMAIN not set"
-  echo ""
-  echo "Run: export TEST_BOX_SUBDOMAIN=<subdomain>"
-  echo "Or run 02-create-box.sh and use the exported values"
+  echo "✗ TEST_BOX_SUBDOMAIN not set"
+  echo "  Run: export TEST_BOX_SUBDOMAIN=your-subdomain"
   exit 1
 fi
 
 echo "=== Testing HTTP Routing via Traefik ==="
 echo ""
-echo "Subdomain:      $TEST_BOX_SUBDOMAIN"
-echo "Domain:         $AGENTS_DOMAIN"
-echo "Traefik Port:   $TEST_TRAEFIK_HTTP_PORT"
+echo "Subdomain: $TEST_BOX_SUBDOMAIN"
+echo "Testing: curl http://${TEST_BOX_SUBDOMAIN}.agents.localhost:8090/"
 echo ""
 
-# Wait a bit for Traefik to discover the container
-echo "Waiting 5s for Traefik discovery..."
-sleep 5
+# Wait a few seconds for Traefik to discover the container
+echo "Waiting 10s for Traefik discovery..."
+sleep 10
 
-# Test HTTP routing with Host header
+# Test HTTP routing (using .localhost domain - no Host header needed!)
+RESPONSE=$(curl -sL -w "\n%{http_code}" http://${TEST_BOX_SUBDOMAIN}.agents.localhost:8090/ 2>&1 || true)
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | head -n -1)
+
+echo "HTTP Status: $HTTP_CODE"
 echo ""
-echo "Testing: curl -H 'Host: ${TEST_BOX_SUBDOMAIN}.${AGENTS_DOMAIN}' http://localhost:${TEST_TRAEFIK_HTTP_PORT}/"
-echo ""
 
-RESPONSE=$(curl -s -H "Host: ${TEST_BOX_SUBDOMAIN}.${AGENTS_DOMAIN}" http://localhost:${TEST_TRAEFIK_HTTP_PORT}/ || true)
-
-if [ -z "$RESPONSE" ]; then
-  echo "✗ No response from Traefik"
-  echo ""
-  echo "Debugging information:"
-  echo "1. Check Traefik dashboard: http://localhost:$TEST_TRAEFIK_DASHBOARD_PORT/dashboard/"
-  echo "2. Check container labels: docker inspect ${TEST_BOX_NAME:-test-box-*} | jq '.[0].Config.Labels'"
-  echo "3. Check Traefik logs: docker logs test-vps-traefik"
-  exit 1
-fi
-
-echo "Response:"
-echo "$RESPONSE" | jq .
-
-# Check if response contains expected fields
-if echo "$RESPONSE" | jq -e '.status == "ok"' >/dev/null; then
-  echo ""
+if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
   echo "✓ HTTP routing works!"
   echo ""
-  echo "Response contains:"
-  echo "  - status: ok"
-  echo "  - container: $(echo "$RESPONSE" | jq -r '.container')"
-  echo "  - path: $(echo "$RESPONSE" | jq -r '.path')"
-else
+  echo "Response preview:"
+  echo "$BODY" | head -20
   echo ""
-  echo "✗ Unexpected response format"
+  echo "Access in browser: http://${TEST_BOX_SUBDOMAIN}.agents.localhost:8090"
+  echo "Note: .localhost domains work automatically (RFC 6761)"
+else
+  echo "✗ HTTP routing failed"
+  echo ""
+  echo "Response:"
+  echo "$BODY"
+  echo ""
+  echo "Debugging:"
+  echo "1. Check Traefik dashboard: http://localhost:8091/dashboard/"
+  echo "2. Check container labels: docker inspect \$(docker ps -q --filter label=subdomain=$TEST_BOX_SUBDOMAIN) | jq '.[0].Config.Labels'"
+  echo "3. Check container is on traefik-public network"
   exit 1
 fi
-
-echo ""
-echo "=== HTTP Test Passed ==="
-echo ""
-echo "Next step: Run ./04-test-ssh.sh to test SSH routing"

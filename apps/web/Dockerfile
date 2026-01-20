@@ -26,14 +26,14 @@ COPY apps/box-agent/package.json ./apps/box-agent/
 COPY packages/api/package.json ./packages/api/
 COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
-COPY packages/coolify/package.json ./packages/coolify/
 COPY packages/db/package.json ./packages/db/
 COPY packages/email/package.json ./packages/email/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/queue/package.json ./packages/queue/
 COPY packages/redis/package.json ./packages/redis/
+COPY packages/sdk/package.json ./packages/sdk/
 COPY packages/shared/package.json ./packages/shared/
-COPY packages/ssh-bastion/package.json ./packages/ssh-bastion/
+COPY packages/sprites/package.json ./packages/sprites/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/test-utils/package.json ./packages/test-utils/
 

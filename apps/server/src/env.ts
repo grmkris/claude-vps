@@ -10,12 +10,15 @@ export const env = z
       .enum(["development", "production", "test"])
       .default("development"),
     REDIS_URL: z.string().min(1),
-    // Docker Engine
-    BOX_BASE_IMAGE: z.string().default("box-base:v1"),
-    // Email
+    SPRITES_TOKEN: z.string().min(1),
     INBOUND_EMAIL_API_KEY: z.string().min(1),
     INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
-    INTERNAL_API_KEY: z.string().min(32),
-    APP_ENV: z.enum(["dev", "prod"]).default("dev"),
+    APP_ENV: z.enum(["dev", "prod", "local"]).default("dev"),
+    BOX_AGENT_BINARY_URL: z.string().url().optional(),
   })
   .parse(bunEnv);
+
+// Default box-agent binary URL (GitHub releases)
+export const BOX_AGENT_BINARY_URL =
+  env.BOX_AGENT_BINARY_URL ||
+  "https://github.com/grmkris/vps-claude/releases/latest/download/box-agent-linux-x64";

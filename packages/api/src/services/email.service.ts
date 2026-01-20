@@ -10,7 +10,7 @@ import {
   type BoxEmailSettings,
 } from "@vps-claude/db";
 import { and, eq } from "drizzle-orm";
-import { Result, ok, err } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 import { randomBytes } from "node:crypto";
 
 export type EmailServiceError =
@@ -44,18 +44,19 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
 
   const getSettings = async (
     boxId: BoxId
-  ): Promise<BoxEmailSettings | undefined> => {
+  ): Promise<Result<BoxEmailSettings | null, EmailServiceError>> => {
     const result = await db.query.boxEmailSettings.findFirst({
       where: eq(boxEmailSettings.boxId, boxId),
     });
-    return result;
+    return ok(result ?? null);
   };
 
   const getOrCreateSettings = async (
     boxId: BoxId
   ): Promise<Result<BoxEmailSettings, EmailServiceError>> => {
-    const existing = await getSettings(boxId);
-    if (existing) return ok(existing);
+    const existingResult = await getSettings(boxId);
+    if (existingResult.isErr()) return err(existingResult.error);
+    if (existingResult.value) return ok(existingResult.value);
 
     const result = await db
       .insert(boxEmailSettings)
@@ -83,7 +84,7 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
     subject: string,
     body: string,
     inReplyTo?: { messageId: string; from: string; subject: string }
-  ): Promise<void> => {
+  ): Promise<Result<void, EmailServiceError>> => {
     await queueClient.sendEmailQueue.add("send", {
       boxId,
       to,
@@ -91,6 +92,7 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
       body,
       inReplyTo,
     });
+    return ok(undefined);
   };
 
   const storeInbound = async (
@@ -118,13 +120,13 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
 
   const queueDelivery = async (
     emailRecord: BoxEmail,
-    containerName: string,
+    spriteUrl: string,
     agentSecret: string
-  ): Promise<void> => {
+  ): Promise<Result<void, EmailServiceError>> => {
     await queueClient.deliverEmailQueue.add("deliver", {
       emailId: emailRecord.id,
       boxId: emailRecord.boxId,
-      containerName,
+      spriteUrl,
       agentSecret,
       email: {
         id: emailRecord.id,
@@ -142,6 +144,7 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
         receivedAt: emailRecord.receivedAt.toISOString(),
       },
     });
+    return ok(undefined);
   };
 
   return {
@@ -150,26 +153,27 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
     queueSendEmail,
     async getBoxByAgentSecret(
       agentSecret: string
-    ): Promise<SelectBoxSchema | null> {
+    ): Promise<Result<SelectBoxSchema | null, EmailServiceError>> {
       const settings = await db.query.boxEmailSettings.findFirst({
         where: eq(boxEmailSettings.agentSecret, agentSecret),
       });
 
-      if (!settings?.boxId) return null;
+      if (!settings?.boxId) return ok(null);
 
       const boxResult = await db.query.box.findFirst({
         where: eq(box.id, settings.boxId),
       });
 
-      return boxResult ?? null;
+      return ok(boxResult ?? null);
     },
 
     async updateSettings(
       boxId: BoxId,
       updates: { enabled?: boolean }
     ): Promise<Result<BoxEmailSettings, EmailServiceError>> {
-      const settings = await getSettings(boxId);
-      if (!settings) {
+      const settingsResult = await getSettings(boxId);
+      if (settingsResult.isErr()) return err(settingsResult.error);
+      if (!settingsResult.value) {
         return err({ type: "NOT_FOUND", message: "Email settings not found" });
       }
 
@@ -184,8 +188,8 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
     async listByBox(
       boxId: BoxId,
       options?: { status?: BoxEmail["status"]; limit?: number }
-    ): Promise<BoxEmail[]> {
-      return db.query.boxEmail.findMany({
+    ): Promise<Result<BoxEmail[], EmailServiceError>> {
+      const emails = await db.query.boxEmail.findMany({
         where: and(
           eq(boxEmail.boxId, boxId),
           eq(boxEmail.status, options?.status ?? "received")
@@ -193,20 +197,23 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
         orderBy: boxEmail.receivedAt,
         limit: options?.limit ?? 50,
       });
+      return ok(emails);
     },
 
-    async getById(emailId: BoxEmailId): Promise<BoxEmail | undefined> {
+    async getById(
+      emailId: BoxEmailId
+    ): Promise<Result<BoxEmail | null, EmailServiceError>> {
       const result = await db.query.boxEmail.findFirst({
         where: eq(boxEmail.id, emailId),
       });
-      return result ?? undefined;
+      return ok(result ?? null);
     },
 
     async updateStatus(
       emailId: BoxEmailId,
       status: BoxEmail["status"],
       errorMessage?: string
-    ): Promise<void> {
+    ): Promise<Result<void, EmailServiceError>> {
       const updates: Partial<BoxEmail> = { status };
       if (status === "delivered") {
         updates.deliveredAt = new Date();
@@ -215,6 +222,7 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
         updates.errorMessage = errorMessage;
       }
       await db.update(boxEmail).set(updates).where(eq(boxEmail.id, emailId));
+      return ok(undefined);
     },
 
     async processInbound(
@@ -231,15 +239,15 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
         return err({ type: "BOX_NOT_RUNNING", message: "Box is not running" });
       }
 
-      if (!boxResult.containerName) {
+      if (!boxResult.spriteUrl) {
         return err({
           type: "BOX_NOT_RUNNING",
-          message: "Box container not ready",
+          message: "Box not ready (no sprite URL)",
         });
       }
 
       const settingsResult = await getOrCreateSettings(boxResult.id);
-      if (!settingsResult.isOk()) return err(settingsResult.error);
+      if (settingsResult.isErr()) return err(settingsResult.error);
 
       const settings = settingsResult.value;
       if (!settings.enabled) {
@@ -252,11 +260,12 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
       const emailResult = await storeInbound(boxResult.id, email);
       if (emailResult.isErr()) return emailResult;
 
-      await queueDelivery(
+      const queueResult = await queueDelivery(
         emailResult.value,
-        boxResult.containerName,
+        boxResult.spriteUrl,
         settings.agentSecret
       );
+      if (queueResult.isErr()) return err(queueResult.error);
 
       return emailResult;
     },

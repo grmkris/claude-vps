@@ -8,7 +8,20 @@ import {
 } from "@vps-claude/shared/services.schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP } from "better-auth/plugins";
+import { apiKey, emailOTP } from "better-auth/plugins";
+
+// API Key permission types
+export const API_KEY_PERMISSIONS = {
+  box: ["create", "read", "delete", "deploy"],
+  secret: ["read", "create", "delete"],
+  skill: ["read", "create", "delete"],
+} as const;
+
+export type ApiKeyPermissions = {
+  box?: (typeof API_KEY_PERMISSIONS.box)[number][];
+  secret?: (typeof API_KEY_PERMISSIONS.secret)[number][];
+  skill?: (typeof API_KEY_PERMISSIONS.skill)[number][];
+};
 
 export interface AuthConfig {
   db: Database;
@@ -86,6 +99,25 @@ export const createAuth = (config: AuthConfig) => {
             default:
               throw new Error(`Unknown email type`);
           }
+        },
+      }),
+      apiKey({
+        defaultPrefix: "yoda_",
+        defaultKeyLength: 32,
+        enableSessionForAPIKeys: true,
+        enableMetadata: true,
+        apiKeyHeaders: ["x-api-key"],
+        rateLimit: {
+          enabled: true,
+          timeWindow: 60 * 1000, // 1 minute
+          maxRequests: 100,
+        },
+        permissions: {
+          defaultPermissions: {
+            box: ["read"],
+            secret: ["read"],
+            skill: ["read"],
+          },
         },
       }),
     ],

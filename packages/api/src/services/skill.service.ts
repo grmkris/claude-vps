@@ -1,9 +1,9 @@
-import type { Database } from "@vps-claude/db";
+import type { Database, SelectSkillSchema } from "@vps-claude/db";
 
-import { skill, type Skill } from "@vps-claude/db";
+import { skill } from "@vps-claude/db";
 import { type SkillId, type UserId } from "@vps-claude/shared";
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
-import { Result, ok, err } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 
 export type SkillServiceError =
   | { type: "NOT_FOUND"; message: string }
@@ -18,17 +18,20 @@ export function createSkillService({ deps }: { deps: SkillServiceDeps }) {
   const { db } = deps;
 
   return {
-    async list(userId: UserId): Promise<Skill[]> {
-      return db.query.skill.findMany({
+    async list(
+      userId: UserId
+    ): Promise<Result<SelectSkillSchema[], SkillServiceError>> {
+      const skills = await db.query.skill.findMany({
         where: or(isNull(skill.userId), eq(skill.userId, userId)),
         orderBy: skill.name,
       });
+      return ok(skills);
     },
 
     async getById(
       id: SkillId,
       userId: UserId
-    ): Promise<Result<Skill, SkillServiceError>> {
+    ): Promise<Result<SelectSkillSchema, SkillServiceError>> {
       const result = await db.query.skill.findFirst({
         where: and(
           eq(skill.id, id),
@@ -47,15 +50,19 @@ export function createSkillService({ deps }: { deps: SkillServiceDeps }) {
       return ok(result);
     },
 
-    async getByIds(ids: SkillId[], userId: UserId): Promise<Skill[]> {
-      if (ids.length === 0) return [];
+    async getByIds(
+      ids: SkillId[],
+      userId: UserId
+    ): Promise<Result<SelectSkillSchema[], SkillServiceError>> {
+      if (ids.length === 0) return ok([]);
 
-      return db.query.skill.findMany({
+      const skills = await db.query.skill.findMany({
         where: and(
           inArray(skill.id, ids),
           or(isNull(skill.userId), eq(skill.userId, userId))
         ),
       });
+      return ok(skills);
     },
 
     async create(
@@ -69,7 +76,7 @@ export function createSkillService({ deps }: { deps: SkillServiceDeps }) {
         pipPackages?: string[];
         skillMdContent?: string;
       }
-    ): Promise<Result<Skill, SkillServiceError>> {
+    ): Promise<Result<SelectSkillSchema, SkillServiceError>> {
       const existing = await db
         .select()
         .from(skill)
@@ -111,7 +118,7 @@ export function createSkillService({ deps }: { deps: SkillServiceDeps }) {
         pipPackages: string[];
         skillMdContent: string | null;
       }>
-    ): Promise<Result<Skill, SkillServiceError>> {
+    ): Promise<Result<SelectSkillSchema, SkillServiceError>> {
       const existing = await db.query.skill.findFirst({
         where: and(eq(skill.id, id), eq(skill.userId, userId)),
       });
@@ -177,7 +184,7 @@ export function createSkillService({ deps }: { deps: SkillServiceDeps }) {
         pipPackages: string[];
         skillMdContent?: string;
       }>
-    ): Promise<void> {
+    ): Promise<Result<void, SkillServiceError>> {
       for (const s of skills) {
         const existing = await db
           .select()
@@ -210,6 +217,7 @@ export function createSkillService({ deps }: { deps: SkillServiceDeps }) {
             .where(eq(skill.id, existing[0]!.id));
         }
       }
+      return ok(undefined);
     },
   };
 }

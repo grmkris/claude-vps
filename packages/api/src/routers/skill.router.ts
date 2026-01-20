@@ -3,6 +3,13 @@ import { SkillId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
+import {
+  SkillByIdOutput,
+  SkillCreateOutput,
+  SkillListOutput,
+  SkillUpdateOutput,
+  SuccessOutput,
+} from "./schemas";
 
 const slugSchema = z
   .string()
@@ -13,18 +20,28 @@ const slugSchema = z
   });
 
 export const skillRouter = {
-  list: protectedProcedure.handler(async ({ context }) => {
-    const userId = context.session.user.id;
-    const skills = await context.skillService.list(userId);
-    return { skills };
-  }),
+  list: protectedProcedure
+    .output(SkillListOutput)
+    .handler(async ({ context }) => {
+      const result = await context.skillService.list(context.session.user.id);
+      return result.match(
+        (skills) => ({ skills }),
+        (error) => {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: error.message,
+          });
+        }
+      );
+    }),
 
   byId: protectedProcedure
     .input(z.object({ id: SkillId }))
+    .output(SkillByIdOutput)
     .handler(async ({ context, input }) => {
-      const userId = context.session.user.id;
-      const result = await context.skillService.getById(input.id, userId);
-
+      const result = await context.skillService.getById(
+        input.id,
+        context.session.user.id
+      );
       return result.match(
         (skill) => ({ skill }),
         (error) => {
@@ -45,10 +62,12 @@ export const skillRouter = {
         skillMdContent: z.string().max(50000).optional(),
       })
     )
+    .output(SkillCreateOutput)
     .handler(async ({ context, input }) => {
-      const userId = context.session.user.id;
-      const result = await context.skillService.create(userId, input);
-
+      const result = await context.skillService.create(
+        context.session.user.id,
+        input
+      );
       return result.match(
         (skill) => ({ skill }),
         (error) => {
@@ -72,11 +91,14 @@ export const skillRouter = {
         skillMdContent: z.string().max(50000).nullable().optional(),
       })
     )
+    .output(SkillUpdateOutput)
     .handler(async ({ context, input }) => {
-      const userId = context.session.user.id;
       const { id, ...updates } = input;
-      const result = await context.skillService.update(id, userId, updates);
-
+      const result = await context.skillService.update(
+        id,
+        context.session.user.id,
+        updates
+      );
       return result.match(
         (skill) => ({ skill }),
         (error) => {
@@ -93,12 +115,14 @@ export const skillRouter = {
 
   delete: protectedProcedure
     .input(z.object({ id: SkillId }))
+    .output(SuccessOutput)
     .handler(async ({ context, input }) => {
-      const userId = context.session.user.id;
-      const result = await context.skillService.delete(input.id, userId);
-
+      const result = await context.skillService.delete(
+        input.id,
+        context.session.user.id
+      );
       return result.match(
-        () => ({ success: true }),
+        () => ({ success: true as const }),
         (error) => {
           if (error.type === "NOT_FOUND") {
             throw new ORPCError("NOT_FOUND", { message: error.message });

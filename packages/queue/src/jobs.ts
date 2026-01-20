@@ -14,7 +14,6 @@ export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;
 export const DeleteBoxJobData = z.object({
   boxId: BoxId,
   userId: UserId,
-  dockerContainerId: z.string(),
 });
 
 export type DeleteBoxJobData = z.infer<typeof DeleteBoxJobData>;
@@ -22,7 +21,7 @@ export type DeleteBoxJobData = z.infer<typeof DeleteBoxJobData>;
 export const DeliverEmailJobData = z.object({
   emailId: BoxEmailId,
   boxId: BoxId,
-  containerName: z.string(),
+  spriteUrl: z.string(),
   agentSecret: z.string(),
   email: z.object({
     id: z.string(),

@@ -44,12 +44,10 @@ describe("BoxService", () => {
         password: "password123",
       });
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value.name).toBe("Test Workspace");
-        expect(result.value.status).toBe("pending");
-        expect(result.value.subdomain).toMatch(/^test-workspace-[a-z0-9]{4}$/);
-      }
+      const box = result._unsafeUnwrap();
+      expect(box.name).toBe("Test Workspace");
+      expect(box.status).toBe("pending");
+      expect(box.subdomain).toMatch(/^test-workspace-[a-z0-9]{4}$/);
     });
 
     it("should reject duplicate box names", async () => {
@@ -66,17 +64,17 @@ describe("BoxService", () => {
       });
 
       expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe("ALREADY_EXISTS");
-      }
+      const error = result._unsafeUnwrapErr();
+      expect(error.type).toBe("ALREADY_EXISTS");
     });
   });
 
   describe("listByUser", () => {
     it("should return empty list for user with no boxes", async () => {
       const userId = testSetup.users.authenticated.id;
-      const boxes = await boxService.listByUser(userId);
+      const result = await boxService.listByUser(userId);
 
+      const boxes = result._unsafeUnwrap();
       expect(boxes).toEqual([]);
     });
 
@@ -92,8 +90,9 @@ describe("BoxService", () => {
         password: "password123",
       });
 
-      const boxes = await boxService.listByUser(userId);
+      const result = await boxService.listByUser(userId);
 
+      const boxes = result._unsafeUnwrap();
       expect(boxes).toHaveLength(2);
       expect(boxes.map((b) => b.name)).toContain("Box 1");
       expect(boxes.map((b) => b.name)).toContain("Box 2");
@@ -102,16 +101,16 @@ describe("BoxService", () => {
     it("should not return deleted boxes", async () => {
       const userId = testSetup.users.authenticated.id;
 
-      const result = await boxService.create(userId, {
+      const createResult = await boxService.create(userId, {
         name: "To Delete",
         password: "password123",
       });
 
-      if (result.isOk()) {
-        await boxService.delete(result.value.id, userId);
-      }
+      const created = createResult._unsafeUnwrap();
+      await boxService.delete(created.id, userId);
 
-      const boxes = await boxService.listByUser(userId);
+      const listResult = await boxService.listByUser(userId);
+      const boxes = listResult._unsafeUnwrap();
       expect(boxes).toHaveLength(0);
     });
   });
@@ -125,17 +124,17 @@ describe("BoxService", () => {
         password: "password123",
       });
 
-      expect(createResult.isOk()).toBe(true);
-      if (createResult.isOk()) {
-        const box = await boxService.getById(createResult.value.id);
-        expect(box).toBeDefined();
-        expect(box?.name).toBe("Find Me");
-      }
+      const created = createResult._unsafeUnwrap();
+      const boxResult = await boxService.getById(created.id);
+      const box = boxResult._unsafeUnwrap();
+      expect(box).toBeDefined();
+      expect(box?.name).toBe("Find Me");
     });
 
-    it("should return undefined for non-existent id", async () => {
-      const box = await boxService.getById(typeIdGenerator("box"));
-      expect(box).toBeUndefined();
+    it("should return null for non-existent id", async () => {
+      const result = await boxService.getById(typeIdGenerator("box"));
+      const box = result._unsafeUnwrap();
+      expect(box).toBeNull();
     });
   });
 
@@ -148,12 +147,11 @@ describe("BoxService", () => {
         password: "password123",
       });
 
-      expect(createResult.isOk()).toBe(true);
-      if (createResult.isOk()) {
-        await boxService.updateStatus(createResult.value.id, "running");
-        const box = await boxService.getById(createResult.value.id);
-        expect(box?.status).toBe("running");
-      }
+      const created = createResult._unsafeUnwrap();
+      await boxService.updateStatus(created.id, "running");
+      const boxResult = await boxService.getById(created.id);
+      const box = boxResult._unsafeUnwrap();
+      expect(box?.status).toBe("running");
     });
 
     it("should update error message when status is error", async () => {
@@ -164,17 +162,12 @@ describe("BoxService", () => {
         password: "password123",
       });
 
-      expect(createResult.isOk()).toBe(true);
-      if (createResult.isOk()) {
-        await boxService.updateStatus(
-          createResult.value.id,
-          "error",
-          "Deployment failed"
-        );
-        const box = await boxService.getById(createResult.value.id);
-        expect(box?.status).toBe("error");
-        expect(box?.errorMessage).toBe("Deployment failed");
-      }
+      const created = createResult._unsafeUnwrap();
+      await boxService.updateStatus(created.id, "error", "Deployment failed");
+      const boxResult = await boxService.getById(created.id);
+      const box = boxResult._unsafeUnwrap();
+      expect(box?.status).toBe("error");
+      expect(box?.errorMessage).toBe("Deployment failed");
     });
   });
 });

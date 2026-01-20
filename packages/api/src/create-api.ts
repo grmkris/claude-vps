@@ -24,7 +24,6 @@ export interface CreateApiOptions {
   auth: Auth;
   corsOrigin: string;
   agentsDomain: string;
-  internalApiKey: string;
   inboundWebhookSecret?: string;
 }
 
@@ -34,7 +33,6 @@ export function createApi({
   auth,
   corsOrigin,
   agentsDomain,
-  internalApiKey,
   inboundWebhookSecret,
 }: CreateApiOptions) {
   const app = new Hono<{ Variables: HonoVariables }>();
@@ -166,7 +164,7 @@ export function createApi({
   });
 
   app.use("/*", async (c, next) => {
-    const config = { agentsDomain, internalApiKey };
+    const config = { agentsDomain };
     const context = await createContext({ context: c, services, auth, config });
 
     const rpcResult = await rpcHandler.handle(c.req.raw, {
@@ -178,9 +176,7 @@ export function createApi({
       return new Response(rpcResult.response.body, rpcResult.response);
     }
 
-    // Handle platform routes (ssh-bastion, INTERNAL_API_KEY auth)
-    // Handle box routes (box-agent, per-box token auth)
-    if (c.req.path.startsWith("/platform/") || c.req.path.startsWith("/box/")) {
+    if (c.req.path.startsWith("/box/")) {
       const apiResult = await apiHandler.handle(c.req.raw, {
         prefix: "/",
         context,

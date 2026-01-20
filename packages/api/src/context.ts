@@ -1,23 +1,26 @@
 import type { Auth } from "@vps-claude/auth";
+import type { SpritesClient } from "@vps-claude/sprites";
 import type { Context as HonoContext } from "hono";
 
 import { UserId } from "@vps-claude/shared";
 
+import type { ApiKeyService } from "./services/api-key.service";
 import type { BoxService } from "./services/box.service";
 import type { EmailService } from "./services/email.service";
 import type { SecretService } from "./services/secret.service";
 import type { SkillService } from "./services/skill.service";
 
 export interface Services {
+  apiKeyService: ApiKeyService;
   boxService: BoxService;
   emailService: EmailService;
   secretService: SecretService;
   skillService: SkillService;
+  spritesClient: SpritesClient;
 }
 
 export interface ApiConfig {
   agentsDomain: string;
-  internalApiKey: string;
 }
 
 export type CreateContextOptions = {
@@ -36,6 +39,7 @@ export async function createContext({
   const session = await auth.api.getSession({
     headers: context.req.raw.headers,
   });
+
   const typedSession = session
     ? {
         ...session,
@@ -45,12 +49,12 @@ export async function createContext({
         },
       }
     : null;
+
   return {
     session: typedSession,
     config,
-    internalApiKey: config.internalApiKey,
     authorizationHeader: context.req.header("Authorization"),
-    boxToken: undefined as string | undefined, // Added by boxProcedure middleware
+    boxToken: context.req.header("X-Box-Secret"),
     ...services,
   };
 }

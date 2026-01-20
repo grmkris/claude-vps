@@ -15,6 +15,13 @@
       "when": 1768142346110,
       "tag": "0001_wooden_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768317092515,
+      "tag": "0002_curved_white_queen",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ENVIRONMENTS = ["dev", "prod"] as const;
+export const ENVIRONMENTS = ["dev", "prod", "local"] as const;
 
 export const Environment = z.enum(ENVIRONMENTS);
 export type Environment = z.infer<typeof Environment>;
@@ -28,6 +28,17 @@ export const SERVICE_URLS: Record<
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     agentsDomain: "agents.grm.wtf",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
+    cookieDomain: "localhost",
+  },
+  local: {
+    auth: "http://api.localhost:33000",
+    authInternal: "http://api.localhost:33000/api/auth",
+    api: "http://api.localhost:33000",
+    apiInternal: "http://api.localhost:33000",
+    web: "http://app.localhost:33001",
+    emailFrom: "VPS Claude <agent@inbnd.dev>",
+    agentsDomain: "agents.localhost",
+    sshBastion: "http://ssh.localhost:2222",
     cookieDomain: "localhost",
   },
   prod: {

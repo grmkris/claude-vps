@@ -1,9 +1,9 @@
-import type { Database, UserSecret } from "@vps-claude/db";
+import type { Database, SelectUserSecretSchema } from "@vps-claude/db";
 import type { UserId } from "@vps-claude/shared";
 
 import { userSecret } from "@vps-claude/db";
 import { and, eq } from "drizzle-orm";
-import { Result, ok, err } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 
 export type SecretServiceError =
   | { type: "NOT_FOUND"; message: string }
@@ -17,12 +17,14 @@ export function createSecretService({ deps }: { deps: SecretServiceDeps }) {
   const { db } = deps;
 
   return {
-    async list(userId: UserId): Promise<UserSecret[]> {
+    async list(
+      userId: UserId
+    ): Promise<Result<SelectUserSecretSchema[], SecretServiceError>> {
       const secrets = await db.query.userSecret.findMany({
         where: eq(userSecret.userId, userId),
         orderBy: userSecret.key,
       });
-      return secrets;
+      return ok(secrets);
     },
 
     async set(
@@ -64,7 +66,9 @@ export function createSecretService({ deps }: { deps: SecretServiceDeps }) {
       return ok(undefined);
     },
 
-    async getAll(userId: UserId): Promise<Record<string, string>> {
+    async getAll(
+      userId: UserId
+    ): Promise<Result<Record<string, string>, SecretServiceError>> {
       const secrets = await db
         .select({ key: userSecret.key, value: userSecret.value })
         .from(userSecret)
@@ -74,7 +78,7 @@ export function createSecretService({ deps }: { deps: SecretServiceDeps }) {
       for (const s of secrets) {
         result[s.key] = s.value;
       }
-      return result;
+      return ok(result);
     },
   };
 }

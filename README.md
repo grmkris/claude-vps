@@ -2,77 +2,70 @@
 
 > AI-powered development environments as a service
 
-**🚀 Now powered by Docker Engine!** We've migrated from Coolify to direct Docker Engine API for faster deployments, better resource management, and enhanced security. See [DOCKER_ENGINE_MIGRATION.md](./DOCKER_ENGINE_MIGRATION.md) for details.
-
-VPS-Claude is a platform that creates isolated, containerized development environments ("boxes") with built-in Claude AI integration. Each box comes pre-configured with VS Code, SSH access, and an AI agent that can autonomously process emails and help with development tasks.
+VPS-Claude is a platform that creates isolated development environments ("boxes") with built-in Claude AI integration. Each box runs on Sprites (Fly.io) and comes pre-configured with VS Code, and an AI agent that can autonomously process emails and help with development tasks.
 
 ## What is VPS-Claude?
 
-Traditional development environments require manual setup, configuration, and maintenance. VPS-Claude automates this by deploying fully-configured containers on-demand, each with:
+Traditional development environments require manual setup, configuration, and maintenance. VPS-Claude automates this by deploying fully-configured VMs on-demand, each with:
 
 - **Code-Server**: Browser-based VS Code IDE with Claude Code CLI pre-installed
 - **Email-to-AI**: Inbound emails trigger autonomous Claude AI sessions that can read code, make changes, and respond
-- **SSH Access**: Secure shell access via a reverse proxy bastion
 - **Custom Skills**: Install package bundles (apt/npm/pip) and configuration files
 - **User Secrets**: Environment variables injected across all your boxes
-- **Isolated Environments**: Each box runs in its own container with persistent storage
-- **Resource Plans**: Choose from Hobby (0.5 CPU, 512MB), Pro (1 CPU, 2GB), or Enterprise (2 CPU, 4GB)
-- **Security Hardened**: Read-only root filesystem, dropped capabilities, seccomp filters, AppArmor
+- **Isolated Environments**: Each box runs as its own VM with persistent storage
+- **Auto-Sleep**: Boxes automatically sleep when idle and wake on demand
 
-Boxes are deployed via Docker Engine API and accessible through unique subdomains (e.g., `my-project.agents.claude-vps.grm.wtf`).
+Boxes are deployed via Sprites (Fly.io) API and accessible through unique URLs.
 
 ## How It Works
 
 ```
 1. User creates box via web UI
-   ↓ (name, password, skills)
+   | (name, password, skills)
 
-2. Deployment worker creates container
-   ↓ (Docker Engine API + security hardening)
+2. Deployment worker creates VM
+   | (Sprites API)
 
-3. Container starts with mounted volumes
-   ↓ (SSH :22, code-server :8080, box-agent :9999)
+3. Sprite starts with environment
+   | (code-server :8080, box-agent :9999)
 
-4. User accesses via SSH or HTTPS
-   ↓ (ssh my-project@ssh.grm.wtf)
+4. User accesses via HTTPS
+   | (https://{subdomain}.sprites.dev)
 
-5. Email arrives → AI processes → responds
-   ↓ (webhook → box-agent → Claude session → reply)
+5. Email arrives -> AI processes -> responds
+   | (webhook -> box-agent -> Claude session -> reply)
 ```
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
-│   Web UI    │────▶│  API Server  │────▶│ Docker Engine API│
-│ (Next.js)   │     │   (Hono)     │     │                  │
-└─────────────┘     └──────┬───────┘     └────────┬─────────┘
-                           │                      │
-                    ┌──────▼────────┐     ┌───────▼────────┐
-                    │  BullMQ Queue │     │   Box Fleet    │
-                    │   (Workers)   │     │  (Containers)  │
-                    └───────────────┘     └───────┬────────┘
-                                                  │
-                           ┌──────────────────────┼────────┐
-                           │                      │        │
-                     ┌─────▼─────┐          ┌────▼────┐   │
-                     │SSH Bastion│          │Box-Agent│   │
-                     │ (sshpiper)│          │ (Email) │   │
-                     └───────────┘          └─────────┘   │
-                                                   ┌───────▼──────┐
-                                                   │ code-server  │
-                                                   │ (VS Code)    │
-                                                   └──────────────┘
++--------------+     +---------------+     +----------------+
+|   Web UI     |---->|  API Server   |---->|  Sprites API   |
+|  (Next.js)   |     |    (Hono)     |     |   (Fly.io)     |
++--------------+     +-------+-------+     +--------+-------+
+                             |                      |
+                     +-------v--------+     +-------v--------+
+                     | BullMQ Queue   |     |   Box Fleet    |
+                     |   (Workers)    |     |   (Sprites)    |
+                     +----------------+     +--------+-------+
+                                                    |
+                                            +-------v-------+
+                                            |  Box-Agent    |
+                                            |   (Email)     |
+                                            +-------+-------+
+                                            +-------v-------+
+                                            | code-server   |
+                                            |  (VS Code)    |
+                                            +---------------+
 ```
 
 **Core Components:**
 
 - **apps/web**: Next.js frontend for box management
 - **apps/server**: Hono API server with ORPC endpoints
-- **apps/box-agent**: In-container service handling email → AI integration
+- **apps/box-agent**: In-VM service handling email -> AI integration
 - **packages/api**: Routers, services, and BullMQ workers
-- **packages/ssh-bastion**: sshpiper reverse proxy for SSH routing
-- **packages/docker-engine**: Docker Engine API client + container management
+- **packages/sprites**: Sprites (Fly.io) client for VM deployment
 - **packages/db**: Drizzle ORM schema (PostgreSQL)
 - **packages/queue**: BullMQ job definitions
 - **packages/email**: Resend email client
@@ -82,11 +75,11 @@ Boxes are deployed via Docker Engine API and accessible through unique subdomain
 ### Platform Features
 
 - **One-Click Deployment**: Create boxes with custom skills and secrets
-- **Email Integration**: Receive emails in-container, process with Claude AI
-- **SSH Bastion**: Route connections by subdomain (e.g., `ssh my-box@ssh.domain`)
+- **Email Integration**: Receive emails in-box, process with Claude AI
 - **Skills System**: Pre-install packages and configuration files
 - **User Secrets**: Inject environment variables across all boxes
 - **Status Tracking**: Monitor deployment and health
+- **Auto-Sleep/Wake**: Sprites automatically manage VM lifecycle
 
 ### Tech Stack
 
@@ -101,13 +94,15 @@ Boxes are deployed via Docker Engine API and accessible through unique subdomain
 - **Redis** - BullMQ job queue
 - **Better-Auth** - Authentication
 - **Turborepo** - Monorepo build system
+- **Sprites (Fly.io)** - VM deployment
 
 ## Getting Started
 
 ### Prerequisites
 
 - Bun runtime
-- Docker Engine (for container deployment and local PostgreSQL)
+- Sprites token from https://sprites.dev (for box deployment)
+- Docker (for local PostgreSQL only)
 
 ### Installation
 
@@ -140,8 +135,7 @@ Copy `.env.example` to `.env` in `apps/server/` and `apps/web/`:
 
 - `DATABASE_URL` - PostgreSQL connection
 - `REDIS_URL` - Redis connection (BullMQ)
-- `BOX_BASE_IMAGE` - Docker base image for boxes
-- `INTERNAL_API_KEY` - Platform service authentication
+- `SPRITES_TOKEN` - Sprites API token from https://sprites.dev
 - `RESEND_API_KEY` - Email service
 - `ANTHROPIC_API_KEY` - Claude AI (for box-agent)
 
@@ -151,22 +145,21 @@ See `.env.example` files for complete list.
 
 ```
 vps-claude/
-├── apps/
-│   ├── web/           # Next.js frontend (port 33001)
-│   ├── server/        # Hono API server (port 33000)
-│   └── box-agent/     # In-container agent (email, AI sessions)
-├── packages/
-│   ├── api/           # ORPC routers, services, workers
-│   ├── auth/          # better-auth configuration
-│   ├── db/            # Drizzle schema + client
-│   ├── ssh-bastion/   # SSH reverse proxy (sshpiper sync)
-│   ├── docker-engine/ # Docker Engine API client + base image
-│   ├── queue/         # BullMQ job definitions
-│   ├── email/         # Email client (Resend)
-│   ├── logger/        # Pino logger factory
-│   ├── redis/         # Redis client factory
-│   ├── shared/        # TypeIDs, SERVICE_URLS, constants
-│   └── config/        # Shared tsconfig
++-- apps/
+|   +-- web/           # Next.js frontend (port 33001)
+|   +-- server/        # Hono API server (port 33000)
+|   +-- box-agent/     # In-VM agent (email, AI sessions)
++-- packages/
+    +-- api/           # ORPC routers, services, workers
+    +-- auth/          # better-auth configuration
+    +-- db/            # Drizzle schema + client
+    +-- sprites/       # Sprites (Fly.io) client
+    +-- queue/         # BullMQ job definitions
+    +-- email/         # Email client (Resend)
+    +-- logger/        # Pino logger factory
+    +-- redis/         # Redis client factory
+    +-- shared/        # TypeIDs, SERVICE_URLS, constants
+    +-- config/        # Shared tsconfig
 ```
 
 ## Available Scripts
@@ -203,16 +196,13 @@ bun run db:studio        # Open Drizzle Studio
 For detailed documentation on architecture, API structure, and implementation patterns, see:
 
 - **[CLAUDE.md](./CLAUDE.md)** - Comprehensive architecture guide
-  - Box lifecycle (creation → deployment → running)
+  - Box lifecycle (creation -> deployment -> running)
   - Email system architecture
   - Box-agent internals
-  - SSH bastion & networking
   - Skills system
-  - Three-tier API authentication
+  - Two-tier API authentication
   - Database schema
   - Workers & background jobs
-
-- **[packages/ssh-bastion/README.md](./packages/ssh-bastion/README.md)** - SSH bastion setup and deployment
 
 ## Contributing
 

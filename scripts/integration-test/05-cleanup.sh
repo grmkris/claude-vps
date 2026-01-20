@@ -2,60 +2,41 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
 
-# Load environment
-source config/.env.test
-
-echo "=== Cleaning Up Test Environment ==="
+echo "=== Cleaning Up Integration Test ==="
 echo ""
 
-# Stop and remove docker-compose services
-echo "Stopping docker-compose services..."
-docker-compose -f config/docker-compose.test.yml down -v
-echo "✓ Services stopped"
+# 1. Stop and remove Traefik
+echo "Stopping Traefik..."
+docker stop traefik 2>/dev/null || true
+docker rm traefik 2>/dev/null || true
+echo "✓ Traefik removed"
 
-# Remove test containers
+# 2. Remove box containers
 echo ""
-echo "Removing test containers..."
-TEST_CONTAINERS=$(docker ps -aq --filter "name=test-box-" || true)
-if [ -n "$TEST_CONTAINERS" ]; then
-  echo "$TEST_CONTAINERS" | xargs docker rm -f
-  echo "✓ Test containers removed"
+echo "Removing box containers..."
+BOX_CONTAINERS=$(docker ps -aq --filter "label=app=box" 2>/dev/null || true)
+if [ -n "$BOX_CONTAINERS" ]; then
+  echo "$BOX_CONTAINERS" | xargs docker rm -f
+  echo "✓ Box containers removed"
 else
-  echo "✓ No test containers to remove"
+  echo "✓ No box containers found"
 fi
 
-# Remove test networks
+# 3. Note about stopping local server
 echo ""
-echo "Removing test networks..."
-TEST_NETWORKS=$(docker network ls --filter "name=box-test-" -q || true)
-if [ -n "$TEST_NETWORKS" ]; then
-  echo "$TEST_NETWORKS" | xargs docker network rm
-  echo "✓ Test networks removed"
-else
-  echo "✓ No test networks to remove"
-fi
+echo "⚠ Local server (bun run dev) still running"
+echo "  Stop manually if needed: pkill -f 'bun.*apps/server'"
 
-# Optional: Remove traefik-test network
+# 4. Clean storage (optional)
 echo ""
-read -p "Remove traefik-test network? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-  docker network rm traefik-test 2>/dev/null && echo "✓ traefik-test network removed" || echo "✓ Network already removed"
-fi
-
-# Clean up test directories
-echo ""
-echo "Cleaning up test directories..."
-if [ -d "$BOX_BASE_DIR" ]; then
-  sudo rm -rf "$BOX_BASE_DIR"
-  echo "✓ Removed: $BOX_BASE_DIR"
+read -p "Clean storage directory /mnt/devboxes? (y/N): " CLEAN_STORAGE
+if [ "${CLEAN_STORAGE,,}" = "y" ]; then
+  rm -rf /mnt/devboxes/*
+  echo "✓ Storage cleaned"
 else
-  echo "✓ Directory already clean"
+  echo "✓ Storage preserved"
 fi
 
 echo ""
 echo "=== Cleanup Complete ==="
-echo ""
-echo "To run tests again, start with ./00-setup.sh"

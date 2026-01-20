@@ -1,0 +1,25 @@
+{
+  "name": "@vps-claude/sdk",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test",
+    "test:e2e": "bun test __tests__/e2e.test.ts",
+    "typecheck": "tsgo --noEmit",
+    "create-integration-box": "bun run scripts/create-integration-box.ts"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@vps-claude/api": "workspace:*",
+    "@vps-claude/auth": "workspace:*",
+    "better-auth": "catalog:"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "catalog:",
+    "@vps-claude/config": "workspace:*"
+  }
+}

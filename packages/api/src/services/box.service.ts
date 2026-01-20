@@ -1,11 +1,11 @@
-import type { Database } from "@vps-claude/db";
+import type { Database, SelectBoxSchema } from "@vps-claude/db";
 import type { QueueClient } from "@vps-claude/queue";
 
-import { box, boxSkill, type Box } from "@vps-claude/db";
-import { type UserId, BoxId, type SkillId } from "@vps-claude/shared";
+import { box, boxSkill } from "@vps-claude/db";
+import { type BoxId, type SkillId, type UserId } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
 import { eq } from "drizzle-orm";
-import { Result, ok, err } from "neverthrow";
+import { type Result, err, ok } from "neverthrow";
 
 export type BoxServiceError =
   | { type: "NOT_FOUND"; message: string }
@@ -21,20 +21,25 @@ interface BoxServiceDeps {
 export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
   const { db, queueClient } = deps;
 
-  const getById = async (id: BoxId): Promise<Box | undefined> => {
+  const getById = async (
+    id: BoxId
+  ): Promise<Result<SelectBoxSchema | null, BoxServiceError>> => {
     const result = await db.query.box.findFirst({
       where: eq(box.id, id),
     });
-    return result;
+    return ok(result ?? null);
   };
   return {
     getById,
 
-    async listByUser(userId: UserId): Promise<Box[]> {
-      return db.query.box.findMany({
+    async listByUser(
+      userId: UserId
+    ): Promise<Result<SelectBoxSchema[], BoxServiceError>> {
+      const boxes = await db.query.box.findMany({
         where: eq(box.userId, userId),
         orderBy: box.createdAt,
       });
+      return ok(boxes);
     },
 
     async create(
@@ -46,7 +51,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         telegramBotToken?: string;
         telegramChatId?: string;
       }
-    ): Promise<Result<Box, BoxServiceError>> {
+    ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
         where: eq(box.name, input.name),
       });
@@ -102,8 +107,10 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       id: BoxId,
       userId: UserId,
       password: string
-    ): Promise<Result<{ success: true }, BoxServiceError>> {
-      const boxRecord = await getById(id);
+    ): Promise<Result<void, BoxServiceError>> {
+      const boxResult = await getById(id);
+      if (boxResult.isErr()) return err(boxResult.error);
+      const boxRecord = boxResult.value;
 
       if (!boxRecord) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
@@ -135,14 +142,16 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         skills: skills.map((s) => s.skillId),
       });
 
-      return ok({ success: true });
+      return ok(undefined);
     },
 
     async delete(
       id: BoxId,
       userId: UserId
-    ): Promise<Result<{ success: true }, BoxServiceError>> {
-      const boxRecord = await getById(id);
+    ): Promise<Result<void, BoxServiceError>> {
+      const boxResult = await getById(id);
+      if (boxResult.isErr()) return err(boxResult.error);
+      const boxRecord = boxResult.value;
 
       if (!boxRecord) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
@@ -152,28 +161,25 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
       }
 
-      const dockerContainerId = boxRecord.dockerContainerId;
-
-      // Hard delete - cascades to boxEmail, boxEmailSettings, boxSkill
       await db.delete(box).where(eq(box.id, id));
 
-      // Queue Docker cleanup async (fire-and-forget)
-      if (dockerContainerId) {
+      if (boxRecord.spriteName) {
         await queueClient.deleteQueue.add("delete", {
           boxId: id,
           userId: boxRecord.userId,
-          dockerContainerId,
         });
       }
 
-      return ok({ success: true });
+      return ok(undefined);
     },
 
     async updateTelegramConfig(
       boxId: BoxId,
       config: { telegramBotToken?: string; telegramChatId?: string }
     ): Promise<Result<void, BoxServiceError>> {
-      const existing = await getById(boxId);
+      const existingResult = await getById(boxId);
+      if (existingResult.isErr()) return err(existingResult.error);
+      const existing = existingResult.value;
 
       if (!existing) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
@@ -206,9 +212,9 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
     async updateStatus(
       id: BoxId,
-      status: Box["status"],
+      status: SelectBoxSchema["status"],
       errorMessage?: string
-    ): Promise<void> {
+    ): Promise<Result<void, BoxServiceError>> {
       await db
         .update(box)
         .set({
@@ -216,51 +222,20 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           errorMessage: errorMessage ?? null,
         })
         .where(eq(box.id, id));
+      return ok(undefined);
     },
 
-    async setDockerInfo(
+    async setSpriteInfo(
       id: BoxId,
-      dockerContainerId: string,
-      containerName: string,
-      imageName: string
-    ): Promise<void> {
-      await db
-        .update(box)
-        .set({ dockerContainerId, containerName, imageName })
-        .where(eq(box.id, id));
-    },
-
-    async setContainerInfo(
-      id: BoxId,
-      containerName: string,
+      spriteName: string,
+      spriteUrl: string,
       passwordHash: string
-    ): Promise<void> {
+    ): Promise<Result<void, BoxServiceError>> {
       await db
         .update(box)
-        .set({ containerName, passwordHash })
+        .set({ spriteName, spriteUrl, passwordHash })
         .where(eq(box.id, id));
-    },
-
-    async getBySubdomain(subdomain: string): Promise<Box | undefined> {
-      const result = await db.query.box.findFirst({
-        where: eq(box.subdomain, subdomain),
-      });
-      return result;
-    },
-
-    async listRunningBoxes(): Promise<
-      Array<{ subdomain: string; containerName: string }>
-    > {
-      const result = await db.query.box.findMany({
-        where: eq(box.status, "running"),
-      });
-
-      return result
-        .filter((b) => b.containerName !== null)
-        .map((b) => ({
-          subdomain: b.subdomain,
-          containerName: b.containerName!,
-        }));
+      return ok(undefined);
     },
   };
 }

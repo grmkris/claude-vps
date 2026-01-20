@@ -14,8 +14,7 @@ const requireAuth = o.middleware(async ({ context, next }) => {
     throw new ORPCError("UNAUTHORIZED");
   }
 
-  // let's parse userid, and orgId to typeId
-  const userId = UserId.parse(context.session?.user.id);
+  const userId = UserId.parse(context.session.user.id);
   const typedSession = {
     ...context.session,
     user: {
@@ -28,3 +27,15 @@ const requireAuth = o.middleware(async ({ context, next }) => {
 });
 
 export const protectedProcedure = publicProcedure.use(requireAuth);
+
+/**
+ * Middleware for box-agent requests authenticated via X-Box-Secret header.
+ */
+const requireBoxAuth = o.middleware(async ({ context, next }) => {
+  if (!context.boxToken) {
+    throw new ORPCError("UNAUTHORIZED", { message: "Missing box token" });
+  }
+  return next({ context });
+});
+
+export const boxProcedure = publicProcedure.use(requireBoxAuth);

@@ -13,7 +13,9 @@ export type SelectBoxSchema = z.infer<typeof SelectBoxSchema>;
 export const InsertBoxSchema = createInsertSchema(box).omit({
   id: true,
   status: true,
-  dockerContainerId: true,
+  spriteName: true,
+  spriteUrl: true,
+  lastCheckpointId: true,
   errorMessage: true,
   lastHealthCheck: true,
   createdAt: true,

@@ -1,9 +1,9 @@
 import { createApi } from "@vps-claude/api/create-api";
+import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
 import { createSecretService } from "@vps-claude/api/services/secret.service";
 import { createSkillService } from "@vps-claude/api/services/skill.service";
-import { startMetricsWorker } from "@vps-claude/api/workers/collect-metrics.worker";
 import {
   createDeployWorker,
   createDeleteWorker,
@@ -12,17 +12,16 @@ import {
   createEmailDeliveryWorker,
   createEmailSendWorker,
 } from "@vps-claude/api/workers/email-delivery.worker";
-import { startHealthCheckWorker } from "@vps-claude/api/workers/health-check.worker";
 import { createAuth } from "@vps-claude/auth";
 import { createDb, runMigrations } from "@vps-claude/db";
-import { DockerEngineClient } from "@vps-claude/docker-engine";
 import { createEmailClient } from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
 import { createQueueClient } from "@vps-claude/queue";
 import { createRedisClient } from "@vps-claude/redis";
 import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
+import { createSpritesClient } from "@vps-claude/sprites";
 
-import { env } from "./env";
+import { env, BOX_AGENT_BINARY_URL } from "./env";
 
 const logger = createLogger({ appName: "vps-claude-server" });
 
@@ -41,25 +40,33 @@ const emailClient = createEmailClient({
   logger,
 });
 
-const dockerClient = new DockerEngineClient({
-  agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
+const spritesClient = createSpritesClient({
+  token: env.SPRITES_TOKEN,
 });
+
+const trustedOrigins = [
+  SERVICE_URLS[env.APP_ENV].web,
+  ...(env.APP_ENV === "dev" || env.APP_ENV === "local"
+    ? [SERVICE_URLS[env.APP_ENV].api]
+    : []),
+];
 
 const auth = createAuth({
   db,
   secret: env.BETTER_AUTH_SECRET,
   baseURL: SERVICE_URLS[env.APP_ENV].auth,
-  trustedOrigins: [SERVICE_URLS[env.APP_ENV].web],
+  trustedOrigins,
   emailClient,
   appEnv: env.APP_ENV,
 });
 
+const apiKeyService = createApiKeyService({ deps: { auth } });
 const boxService = createBoxService({ deps: { db, queueClient } });
 const emailService = createEmailService({ deps: { db, queueClient } });
 const secretService = createSecretService({ deps: { db } });
 const skillService = createSkillService({ deps: { db } });
 
-await skillService.seedGlobalSkills([
+const seedResult = await skillService.seedGlobalSkills([
   {
     slug: "hello-world",
     name: "Hello World",
@@ -120,13 +127,22 @@ Use ImageMagick and libvips for image manipulation.
 `,
   },
 ]);
-logger.info({ msg: "Global skills seeded" });
+if (seedResult.isErr()) {
+  logger.error({
+    msg: "Failed to seed global skills",
+    error: seedResult.error.message,
+  });
+} else {
+  logger.info({ msg: "Global skills seeded" });
+}
 
 const services = {
+  apiKeyService,
   boxService,
   emailService,
   secretService,
   skillService,
+  spritesClient,
 };
 
 const deployWorker = createDeployWorker({
@@ -135,27 +151,22 @@ const deployWorker = createDeployWorker({
     emailService,
     secretService,
     skillService,
-    dockerClient,
+    spritesClient,
     redis,
     logger,
     serverUrl: SERVICE_URLS[env.APP_ENV].api,
-    baseImageName: env.BOX_BASE_IMAGE || "box-base:v1",
+    boxAgentBinaryUrl: BOX_AGENT_BINARY_URL,
   },
 });
 const deleteWorker = createDeleteWorker({
-  deps: { boxService, dockerClient, redis, logger },
+  deps: { boxService, spritesClient, redis, logger },
 });
-
-// Start background monitoring workers
-startHealthCheckWorker({ dockerClient, db, logger });
-startMetricsWorker({ dockerClient, db, logger });
 
 const emailDeliveryWorker = createEmailDeliveryWorker({
   deps: {
     emailService,
     redis,
     logger,
-    dockerNetwork: env.APP_ENV === "prod" ? "traefik-public" : undefined,
   },
 });
 const emailSendWorker = createEmailSendWorker({
@@ -181,7 +192,6 @@ const { app } = createApi({
   auth,
   corsOrigin: SERVICE_URLS[env.APP_ENV].web,
   agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
-  internalApiKey: env.INTERNAL_API_KEY,
   inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET,
 });
 

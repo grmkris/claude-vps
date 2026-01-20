@@ -24,7 +24,6 @@ describe("BoxService", () => {
       password: "password123",
     });
 
-    expect(result.isOk()).toBe(true);
     const box = result._unsafeUnwrap();
     expect(box.status).toBe("pending");
     expect(box.name).toBe("test-box-1");
@@ -57,7 +56,8 @@ describe("BoxService", () => {
       password: "password123",
     });
 
-    const boxes = await boxService.listByUser(testEnv.users.authenticated.id);
+    const result = await boxService.listByUser(testEnv.users.authenticated.id);
+    const boxes = result._unsafeUnwrap();
 
     expect(boxes.length).toBeGreaterThan(0);
     // All boxes should belong to authenticated user
@@ -73,7 +73,8 @@ describe("BoxService", () => {
     );
     const created = createResult._unsafeUnwrap();
 
-    const box = await boxService.getById(created.id);
+    const boxResult = await boxService.getById(created.id);
+    const box = boxResult._unsafeUnwrap();
 
     expect(box).toBeDefined();
     expect(box?.id).toBe(created.id);
@@ -93,10 +94,11 @@ describe("BoxService", () => {
       "password123"
     );
 
-    expect(deployResult.isOk()).toBe(true);
+    deployResult._unsafeUnwrap();
 
     // Verify status changed to deploying
-    const updated = await boxService.getById(box.id);
+    const updatedResult = await boxService.getById(box.id);
+    const updated = updatedResult._unsafeUnwrap();
     expect(updated?.status).toBe("deploying");
   });
 
@@ -157,11 +159,12 @@ describe("BoxService", () => {
       testEnv.users.authenticated.id
     );
 
-    expect(deleteResult.isOk()).toBe(true);
+    deleteResult._unsafeUnwrap();
 
-    // Verify status is deleted
-    const deleted = await boxService.getById(box.id);
-    expect(deleted?.status).toBe("deleted");
+    // Verify box is deleted (getById returns null)
+    const deletedResult = await boxService.getById(box.id);
+    const deleted = deletedResult._unsafeUnwrap();
+    expect(deleted).toBeNull();
   });
 
   test("list excludes deleted boxes", async () => {
@@ -175,7 +178,10 @@ describe("BoxService", () => {
     await boxService.delete(box.id, testEnv.users.authenticated.id);
 
     // List should not include deleted box
-    const boxes = await boxService.listByUser(testEnv.users.authenticated.id);
+    const listResult = await boxService.listByUser(
+      testEnv.users.authenticated.id
+    );
+    const boxes = listResult._unsafeUnwrap();
     const deletedBox = boxes.find((b) => b.id === box.id);
     expect(deletedBox).toBeUndefined();
   });
