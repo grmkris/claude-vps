@@ -10,7 +10,68 @@ Full migration of vps-claude API to pure Effect-TS stack.
 - **Database**: @effect/sql-pg, @effect/sql-drizzle, drizzle-orm (existing schemas)
 - **Schema Gen**: @handfish/drizzle-effect
 - **Testing**: bun:test (native)
+- **Next.js**: @prb/effect-next (server actions, hooks, cache)
 - **Existing**: Next.js frontend, PostgreSQL, Drizzle ORM
+
+## Effect Critical Rules (MUST FOLLOW)
+
+1. **No try-catch in Effect.gen** - Effect failures aren't thrown, use Effect.catchAll/catchTag
+2. **Use `return yield*` for errors** - Makes termination explicit: `return yield* Effect.fail(new MyError())`
+3. **Avoid type assertions** - No `as any`, `as never`, `as unknown`
+4. **Option vs null at boundaries**:
+   - Internal Effect code: `Option<T>`
+   - React state/props: `T | null`
+   - JSON/API responses: `T | null`
+   - Convert with `Option.fromNullable()` and `Option.getOrNull()`
+5. **Use Effect.fn() for named functions** - Automatic tracing and better stack traces
+
+## Service Pattern Template
+
+```typescript
+import { Effect, Context, Layer } from "effect";
+import { SqlDrizzle } from "@effect/sql-drizzle/Pg";
+import { Data } from "effect";
+
+// 1. Error types
+export class NotFoundError extends Data.TaggedError("NotFoundError")<{
+  resource: string;
+  id?: string;
+  message: string;
+}> {}
+
+// 2. Service interface
+export interface MyService {
+  readonly getById: (id: string) => Effect.Effect<Item | null, SqlError>;
+  readonly create: (input: CreateInput) => Effect.Effect<Item, MyServiceError>;
+}
+
+// 3. Context.Tag
+export class MyServiceTag extends Context.Tag("MyService")<MyServiceTag, MyService>() {}
+
+// 4. Implementation with Effect.fn for tracing
+const getById = Effect.fn("MyService.getById")(function* (id: string) {
+  const sql = yield* SqlDrizzle.SqlDrizzle;
+  const result = yield* sql.drizzle.query.items.findFirst({ where: eq(items.id, id) });
+  return result ?? null;
+});
+
+const create = Effect.fn("MyService.create")(function* (input: CreateInput) {
+  const sql = yield* SqlDrizzle.SqlDrizzle;
+
+  const existing = yield* sql.drizzle.query.items.findFirst({ where: eq(items.name, input.name) });
+  if (existing) {
+    return yield* new AlreadyExistsError({ resource: "Item", message: "Already exists" });
+  }
+
+  const [created] = yield* sql.drizzle.insert(items).values(input).returning();
+  return created;
+});
+
+// 5. Layer
+export const MyServiceLive = Layer.effect(MyServiceTag, Effect.gen(function* () {
+  return { getById, create };
+}));
+```
 
 ## Features (in priority order)
 
@@ -26,10 +87,49 @@ Full migration of vps-claude API to pure Effect-TS stack.
 
 ### Feature 2: TypeIDs Migration (Zod → @effect/schema)
 
-- [ ] Rewrite `packages/shared/src/typeid.ts` using Schema.brand() instead of z.string().brand()
-- [ ] Export BoxId, UserId, SkillId, BoxEmailId, SecretId as @effect/schema types
-- [ ] Update all imports across packages to use new typeid exports
-- [ ] Tests: TypeID parsing works with decodeUnknownSync
+Current uses `typeid-js` library with Zod validators. Keep typeid-js, replace Zod with Effect:
+
+```typescript
+import { Schema as S } from "@effect/schema";
+import { TypeID } from "typeid-js";
+
+const typeIdLength = 26;
+
+// Factory for TypeID validators (replaces typeIdValidator)
+export const typeIdSchema = <const T extends IdTypePrefixNames>(prefix: T) => {
+  const actualPrefix = idTypesMapNameToPrefix[prefix];
+  const expectedLength = typeIdLength + actualPrefix.length + 1;
+
+  return S.String.pipe(
+    S.startsWith(`${actualPrefix}_`),
+    S.length(expectedLength),
+    S.filter((input) => {
+      try {
+        TypeID.fromString(input).asType(actualPrefix);
+        return true;
+      } catch {
+        return false;
+      }
+    }, { message: () => `Invalid ${prefix} TypeID format` }),
+    S.brand(prefix)
+  );
+};
+
+// Usage
+export const BoxId = typeIdSchema("box");
+export type BoxId = S.Schema.Type<typeof BoxId>;
+
+// Parse
+const boxId = S.decodeUnknownSync(BoxId)("box_01h2xcejqtf2nbrexx3vqjhp41");
+```
+
+- [ ] Keep `typeid-js` dependency for generation/UUID conversion
+- [ ] Rewrite `packages/shared/src/typeid.ts` replacing Zod with @effect/schema
+- [ ] Create `typeIdSchema<T>()` factory using S.filter with TypeID validation
+- [ ] Keep `typeIdGenerator`, `typeIdFromUuid`, `typeIdToUuid` utilities unchanged
+- [ ] Export all TypeID schemas: BoxId, UserId, SkillId, etc.
+- [ ] Update all imports across packages
+- [ ] Tests: TypeID parsing works, rejects invalid format, generator still works
 - [ ] Verify: `bun run typecheck` passes
 
 ### Feature 3: SecretService Migration (First Service - Simplest)
@@ -135,11 +235,16 @@ Full migration of vps-claude API to pure Effect-TS stack.
 - [ ] Tests: Server starts and handles requests
 - [ ] Verify: `curl localhost:33000/rpc` returns valid response
 
-### Feature 14: Frontend RPC Client
+### Feature 14: Frontend RPC Client + Next.js Integration
 
+- [ ] Install @prb/effect-next for Next.js Effect integration
 - [ ] Create `apps/web/src/utils/rpc-client.ts` with @effect/rpc-http client
+- [ ] Create `apps/web/src/lib/effect-runtime.ts` with ManagedRuntime for client
+- [ ] Wrap app with EffectNextProvider in layout.tsx
+- [ ] Convert server actions to use effectAction pattern
+- [ ] Use reactCache for request deduplication where needed
 - [ ] Delete `apps/web/src/utils/orpc.ts`
-- [ ] Update hooks to use new RPC client
+- [ ] Update hooks to use new RPC client (useEffectMemo, etc.)
 - [ ] Remove @orpc/client dependency
 - [ ] Tests: Frontend can call backend
 - [ ] Verify: Web app works end-to-end
@@ -163,6 +268,39 @@ Full migration of vps-claude API to pure Effect-TS stack.
 - [ ] Tests: All tests pass
 - [ ] Verify: `bun run dev` starts server and web, all features work
 
+## Testing Patterns (Effect-specific)
+
+```typescript
+// Use ManagedRuntime for test setup/teardown
+let runtime: ManagedRuntime.ManagedRuntime<AppServices, never>;
+
+beforeAll(async () => {
+  runtime = ManagedRuntime.make(TestLayer);
+});
+
+afterAll(async () => {
+  await runtime.dispose();
+});
+
+// Run Effect and expect success
+test("creates box", async () => {
+  const result = await runtime.runPromise(
+    Effect.gen(function* () {
+      const boxService = yield* BoxServiceTag;
+      return yield* boxService.create(userId, input);
+    })
+  );
+  expect(result.status).toBe("deploying");
+});
+
+// Test for expected failure
+test("rejects duplicate", async () => {
+  const exit = await runtime.runPromiseExit(effect);
+  expect(Exit.isFailure(exit)).toBe(true);
+  // Or check specific error tag
+});
+```
+
 ## Constraints
 
 - Complete each feature end-to-end before starting next
@@ -171,6 +309,7 @@ Full migration of vps-claude API to pure Effect-TS stack.
 - Don't break existing features when adding new ones
 - Keep Drizzle schemas unchanged (just wrap with @effect/sql-drizzle)
 - box-agent migration is out of scope (can be done later)
+- Follow Effect Critical Rules above in all code
 
 ## Success Criteria
 
