@@ -62,6 +62,7 @@ export interface SpritesClient {
   createSprite: (
     config: CreateSpriteConfig
   ) => Promise<{ spriteName: string; url: string }>;
+  listSprites: () => Promise<Array<{ name: string }>>;
   deleteSprite: (spriteName: string) => Promise<void>;
   getSprite: (spriteName: string) => Promise<SpriteInfo | null>;
   execCommand: (spriteName: string, command: string) => Promise<ExecResult>;

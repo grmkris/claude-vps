@@ -103,6 +103,14 @@ ENVEOF`
     };
   }
 
+  async function listSprites(): Promise<Array<{ name: string }>> {
+    const result = await apiRequest<{ sprites: Array<{ name: string }> }>(
+      "GET",
+      "/sprites"
+    );
+    return result.sprites || [];
+  }
+
   async function deleteSprite(spriteName: string): Promise<void> {
     await apiRequest("DELETE", `/sprites/${encodeURIComponent(spriteName)}`);
   }
@@ -137,18 +145,31 @@ ENVEOF`
       headers,
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const error = await response.text().catch(() => "Unknown error");
-      throw new Error(`Exec failed (${response.status}): ${error}`);
+      throw new Error(
+        `Exec failed (${response.status}): ${responseText || "Unknown error"}`
+      );
     }
 
-    const json: unknown = await response.json();
-    const result = ExecResponseSchema.parse(json);
-    return {
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? "",
-      exitCode: result.exit_code ?? 0,
-    };
+    // Try to parse as JSON first (structured response)
+    try {
+      const json: unknown = JSON.parse(responseText);
+      const result = ExecResponseSchema.parse(json);
+      return {
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? "",
+        exitCode: result.exit_code ?? 0,
+      };
+    } catch (e) {
+      // Not JSON - treat as plain text stdout
+      return {
+        stdout: responseText,
+        stderr: "",
+        exitCode: 0,
+      };
+    }
   }
 
   async function createCheckpoint(spriteName: string): Promise<Checkpoint> {
@@ -337,6 +358,7 @@ ENVEOF
 
   return {
     createSprite,
+    listSprites,
     deleteSprite,
     getSprite,
     execCommand,
