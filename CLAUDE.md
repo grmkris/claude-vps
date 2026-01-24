@@ -10,6 +10,36 @@ See `package.json` for all available scripts. Key commands:
 - `bun run db:start` - Start Postgres via docker-compose
 - `bun run db:generate` - Generate migrations after schema changes
 
+## Local Development
+
+### Start Services
+```bash
+bun run db:start   # Postgres + Redis
+bun run dev        # Server (33000) + Web (33001)
+```
+
+### Testing with Real Sprites
+Boxes deploy to actual Fly.io VMs. Requires `SPRITES_TOKEN` in `apps/server/.env`.
+
+1. Create box via UI at http://localhost:33001
+2. Box deploys to `{subdomain}.sprites.dev`
+3. SSH: `ssh coder@{subdomain}.sprites.dev`
+4. Test Claude: `claude` (interactive session)
+5. Test email: POST to `https://{subdomain}.sprites.dev:9999/email/receive`
+
+### Testing box-agent Changes
+**Fast iteration (SSH & replace):**
+```bash
+cd apps/box-agent && bun run build:linux
+scp dist/box-agent-linux-x64 coder@{subdomain}.sprites.dev:/tmp/
+ssh coder@{subdomain}.sprites.dev
+pkill box-agent
+sudo mv /tmp/box-agent-linux-x64 /usr/local/bin/box-agent
+source ~/.bashrc.env && nohup /usr/local/bin/box-agent > ~/.box-agent.log 2>&1 &
+```
+
+Sprites auto-sleep when idle. Reuse dev boxes, delete when done.
+
 ## Architecture
 
 **Monorepo (Turborepo + Bun workspaces)**
