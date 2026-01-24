@@ -5,7 +5,6 @@ export const DeployBoxJobData = z.object({
   boxId: BoxId,
   userId: UserId,
   subdomain: z.string(),
-  password: z.string(),
   /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
   skills: z.array(z.string()).default([]),
 });

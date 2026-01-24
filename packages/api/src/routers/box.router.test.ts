@@ -18,14 +18,13 @@ describe("BoxService", () => {
     await testEnv.close();
   });
 
-  test("create box with pending status", async () => {
+  test("create box with deploying status", async () => {
     const result = await boxService.create(testEnv.users.authenticated.id, {
       name: "test-box-1",
-      password: "password123",
     });
 
     const box = result._unsafeUnwrap();
-    expect(box.status).toBe("pending");
+    expect(box.status).toBe("deploying");
     expect(box.name).toBe("test-box-1");
     expect(box.subdomain).toBeDefined();
     expect(box.userId).toBe(testEnv.users.authenticated.id);
@@ -35,13 +34,11 @@ describe("BoxService", () => {
     // Create first box
     await boxService.create(testEnv.users.authenticated.id, {
       name: "duplicate-name",
-      password: "password123",
     });
 
     // Try to create second box with same name
     const result = await boxService.create(testEnv.users.authenticated.id, {
       name: "duplicate-name",
-      password: "password456",
     });
 
     expect(result.isErr()).toBe(true);
@@ -53,7 +50,6 @@ describe("BoxService", () => {
     // Create a box first
     await boxService.create(testEnv.users.authenticated.id, {
       name: "list-test-box",
-      password: "password123",
     });
 
     const result = await boxService.listByUser(testEnv.users.authenticated.id);
@@ -69,7 +65,7 @@ describe("BoxService", () => {
   test("getById returns box for owner", async () => {
     const createResult = await boxService.create(
       testEnv.users.authenticated.id,
-      { name: "getbyid-test", password: "password123" }
+      { name: "getbyid-test" }
     );
     const created = createResult._unsafeUnwrap();
 
@@ -81,17 +77,38 @@ describe("BoxService", () => {
     expect(box?.name).toBe("getbyid-test");
   });
 
-  test("deploy queues job and updates status", async () => {
+  test("deploy rejects non-error box", async () => {
     const createResult = await boxService.create(
       testEnv.users.authenticated.id,
-      { name: "deploy-test", password: "password123" }
+      { name: "deploy-test" }
     );
     const box = createResult._unsafeUnwrap();
 
+    // Box is in "deploying" status, deploy should fail
     const deployResult = await boxService.deploy(
       box.id,
+      testEnv.users.authenticated.id
+    );
+
+    expect(deployResult.isErr()).toBe(true);
+    const error = deployResult._unsafeUnwrapErr();
+    expect(error.type).toBe("INVALID_STATUS");
+  });
+
+  test("deploy works for error status box", async () => {
+    const createResult = await boxService.create(
       testEnv.users.authenticated.id,
-      "password123"
+      { name: "deploy-retry" }
+    );
+    const box = createResult._unsafeUnwrap();
+
+    // Simulate error status
+    await boxService.updateStatus(box.id, "error", "Test error");
+
+    // Deploy should work now
+    const deployResult = await boxService.deploy(
+      box.id,
+      testEnv.users.authenticated.id
     );
 
     deployResult._unsafeUnwrap();
@@ -102,55 +119,28 @@ describe("BoxService", () => {
     expect(updated?.status).toBe("deploying");
   });
 
-  test("deploy rejects non-pending box", async () => {
-    const createResult = await boxService.create(
-      testEnv.users.authenticated.id,
-      { name: "deploy-twice", password: "password123" }
-    );
-    const box = createResult._unsafeUnwrap();
-
-    // First deploy
-    await boxService.deploy(
-      box.id,
-      testEnv.users.authenticated.id,
-      "password123"
-    );
-
-    // Try to deploy again - should fail
-    const secondDeploy = await boxService.deploy(
-      box.id,
-      testEnv.users.authenticated.id,
-      "password123"
-    );
-
-    expect(secondDeploy.isErr()).toBe(true);
-    const error = secondDeploy._unsafeUnwrapErr();
-    expect(error.type).toBe("INVALID_STATUS");
-  });
-
   test("deploy rejects other user's box", async () => {
     const createResult = await boxService.create(
       testEnv.users.authenticated.id,
-      { name: "other-user-box", password: "password123" }
+      { name: "other-user-box" }
     );
     const box = createResult._unsafeUnwrap();
 
+    // Simulate error status so deploy would be allowed
+    await boxService.updateStatus(box.id, "error", "Test error");
+
     const fakeUserId = "usr_fakeuser123";
-    const deployResult = await boxService.deploy(
-      box.id,
-      fakeUserId,
-      "password123"
-    );
+    const deployResult = await boxService.deploy(box.id, fakeUserId);
 
     expect(deployResult.isErr()).toBe(true);
     const error = deployResult._unsafeUnwrapErr();
     expect(error.type).toBe("NOT_FOUND");
   });
 
-  test("delete marks box as deleted", async () => {
+  test("delete removes box", async () => {
     const createResult = await boxService.create(
       testEnv.users.authenticated.id,
-      { name: "delete-test", password: "password123" }
+      { name: "delete-test" }
     );
     const box = createResult._unsafeUnwrap();
 
@@ -170,7 +160,7 @@ describe("BoxService", () => {
   test("list excludes deleted boxes", async () => {
     const createResult = await boxService.create(
       testEnv.users.authenticated.id,
-      { name: "will-be-deleted", password: "password123" }
+      { name: "will-be-deleted" }
     );
     const box = createResult._unsafeUnwrap();
 

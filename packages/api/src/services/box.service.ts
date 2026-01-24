@@ -60,7 +60,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       userId: UserId,
       input: {
         name: string;
-        password: string;
         /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
         skills?: string[];
         telegramBotToken?: string;
@@ -112,7 +111,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         boxId: created.id,
         userId,
         subdomain: created.subdomain,
-        password: input.password,
         skills,
       });
 
@@ -121,8 +119,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
     async deploy(
       id: BoxId,
-      userId: UserId,
-      password: string
+      userId: UserId
     ): Promise<Result<void, BoxServiceError>> {
       const boxResult = await getById(id);
       if (boxResult.isErr()) return err(boxResult.error);
@@ -154,7 +151,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         boxId: id,
         userId,
         subdomain: boxRecord.subdomain,
-        password,
         skills: skills.map((s) => s.skillId),
       });
 
@@ -248,12 +244,11 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
     async setSpriteInfo(
       id: BoxId,
       spriteName: string,
-      spriteUrl: string,
-      passwordHash: string
+      spriteUrl: string
     ): Promise<Result<void, BoxServiceError>> {
       await db
         .update(box)
-        .set({ spriteName, spriteUrl, passwordHash })
+        .set({ spriteName, spriteUrl })
         .where(eq(box.id, id));
       return ok(undefined);
     },

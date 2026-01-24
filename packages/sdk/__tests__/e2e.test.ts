@@ -112,7 +112,6 @@ describe("SDK E2E Tests", () => {
       try {
         await client.box.create({
           name: "should-fail",
-          password: "testpass123",
           skills: [],
         });
         expect(true).toBe(false);

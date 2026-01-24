@@ -78,10 +78,3 @@ export function useDeleteBox() {
     },
   });
 }
-
-export function useBoxUrl(id: BoxId) {
-  return useQuery({
-    ...orpc.box.getUrl.queryOptions({ input: { id } }),
-    enabled: !!id,
-  });
-}

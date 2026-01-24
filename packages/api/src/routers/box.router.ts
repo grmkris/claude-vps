@@ -8,7 +8,6 @@ import {
   BoxCreateOutput,
   BoxListOutput,
   BoxProxyOutput,
-  BoxUrlOutput,
   SuccessOutput,
 } from "./schemas";
 
@@ -62,7 +61,6 @@ export const boxRouter = {
     .input(
       z.object({
         name: z.string().min(1).max(50),
-        password: z.string().min(8).max(100),
         skills: z.array(SkillId).default([]),
       })
     )
@@ -85,15 +83,13 @@ export const boxRouter = {
     .input(
       z.object({
         id: BoxId,
-        password: z.string().min(8).max(100),
       })
     )
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
       const result = await context.boxService.deploy(
         input.id,
-        context.session.user.id,
-        input.password
+        context.session.user.id
       );
       return result.match(
         () => ({ success: true as const }),
@@ -122,29 +118,6 @@ export const boxRouter = {
             throw new ORPCError("NOT_FOUND", { message: error.message });
           }
           throw new ORPCError("BAD_REQUEST", { message: error.message });
-        }
-      );
-    }),
-
-  getUrl: protectedProcedure
-    .route({ method: "GET", path: "/box/:id/url" })
-    .input(z.object({ id: BoxId }))
-    .output(BoxUrlOutput)
-    .handler(async ({ context, input }) => {
-      const result = await context.boxService.getById(input.id);
-      return result.match(
-        (box) => {
-          if (!box || box.userId !== context.session.user.id) {
-            throw new ORPCError("NOT_FOUND", { message: "Box not found" });
-          }
-          return {
-            url: `https://${box.subdomain}.${context.config.agentsDomain}`,
-          };
-        },
-        (error) => {
-          throw new ORPCError("INTERNAL_SERVER_ERROR", {
-            message: error.message,
-          });
         }
       );
     }),

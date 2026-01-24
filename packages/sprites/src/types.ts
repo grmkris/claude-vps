@@ -46,7 +46,6 @@ export interface ExecResult {
 // Setup config for sprite provisioning
 export interface SpriteSetupConfig {
   spriteName: string;
-  password: string;
   boxAgentBinaryUrl: string;
   envVars: Record<string, string>;
 }

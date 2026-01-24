@@ -23,7 +23,6 @@ export default function CreateBoxForm() {
   const router = useRouter();
   const createMutation = useCreateBox();
   const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [telegramBotToken, setTelegramBotToken] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
@@ -38,7 +37,6 @@ export default function CreateBoxForm() {
     createMutation.mutate(
       {
         name,
-        password,
         skills: skills as SkillId[],
         ...(telegramBotToken && { telegramBotToken }),
         ...(telegramChatId && { telegramChatId }),
@@ -51,7 +49,7 @@ export default function CreateBoxForm() {
     );
   };
 
-  const isValid = name.length >= 1 && name.length <= 50 && password.length >= 8;
+  const isValid = name.length >= 1 && name.length <= 50;
 
   return (
     <div className="w-full max-w-md">
@@ -97,30 +95,10 @@ export default function CreateBoxForm() {
             <p className="text-sm text-muted-foreground">
               Your box will be available at{" "}
               <span className="font-mono text-primary">
-                {subdomainPreview}.agents.claude-vps.grm.wtf
+                {subdomainPreview}.sprites.dev
               </span>
             </p>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium">
-            Password
-          </Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Minimum 8 characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            maxLength={100}
-            required
-            className="h-12"
-          />
-          <p className="text-sm text-muted-foreground">
-            Used to access your Claude Code box via browser
-          </p>
         </div>
 
         {/* Skills.sh Skills */}

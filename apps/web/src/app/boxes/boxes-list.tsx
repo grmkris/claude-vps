@@ -7,7 +7,6 @@ import {
   Rocket,
   Box,
   MoreHorizontal,
-  Terminal,
   Copy,
   Check,
 } from "lucide-react";
@@ -24,7 +23,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBoxes, useDeployBox, useDeleteBox } from "@/hooks/use-boxes";
 
@@ -54,28 +52,14 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function BoxCard({ box }: { box: BoxType }) {
-  const [password, setPassword] = useState("");
-  const [showPasswordInput, setShowPasswordInput] = useState(false);
   const deployMutation = useDeployBox();
   const deleteMutation = useDeleteBox();
 
   const canRetry = box.status === "error"; // Only show retry for failed boxes
-  const canOpen = box.status === "running";
+  const canOpen = box.status === "running" && box.spriteUrl;
 
   const handleDeploy = () => {
-    if (!password) {
-      setShowPasswordInput(true);
-      return;
-    }
-    deployMutation.mutate(
-      { id: box.id, password },
-      {
-        onSuccess: () => {
-          setShowPasswordInput(false);
-          setPassword("");
-        },
-      }
-    );
+    deployMutation.mutate({ id: box.id });
   };
 
   return (
@@ -88,19 +72,17 @@ function BoxCard({ box }: { box: BoxType }) {
           </div>
           <div>
             <h3 className="font-semibold text-foreground">{box.name}</h3>
-            <p className="text-sm font-mono text-muted-foreground">
-              {box.subdomain}.agents.claude-vps.grm.wtf
-            </p>
-            {box.status === "running" && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <Terminal className="h-3 w-3 text-muted-foreground" />
-                <code className="text-xs font-mono text-muted-foreground">
-                  ssh {box.subdomain}@ssh.claude-vps.grm.wtf
-                </code>
-                <CopyButton
-                  text={`ssh ${box.subdomain}@ssh.claude-vps.grm.wtf`}
-                />
+            {box.spriteUrl ? (
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-mono text-muted-foreground">
+                  {box.spriteUrl.replace("https://", "")}
+                </p>
+                <CopyButton text={box.spriteUrl} />
               </div>
+            ) : (
+              <p className="text-sm font-mono text-muted-foreground">
+                {box.subdomain}
+              </p>
             )}
           </div>
         </div>
@@ -115,14 +97,9 @@ function BoxCard({ box }: { box: BoxType }) {
             <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {canOpen && (
+            {canOpen && box.spriteUrl && (
               <DropdownMenuItem
-                onClick={() =>
-                  window.open(
-                    `https://${box.subdomain}.agents.claude-vps.grm.wtf`,
-                    "_blank"
-                  )
-                }
+                onClick={() => window.open(box.spriteUrl!, "_blank")}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Open
@@ -152,68 +129,31 @@ function BoxCard({ box }: { box: BoxType }) {
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        {showPasswordInput && canRetry ? (
-          <div className="flex items-center gap-2 w-full">
-            <Input
-              type="password"
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="flex-1"
-              autoFocus
-            />
-            <Button
-              size="sm"
-              onClick={handleDeploy}
-              disabled={deployMutation.isPending || !password}
-            >
-              {deployMutation.isPending ? "..." : "Go"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setShowPasswordInput(false);
-                setPassword("");
-              }}
-            >
-              Cancel
-            </Button>
+        {canRetry && (
+          <Button
+            onClick={handleDeploy}
+            disabled={deployMutation.isPending}
+            className="flex-1"
+            variant="secondary"
+          >
+            <Rocket className="h-4 w-4 mr-2" />
+            {deployMutation.isPending ? "Retrying..." : "Retry"}
+          </Button>
+        )}
+        {canOpen && box.spriteUrl && (
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onClick={() => window.open(box.spriteUrl!, "_blank")}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open
+          </Button>
+        )}
+        {box.status === "deploying" && (
+          <div className="flex-1 text-center text-sm text-muted-foreground">
+            Deployment in progress...
           </div>
-        ) : (
-          <>
-            {canRetry && (
-              <Button
-                onClick={() => setShowPasswordInput(true)}
-                disabled={deployMutation.isPending}
-                className="flex-1"
-                variant="secondary"
-              >
-                <Rocket className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            )}
-            {canOpen && (
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() =>
-                  window.open(
-                    `https://${box.subdomain}.agents.claude-vps.grm.wtf`,
-                    "_blank"
-                  )
-                }
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open
-              </Button>
-            )}
-            {box.status === "deploying" && (
-              <div className="flex-1 text-center text-sm text-muted-foreground">
-                Deployment in progress...
-              </div>
-            )}
-          </>
         )}
       </div>
     </div>

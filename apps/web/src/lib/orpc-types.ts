@@ -14,10 +14,6 @@ export type BoxByIdResponse = ExtractSuccess<
   Awaited<ReturnType<typeof client.box.byId>>
 >;
 
-export type BoxUrlResponse = ExtractSuccess<
-  Awaited<ReturnType<typeof client.box.getUrl>>
->;
-
 // Status type inferred from Box
 export type BoxStatus = Box["status"];
 

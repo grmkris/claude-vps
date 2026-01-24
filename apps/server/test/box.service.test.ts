@@ -37,16 +37,15 @@ describe("BoxService", () => {
   });
 
   describe("create", () => {
-    it("should create a box with pending status", async () => {
+    it("should create a box with deploying status", async () => {
       const userId = testSetup.users.authenticated.id;
       const result = await boxService.create(userId, {
         name: "Test Workspace",
-        password: "password123",
       });
 
       const box = result._unsafeUnwrap();
       expect(box.name).toBe("Test Workspace");
-      expect(box.status).toBe("pending");
+      expect(box.status).toBe("deploying");
       expect(box.subdomain).toMatch(/^test-workspace-[a-z0-9]{4}$/);
     });
 
@@ -55,12 +54,10 @@ describe("BoxService", () => {
 
       await boxService.create(userId, {
         name: "Duplicate Name",
-        password: "password123",
       });
 
       const result = await boxService.create(userId, {
         name: "Duplicate Name",
-        password: "password456",
       });
 
       expect(result.isErr()).toBe(true);
@@ -83,11 +80,9 @@ describe("BoxService", () => {
 
       await boxService.create(userId, {
         name: "Box 1",
-        password: "password123",
       });
       await boxService.create(userId, {
         name: "Box 2",
-        password: "password123",
       });
 
       const result = await boxService.listByUser(userId);
@@ -103,7 +98,6 @@ describe("BoxService", () => {
 
       const createResult = await boxService.create(userId, {
         name: "To Delete",
-        password: "password123",
       });
 
       const created = createResult._unsafeUnwrap();
@@ -121,7 +115,6 @@ describe("BoxService", () => {
 
       const createResult = await boxService.create(userId, {
         name: "Find Me",
-        password: "password123",
       });
 
       const created = createResult._unsafeUnwrap();
@@ -144,7 +137,6 @@ describe("BoxService", () => {
 
       const createResult = await boxService.create(userId, {
         name: "Status Test",
-        password: "password123",
       });
 
       const created = createResult._unsafeUnwrap();
@@ -159,7 +151,6 @@ describe("BoxService", () => {
 
       const createResult = await boxService.create(userId, {
         name: "Error Test",
-        password: "password123",
       });
 
       const created = createResult._unsafeUnwrap();

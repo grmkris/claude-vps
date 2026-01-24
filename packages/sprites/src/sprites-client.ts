@@ -220,14 +220,15 @@ ENVEOF`
   }
 
   /**
-   * Set up a sprite with SSH, code-server, and box-agent
-   * This runs after createSprite to install all required services
+   * Set up a sprite with box-agent
+   * This runs after createSprite to install the agent service
+   * Sprites handles its own auth (private by default, token-based access)
    *
    * Uses execShell() for all commands since they require shell syntax
    * (heredocs, redirects, pipes, export, etc.)
    */
   async function setupSprite(config: SpriteSetupConfig): Promise<void> {
-    const { spriteName, password, boxAgentBinaryUrl, envVars } = config;
+    const { spriteName, boxAgentBinaryUrl, envVars } = config;
 
     // Helper to run a setup step with error context
     async function runStep(stepNum: number, name: string, cmd: string) {
@@ -242,68 +243,19 @@ ENVEOF`
       return result;
     }
 
-    // Step 1: Install SSH server (needs sudo for apt-get and system dirs)
+    // Step 1: Create coder user (Sprites default user, no password needed - auth handled by Sprites)
     await runStep(
       1,
-      "Install SSH",
-      `
-      export DEBIAN_FRONTEND=noninteractive
-      sudo apt-get update && sudo apt-get install -y openssh-server sudo
-      sudo mkdir -p /run/sshd
-    `
-    );
-
-    // Step 2: Create coder user with password (needs sudo for user management)
-    await runStep(
-      2,
       "Create coder user",
       `
       sudo useradd -m -s /bin/bash -G sudo coder || true
-      echo "coder:${password}" | sudo chpasswd
       echo "coder ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/coder > /dev/null
     `
     );
 
-    // Step 3: Configure SSH (needs sudo for system config)
+    // Step 2: Download and install box-agent binary
     await runStep(
-      3,
-      "Configure SSH",
-      `
-      sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-      sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-      echo "PermitUserEnvironment yes" | sudo tee -a /etc/ssh/sshd_config > /dev/null
-    `
-    );
-
-    // Step 4: Install code-server (script handles sudo internally)
-    await runStep(
-      4,
-      "Install code-server",
-      `
-      export DEBIAN_FRONTEND=noninteractive
-      curl -fsSL https://code-server.dev/install.sh | sh
-    `
-    );
-
-    // Step 5: Configure code-server (needs sudo for creating in coder's home)
-    await runStep(
-      5,
-      "Configure code-server",
-      `
-      sudo mkdir -p /home/coder/.config/code-server
-      sudo tee /home/coder/.config/code-server/config.yaml > /dev/null << 'EOF'
-bind-addr: 0.0.0.0:8080
-auth: password
-password: ${password}
-cert: false
-EOF
-      sudo chown -R coder:coder /home/coder/.config
-    `
-    );
-
-    // Step 6: Download and install box-agent binary (needs sudo for /usr/local/bin)
-    await runStep(
-      6,
+      2,
       "Download box-agent",
       `
       sudo curl -fsSL "${boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
@@ -311,23 +263,23 @@ EOF
     `
     );
 
-    // Step 7: Create inbox directory (needs sudo for coder's home)
+    // Step 3: Create data directories
     await runStep(
-      7,
-      "Create inbox",
+      3,
+      "Create directories",
       `
-      sudo mkdir -p /home/coder/.inbox
-      sudo chown -R coder:coder /home/coder/.inbox
+      sudo mkdir -p /home/coder/.inbox /home/coder/.box-agent
+      sudo chown -R coder:coder /home/coder/.inbox /home/coder/.box-agent
     `
     );
 
-    // Step 8: Set environment variables for coder user
+    // Step 4: Set environment variables for coder user
     const envExports = Object.entries(envVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
     await runStep(
-      8,
+      4,
       "Set env vars",
       `
       sudo tee -a /home/coder/.bashrc > /dev/null << 'ENVEOF'
@@ -338,38 +290,13 @@ ENVEOF
     `
     );
 
-    // Step 9: Create systemd service for box-agent (needs sudo for /etc/systemd)
-    await runStep(
-      9,
-      "Create systemd service",
-      `
-      sudo tee /etc/systemd/system/box-agent.service > /dev/null << 'EOF'
-[Unit]
-Description=Box Agent Service
-After=network.target
-
-[Service]
-Type=simple
-User=coder
-WorkingDirectory=/home/coder
-EnvironmentFile=/home/coder/.bashrc.env
-ExecStart=/usr/local/bin/box-agent
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    `
-    );
-
-    // Step 10: Create env file for systemd (needs sudo for coder's home)
+    // Step 5: Create env file for box-agent
     const envFile = Object.entries(envVars)
-      .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
+      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
     await runStep(
-      10,
+      5,
       "Create env file",
       `
       sudo tee /home/coder/.bashrc.env > /dev/null << 'ENVEOF'
@@ -379,21 +306,15 @@ ENVEOF
     `
     );
 
-    // Step 11: Start services directly (Sprites don't use systemd)
+    // Step 6: Start box-agent
     await runStep(
-      11,
-      "Start services",
+      6,
+      "Start box-agent",
       `
-      # Start SSH server
-      sudo /usr/sbin/sshd
-
       # Start box-agent as coder user (nohup to survive shell exit)
       sudo -u coder bash -c 'cd /home/coder && source /home/coder/.bashrc.env && nohup /usr/local/bin/box-agent > /home/coder/.box-agent.log 2>&1 &'
 
-      # Start code-server as coder user
-      sudo -u coder bash -c 'nohup code-server --config /home/coder/.config/code-server/config.yaml > /home/coder/.code-server.log 2>&1 &'
-
-      # Give services a moment to start
+      # Give service a moment to start
       sleep 1
     `
     );

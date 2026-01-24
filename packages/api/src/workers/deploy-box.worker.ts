@@ -9,15 +9,10 @@ import {
   type Job,
 } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
-import { createHash } from "node:crypto";
 
 import type { BoxService } from "../services/box.service";
 import type { EmailService } from "../services/email.service";
 import type { SecretService } from "../services/secret.service";
-
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
 
 /** Fetch skill metadata from skills.sh API */
 async function fetchSkillMetadata(
@@ -86,7 +81,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
   const worker = new Worker<DeployBoxJobData>(
     WORKER_CONFIG.deployBox.name,
     async (job: Job<DeployBoxJobData>) => {
-      const { boxId, userId, subdomain, password, skills } = job.data;
+      const { boxId, userId, subdomain, skills } = job.data;
 
       try {
         const boxResult = await boxService.getById(boxId);
@@ -111,7 +106,6 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
         const emailSettings = emailSettingsResult.value;
 
         const envVars: Record<string, string> = {
-          PASSWORD: password,
           ...userSecrets,
           BOX_AGENT_SECRET: emailSettings.agentSecret,
           BOX_API_TOKEN: emailSettings.agentSecret,
@@ -138,18 +132,16 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
         await boxService.setSpriteInfo(
           boxId,
           sprite.spriteName,
-          sprite.url,
-          hashPassword(password)
+          sprite.url
         );
 
-        // Step 2: Set up the sprite with SSH, code-server, box-agent
+        // Step 2: Set up the sprite with box-agent and env vars
         logger.info(
           { boxId, subdomain, spriteName: sprite.spriteName },
           "Setting up Sprite"
         );
         await spritesClient.setupSprite({
           spriteName: sprite.spriteName,
-          password,
           boxAgentBinaryUrl,
           envVars,
         });
