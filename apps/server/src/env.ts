@@ -21,4 +21,4 @@ export const env = z
 // Default box-agent binary URL (GitHub releases)
 export const BOX_AGENT_BINARY_URL =
   env.BOX_AGENT_BINARY_URL ||
-  "https://github.com/grmkris/vps-claude/releases/latest/download/box-agent-linux-x64";
+  "https://github.com/grmkris/claude-vps/releases/latest/download/box-agent-linux-x64";
