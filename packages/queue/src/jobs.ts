@@ -1,4 +1,4 @@
-import { BoxEmailId, BoxId, SkillId, UserId } from "@vps-claude/shared";
+import { BoxEmailId, BoxId, UserId } from "@vps-claude/shared";
 import { z } from "zod";
 
 export const DeployBoxJobData = z.object({
@@ -6,7 +6,8 @@ export const DeployBoxJobData = z.object({
   userId: UserId,
   subdomain: z.string(),
   password: z.string(),
-  skills: z.array(SkillId).default([]),
+  /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
+  skills: z.array(z.string()).default([]),
 });
 
 export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;

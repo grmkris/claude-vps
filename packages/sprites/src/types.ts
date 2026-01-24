@@ -57,6 +57,30 @@ export interface ProxyConfig {
   port: number;
 }
 
+// Filesystem API types
+export interface FileInfo {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size?: number;
+  modTime?: string;
+  mode?: string;
+}
+
+export interface FsReadOptions {
+  workingDir?: string;
+}
+
+export interface FsWriteOptions {
+  workingDir?: string;
+  mode?: string; // octal e.g. '0644'
+  mkdir?: boolean; // auto-create parent dirs
+}
+
+export interface FsListOptions {
+  workingDir?: string;
+}
+
 // Sprites client interface
 export interface SpritesClient {
   createSprite: (
@@ -79,4 +103,22 @@ export interface SpritesClient {
     spriteName: string,
     envVars: Record<string, string>
   ) => Promise<void>;
+
+  // Filesystem API
+  readFile: (
+    spriteName: string,
+    path: string,
+    opts?: FsReadOptions
+  ) => Promise<Buffer>;
+  writeFile: (
+    spriteName: string,
+    path: string,
+    content: Buffer | string,
+    opts?: FsWriteOptions
+  ) => Promise<void>;
+  listDir: (
+    spriteName: string,
+    path: string,
+    opts?: FsListOptions
+  ) => Promise<FileInfo[]>;
 }

@@ -126,6 +126,14 @@ export async function createApiKey(
   const { createClient } = await import("./client");
 
   try {
+    // Convert nested permissions to flat string array format
+    // e.g., { box: ['create', 'read'] } -> ['box:create', 'box:read']
+    const flatPermissions = options.permissions
+      ? Object.entries(options.permissions).flatMap(([resource, actions]) =>
+          (actions ?? []).map((action) => `${resource}:${action}`)
+        )
+      : undefined;
+
     // Use ORPC client which handles the wire format correctly
     const client = createClient({
       baseUrl: options.baseUrl,
@@ -134,7 +142,7 @@ export async function createApiKey(
 
     const result = await client.apiKey.create({
       name: options.name,
-      permissions: options.permissions,
+      permissions: flatPermissions,
       expiresIn: options.expiresIn,
     });
 

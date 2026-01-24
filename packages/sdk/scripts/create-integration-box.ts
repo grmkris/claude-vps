@@ -58,11 +58,14 @@ async function createTestBox() {
   try {
     const keyData = await client.apiKey.create({
       name: `integration-test-${Date.now()}`,
-      permissions: {
-        box: ["create", "read", "delete", "deploy"],
-        secret: ["read"],
-        skill: ["read"],
-      },
+      permissions: [
+        "box:create",
+        "box:read",
+        "box:delete",
+        "box:deploy",
+        "secret:read",
+        "skill:read",
+      ],
     });
     apiKeyResult = {
       key: keyData.key,

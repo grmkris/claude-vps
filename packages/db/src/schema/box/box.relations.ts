@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 
 import { user } from "../auth";
+import { boxAgentConfig } from "../box-agent-config";
 import { boxEmail, boxEmailSettings } from "../box-email";
 import { boxSkill } from "../box-skill";
 import { box } from "./box.db";
@@ -16,4 +17,5 @@ export const boxRelations = relations(box, ({ one, many }) => ({
     fields: [box.id],
     references: [boxEmailSettings.boxId],
   }),
+  boxAgentConfigs: many(boxAgentConfig),
 }));

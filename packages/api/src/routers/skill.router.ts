@@ -21,6 +21,13 @@ const slugSchema = z
 
 export const skillRouter = {
   list: protectedProcedure
+    .route({ method: "GET", path: "/skill" })
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional(),
+        offset: z.number().min(0).optional(),
+      })
+    )
     .output(SkillListOutput)
     .handler(async ({ context }) => {
       const result = await context.skillService.list(context.session.user.id);
@@ -35,6 +42,7 @@ export const skillRouter = {
     }),
 
   byId: protectedProcedure
+    .route({ method: "GET", path: "/skill/:id" })
     .input(z.object({ id: SkillId }))
     .output(SkillByIdOutput)
     .handler(async ({ context, input }) => {
@@ -51,6 +59,7 @@ export const skillRouter = {
     }),
 
   create: protectedProcedure
+    .route({ method: "POST", path: "/skill" })
     .input(
       z.object({
         slug: slugSchema,
@@ -80,6 +89,7 @@ export const skillRouter = {
     }),
 
   update: protectedProcedure
+    .route({ method: "PUT", path: "/skill/:id" })
     .input(
       z.object({
         id: SkillId,
@@ -114,6 +124,7 @@ export const skillRouter = {
     }),
 
   delete: protectedProcedure
+    .route({ method: "DELETE", path: "/skill/:id" })
     .input(z.object({ id: SkillId }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {

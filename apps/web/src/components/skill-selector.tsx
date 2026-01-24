@@ -1,0 +1,178 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { Check, Loader2, Search, Sparkles } from "lucide-react";
+import { useState, useMemo } from "react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+interface SkillsShSkill {
+  id: string;
+  name: string;
+  description: string;
+  installs: number;
+  topSource: string;
+}
+
+interface SkillsShResponse {
+  skills: SkillsShSkill[];
+  hasMore: boolean;
+}
+
+async function fetchSkillsCatalog(): Promise<SkillsShSkill[]> {
+  const res = await fetch("https://skills.sh/api/skills?limit=100");
+  if (!res.ok) throw new Error("Failed to fetch skills catalog");
+  const data = (await res.json()) as SkillsShResponse;
+  return data.skills;
+}
+
+function formatInstalls(count: number): string {
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+  return count.toString();
+}
+
+interface SkillSelectorProps {
+  value: string[];
+  onChange: (skills: string[]) => void;
+}
+
+export function SkillSelector({ value, onChange }: SkillSelectorProps) {
+  const [search, setSearch] = useState("");
+
+  const {
+    data: skills,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["skills-sh-catalog"],
+    queryFn: fetchSkillsCatalog,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const filteredSkills = useMemo(() => {
+    if (!skills) return [];
+    if (!search.trim()) return skills;
+    const lower = search.toLowerCase();
+    return skills.filter(
+      (s) =>
+        s.name.toLowerCase().includes(lower) ||
+        s.id.toLowerCase().includes(lower) ||
+        s.description.toLowerCase().includes(lower)
+    );
+  }, [skills, search]);
+
+  const toggleSkill = (skillId: string) => {
+    if (value.includes(skillId)) {
+      onChange(value.filter((id) => id !== skillId));
+    } else {
+      onChange([...value, skillId]);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+        Failed to load skills catalog. Please try again later.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <Label className="text-sm font-medium">Skills (Optional)</Label>
+        </div>
+        {value.length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {value.length} selected
+          </span>
+        )}
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search skills..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 h-10"
+        />
+      </div>
+
+      <div className="rounded-lg border bg-secondary/20 max-h-64 overflow-y-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredSkills.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            {search
+              ? "No skills found matching your search"
+              : "No skills available"}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredSkills.map((skill) => {
+              const isSelected = value.includes(skill.id);
+              return (
+                <button
+                  type="button"
+                  key={skill.id}
+                  onClick={() => toggleSkill(skill.id)}
+                  className={cn(
+                    "w-full px-4 py-3 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    isSelected && "bg-primary/5"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-muted-foreground/30"
+                      )}
+                    >
+                      {isSelected && <Check className="h-3 w-3" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">
+                          {skill.name}
+                        </span>
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {formatInstalls(skill.installs)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                        {skill.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Skills from{" "}
+        <a
+          href="https://skills.sh"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          skills.sh
+        </a>{" "}
+        extend Claude Code with specialized instructions and tools.
+      </p>
+    </div>
+  );
+}

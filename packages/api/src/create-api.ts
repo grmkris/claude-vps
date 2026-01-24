@@ -11,7 +11,20 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { createContext, type Services } from "./context";
-import { appRouter } from "./routers/index";
+import {
+  appRouter,
+  boxApiRouter,
+  apiKeyRouter,
+  skillRouter,
+} from "./routers/index";
+
+// Combined router for handlers - includes all routes
+// (Type not exported to avoid TS7056)
+const fullAppRouter = {
+  ...appRouter,
+  apiKey: apiKeyRouter,
+  skill: skillRouter,
+};
 
 type HonoVariables = {
   requestId: string;
@@ -142,7 +155,7 @@ export function createApi({
     return c.json({ success: true, emailId: result.value.id });
   });
 
-  const apiHandler = new OpenAPIHandler(appRouter, {
+  const apiHandler = new OpenAPIHandler(fullAppRouter, {
     plugins: [
       new OpenAPIReferencePlugin({
         schemaConverters: [new ZodToJsonSchemaConverter()],
@@ -155,7 +168,16 @@ export function createApi({
     ],
   });
 
-  const rpcHandler = new RPCHandler(appRouter, {
+  // Separate handler for /box/* routes (uses box token auth, not session)
+  const boxApiHandler = new OpenAPIHandler(boxApiRouter, {
+    interceptors: [
+      onError((error) => {
+        logger.error({ msg: "Box API error", error });
+      }),
+    ],
+  });
+
+  const rpcHandler = new RPCHandler(fullAppRouter, {
     interceptors: [
       onError((error) => {
         logger.error({ msg: "RPC error", error });
@@ -177,13 +199,13 @@ export function createApi({
     }
 
     if (c.req.path.startsWith("/box/")) {
-      const apiResult = await apiHandler.handle(c.req.raw, {
+      const boxResult = await boxApiHandler.handle(c.req.raw, {
         prefix: "/",
         context,
       });
 
-      if (apiResult.matched) {
-        return new Response(apiResult.response.body, apiResult.response);
+      if (boxResult.matched) {
+        return new Response(boxResult.response.body, boxResult.response);
       }
     }
 

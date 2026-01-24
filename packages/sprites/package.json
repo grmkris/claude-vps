@@ -7,7 +7,9 @@
     }
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "bun test",
+    "test:integration": "bun test --timeout 120000"
   },
   "dependencies": {
     "@fly/sprites": "^0.0.1",

@@ -152,7 +152,6 @@ const deployWorker = createDeployWorker({
     boxService,
     emailService,
     secretService,
-    skillService,
     spritesClient,
     redis,
     logger,

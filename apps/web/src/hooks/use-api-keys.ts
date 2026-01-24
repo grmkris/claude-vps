@@ -35,9 +35,17 @@ export function useCreateApiKey() {
 
   return useMutation({
     mutationFn: async (input: CreateApiKeyInput) => {
+      // Convert nested permissions to flat string array format
+      // e.g., { box: ['create', 'read'] } -> ['box:create', 'box:read']
+      const flatPermissions = input.permissions
+        ? Object.entries(input.permissions).flatMap(([resource, actions]) =>
+            (actions ?? []).map((action) => `${resource}:${action}`)
+          )
+        : undefined;
+
       return await orpc.apiKey.create.call({
         name: input.name,
-        permissions: input.permissions,
+        permissions: flatPermissions,
         expiresIn: input.expiresIn,
       });
     },
@@ -57,7 +65,7 @@ export function useRevokeApiKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (keyId: string) => {
+    mutationFn: async (keyId: `apk_${string}`) => {
       return await orpc.apiKey.delete.call({ keyId });
     },
     onSuccess: () => {

@@ -11,7 +11,7 @@ import { client, orpc } from "@/utils/orpc";
 
 export function useBoxes() {
   return useQuery({
-    ...orpc.box.list.queryOptions(),
+    ...orpc.box.list.queryOptions({ input: {} }),
     // Auto-poll every 5s while any box is deploying
     refetchInterval: (query) => {
       const hasDeploying = query.state.data?.boxes?.some(
@@ -33,7 +33,7 @@ export function useCreateBox() {
     mutationFn: (input: CreateBoxInput) => client.box.create(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions().queryKey,
+        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
       });
       toast.success("Box created!");
     },
@@ -52,7 +52,7 @@ export function useDeployBox() {
     mutationFn: (input: DeployBoxInput) => client.box.deploy(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions().queryKey,
+        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
       });
       toast.success("Deployment started!");
     },
@@ -69,7 +69,7 @@ export function useDeleteBox() {
     mutationFn: async (id: BoxId) => client.box.delete({ id }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions().queryKey,
+        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
       });
       toast.success("Box deleted!");
     },

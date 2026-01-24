@@ -1,4 +1,5 @@
 import {
+  SelectBoxAgentConfigSchema,
   SelectBoxSchema,
   SelectSkillSchema,
   SelectUserSecretSchema,
@@ -30,6 +31,14 @@ export const BoxProxyOutput = z.object({
   token: z.string(),
   host: z.string(),
   port: z.number(),
+});
+
+// === Box Agent Config ===
+export const AgentConfigListOutput = z.object({
+  configs: z.array(SelectBoxAgentConfigSchema),
+});
+export const AgentConfigOutput = z.object({
+  config: SelectBoxAgentConfigSchema,
 });
 
 // === Secret Router ===

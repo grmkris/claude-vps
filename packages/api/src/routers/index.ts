@@ -8,6 +8,7 @@ import { HealthCheckOutput, PrivateDataOutput } from "./schemas";
 import { secretRouter } from "./secret.router";
 import { skillRouter } from "./skill.router";
 
+// Main app router for /rpc/* endpoints (user session auth)
 export const appRouter = {
   healthCheck: publicProcedure.output(HealthCheckOutput).handler(() => {
     return "OK";
@@ -21,11 +22,20 @@ export const appRouter = {
       };
     }),
   secret: secretRouter,
+  // skill: skillRouter,  // Moved to fullAppRouter
+  // apiKey: apiKeyRouter, // Moved to fullAppRouter
   box: boxRouter,
-  boxApi: boxApiRouter,
-  apiKey: apiKeyRouter,
-  skill: skillRouter,
 };
 
+// Exported separately to avoid TS7056 type explosion when combined
+export { boxApiRouter, apiKeyRouter, skillRouter };
+
 export type AppRouter = typeof appRouter;
-export type AppRouterClient = RouterClient<AppRouter>;
+export type ApiKeyRouterType = typeof apiKeyRouter;
+export type SkillRouterType = typeof skillRouter;
+
+// Combined client type for SDK - includes all routers
+export type AppRouterClient = RouterClient<AppRouter> & {
+  apiKey: RouterClient<ApiKeyRouterType>;
+  skill: RouterClient<SkillRouterType>;
+};

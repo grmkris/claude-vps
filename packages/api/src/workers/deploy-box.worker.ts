@@ -14,17 +14,49 @@ import { createHash } from "node:crypto";
 import type { BoxService } from "../services/box.service";
 import type { EmailService } from "../services/email.service";
 import type { SecretService } from "../services/secret.service";
-import type { SkillService } from "../services/skill.service";
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password).digest("hex");
+}
+
+/** Fetch skill metadata from skills.sh API */
+async function fetchSkillMetadata(
+  skillId: string
+): Promise<{ topSource: string } | null> {
+  try {
+    const res = await fetch(
+      `https://skills.sh/api/skills?search=${encodeURIComponent(skillId)}&limit=1`
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      skills: Array<{ id: string; topSource: string }>;
+    };
+    const skill = data.skills.find((s) => s.id === skillId);
+    return skill ? { topSource: skill.topSource } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch SKILL.md content from GitHub raw URL */
+async function fetchSkillMd(
+  topSource: string,
+  skillId: string
+): Promise<string | null> {
+  try {
+    const url = `https://raw.githubusercontent.com/${topSource}/main/skills/${skillId}/SKILL.md`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
 }
 
 interface DeployWorkerDeps {
   boxService: BoxService;
   emailService: EmailService;
   secretService: SecretService;
-  skillService: SkillService;
   spritesClient: SpritesClient;
   redis: Redis;
   logger: Logger;
@@ -54,7 +86,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
   const worker = new Worker<DeployBoxJobData>(
     WORKER_CONFIG.deployBox.name,
     async (job: Job<DeployBoxJobData>) => {
-      const { boxId, userId, subdomain, password } = job.data;
+      const { boxId, userId, subdomain, password, skills } = job.data;
 
       try {
         const boxResult = await boxService.getById(boxId);
@@ -121,6 +153,72 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           boxAgentBinaryUrl,
           envVars,
         });
+
+        // Step 3: Install skills.sh skills
+        if (skills && skills.length > 0) {
+          logger.info(
+            { boxId, skillCount: skills.length },
+            "Installing skills.sh skills"
+          );
+
+          // Create skills directory
+          await spritesClient.execCommand(
+            sprite.spriteName,
+            "mkdir -p /home/coder/.claude/skills && chown -R coder:coder /home/coder/.claude"
+          );
+
+          for (const skillId of skills) {
+            try {
+              // Fetch skill metadata to get topSource
+              const metadata = await fetchSkillMetadata(skillId);
+              if (!metadata) {
+                logger.warn(
+                  { skillId },
+                  "Could not find skill metadata, skipping"
+                );
+                continue;
+              }
+
+              // Fetch SKILL.md content
+              const skillMd = await fetchSkillMd(metadata.topSource, skillId);
+              if (!skillMd) {
+                logger.warn(
+                  { skillId, topSource: metadata.topSource },
+                  "Could not fetch SKILL.md, skipping"
+                );
+                continue;
+              }
+
+              // Create skill directory and write SKILL.md
+              const skillDir = `/home/coder/.claude/skills/${skillId}`;
+              await spritesClient.execCommand(
+                sprite.spriteName,
+                `mkdir -p ${skillDir} && chown coder:coder ${skillDir}`
+              );
+
+              // Write SKILL.md using filesystem API
+              await spritesClient.writeFile(
+                sprite.spriteName,
+                `${skillDir}/SKILL.md`,
+                skillMd,
+                { mkdir: true }
+              );
+
+              // Set ownership
+              await spritesClient.execCommand(
+                sprite.spriteName,
+                `chown coder:coder ${skillDir}/SKILL.md`
+              );
+
+              logger.info({ skillId }, "Installed skill");
+            } catch (err) {
+              logger.error(
+                { skillId, error: err instanceof Error ? err.message : err },
+                "Failed to install skill"
+              );
+            }
+          }
+        }
 
         await boxService.updateStatus(boxId, "running");
         logger.info(

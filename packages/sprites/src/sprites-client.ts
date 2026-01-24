@@ -4,6 +4,10 @@ import type {
   Checkpoint,
   CreateSpriteConfig,
   ExecResult,
+  FileInfo,
+  FsListOptions,
+  FsReadOptions,
+  FsWriteOptions,
   SpriteInfo,
   SpriteSetupConfig,
   SpritesClient,
@@ -387,6 +391,80 @@ systemctl restart box-agent`
     );
   }
 
+  /**
+   * Read file contents from a sprite via filesystem API
+   */
+  async function readFile(
+    spriteName: string,
+    path: string,
+    opts?: FsReadOptions
+  ): Promise<Buffer> {
+    const url = new URL(
+      `${flyClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/read`
+    );
+    url.searchParams.set("path", path);
+    if (opts?.workingDir) url.searchParams.set("workingDir", opts.workingDir);
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      throw new Error(`readFile failed: ${res.status} ${await res.text()}`);
+    }
+    return Buffer.from(await res.arrayBuffer());
+  }
+
+  /**
+   * Write file to a sprite via filesystem API
+   */
+  async function writeFile(
+    spriteName: string,
+    path: string,
+    content: Buffer | string,
+    opts?: FsWriteOptions
+  ): Promise<void> {
+    const url = new URL(
+      `${flyClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/write`
+    );
+    url.searchParams.set("path", path);
+    if (opts?.workingDir) url.searchParams.set("workingDir", opts.workingDir);
+    if (opts?.mode) url.searchParams.set("mode", opts.mode);
+    if (opts?.mkdir) url.searchParams.set("mkdir", "true");
+
+    const res = await fetch(url.toString(), {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: typeof content === "string" ? content : new Uint8Array(content),
+    });
+    if (!res.ok) {
+      throw new Error(`writeFile failed: ${res.status} ${await res.text()}`);
+    }
+  }
+
+  /**
+   * List directory contents on a sprite via filesystem API
+   */
+  async function listDir(
+    spriteName: string,
+    path: string,
+    opts?: FsListOptions
+  ): Promise<FileInfo[]> {
+    const url = new URL(
+      `${flyClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/list`
+    );
+    url.searchParams.set("path", path);
+    if (opts?.workingDir) url.searchParams.set("workingDir", opts.workingDir);
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      throw new Error(`listDir failed: ${res.status} ${await res.text()}`);
+    }
+    const data = (await res.json()) as { entries: FileInfo[] };
+    return data.entries;
+  }
+
   return {
     createSprite,
     listSprites,
@@ -400,5 +478,8 @@ systemctl restart box-agent`
     getProxyUrl,
     getToken,
     updateEnvVars,
+    readFile,
+    writeFile,
+    listDir,
   };
 }

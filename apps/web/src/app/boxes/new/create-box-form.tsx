@@ -1,11 +1,14 @@
 "use client";
 
+import type { SkillId } from "@vps-claude/shared";
+
 import { slugify } from "@vps-claude/shared";
 import { ArrowLeft, Box } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 
+import { SkillSelector } from "@/components/skill-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +24,7 @@ export default function CreateBoxForm() {
   const createMutation = useCreateBox();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
   const [telegramBotToken, setTelegramBotToken] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
 
@@ -35,6 +39,7 @@ export default function CreateBoxForm() {
       {
         name,
         password,
+        skills: skills as SkillId[],
         ...(telegramBotToken && { telegramBotToken }),
         ...(telegramChatId && { telegramChatId }),
       },
@@ -116,6 +121,11 @@ export default function CreateBoxForm() {
           <p className="text-sm text-muted-foreground">
             Used to access your Claude Code box via browser
           </p>
+        </div>
+
+        {/* Skills.sh Skills */}
+        <div className="pt-6 border-t">
+          <SkillSelector value={skills} onChange={setSkills} />
         </div>
 
         {/* Telegram Configuration (Optional) */}

@@ -235,7 +235,7 @@ function ApiKeyCard({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => revokeMutation.mutate(apiKey.id)}
+        onClick={() => revokeMutation.mutate(apiKey.id as `apk_${string}`)}
         disabled={revokeMutation.isPending}
       >
         <Trash2 className="h-4 w-4 text-destructive" />

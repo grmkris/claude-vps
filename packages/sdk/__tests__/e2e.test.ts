@@ -28,7 +28,7 @@ describe("SDK E2E Tests", () => {
 
   describe("API Key Authentication", () => {
     test("can list boxes with API key", async () => {
-      const result = await setup.client.box.list();
+      const result = await setup.client.box.list({});
 
       expect(result).toBeDefined();
       expect(result.boxes).toBeDefined();
@@ -36,7 +36,7 @@ describe("SDK E2E Tests", () => {
     });
 
     test("can list secrets with API key", async () => {
-      const result = await setup.client.secret.list();
+      const result = await setup.client.secret.list({});
 
       expect(result).toBeDefined();
       expect(result.secrets).toBeDefined();
@@ -44,7 +44,7 @@ describe("SDK E2E Tests", () => {
     });
 
     test("can list skills with API key", async () => {
-      const result = await setup.client.skill.list();
+      const result = await setup.client.skill.list({});
 
       expect(result).toBeDefined();
       expect(result.skills).toBeDefined();
@@ -74,7 +74,7 @@ describe("SDK E2E Tests", () => {
         sessionToken: setup.sessionCookie,
       });
 
-      const result = await client.box.list();
+      const result = await client.box.list({});
       expect(result).toBeDefined();
       expect(result.boxes).toBeDefined();
     });
@@ -83,7 +83,7 @@ describe("SDK E2E Tests", () => {
   describe("Permission Enforcement", () => {
     test("full-access API key can list", async () => {
       // The test API key has full permissions
-      const listResult = await setup.client.box.list();
+      const listResult = await setup.client.box.list({});
       expect(listResult.boxes).toBeDefined();
       expect(Array.isArray(listResult.boxes)).toBe(true);
     });
@@ -105,7 +105,7 @@ describe("SDK E2E Tests", () => {
       });
 
       // Should be able to list
-      const listResult = await client.box.list();
+      const listResult = await client.box.list({});
       expect(listResult.boxes).toBeDefined();
 
       // Should NOT be able to create
@@ -168,7 +168,7 @@ describe("SDK E2E Tests", () => {
       });
 
       try {
-        await client.box.list();
+        await client.box.list({});
         expect(true).toBe(false);
       } catch (error) {
         expect(error).toBeDefined();
@@ -186,7 +186,7 @@ describe("SDK E2E Tests", () => {
       });
 
       try {
-        await client.box.list();
+        await client.box.list({});
         expect(true).toBe(false);
       } catch (error) {
         expect(error).toBeDefined();

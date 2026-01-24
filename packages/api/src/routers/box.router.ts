@@ -14,6 +14,13 @@ import {
 
 export const boxRouter = {
   list: protectedProcedure
+    .route({ method: "GET", path: "/box" })
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional(),
+        offset: z.number().min(0).optional(),
+      })
+    )
     .output(BoxListOutput)
     .handler(async ({ context }) => {
       const result = await context.boxService.listByUser(
@@ -30,6 +37,7 @@ export const boxRouter = {
     }),
 
   byId: protectedProcedure
+    .route({ method: "GET", path: "/box/:id" })
     .input(z.object({ id: BoxId }))
     .output(BoxByIdOutput)
     .handler(async ({ context, input }) => {
@@ -50,6 +58,7 @@ export const boxRouter = {
     }),
 
   create: protectedProcedure
+    .route({ method: "POST", path: "/box" })
     .input(
       z.object({
         name: z.string().min(1).max(50),
@@ -72,6 +81,7 @@ export const boxRouter = {
     }),
 
   deploy: protectedProcedure
+    .route({ method: "POST", path: "/box/deploy" })
     .input(
       z.object({
         id: BoxId,
@@ -97,6 +107,7 @@ export const boxRouter = {
     }),
 
   delete: protectedProcedure
+    .route({ method: "DELETE", path: "/box/:id" })
     .input(z.object({ id: BoxId }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
@@ -116,6 +127,7 @@ export const boxRouter = {
     }),
 
   getUrl: protectedProcedure
+    .route({ method: "GET", path: "/box/:id/url" })
     .input(z.object({ id: BoxId }))
     .output(BoxUrlOutput)
     .handler(async ({ context, input }) => {
@@ -138,6 +150,7 @@ export const boxRouter = {
     }),
 
   getProxyDetails: protectedProcedure
+    .route({ method: "GET", path: "/box/:id/proxy-details" })
     .input(
       z.object({
         id: BoxId,
@@ -174,3 +187,7 @@ export const boxRouter = {
       );
     }),
 };
+
+// NOTE: agentConfigRouter removed from appRouter to fix TS7056 type explosion.
+// Box-agent fetches config via boxApiRouter.getAgentConfig endpoint.
+// Re-add when admin UI for agent configs is needed.

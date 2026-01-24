@@ -1,25 +1,36 @@
 import type { ApiKeyPermissions } from "@vps-claude/auth";
 
 import { ORPCError } from "@orpc/server";
+import { ApiKeyId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
 import { ApiKeyCreateOutput, ApiKeyListOutput, SuccessOutput } from "./schemas";
 
+// Flat string array to avoid type explosion (TS7056)
+// Format: "resource:action" e.g. ["box:create", "secret:read"]
 const createApiKeyInput = z.object({
   name: z.string().min(1).max(100),
-  permissions: z
-    .object({
-      box: z.array(z.enum(["create", "read", "delete", "deploy"])).optional(),
-      secret: z.array(z.enum(["read", "create", "delete"])).optional(),
-      skill: z.array(z.enum(["read", "create", "delete"])).optional(),
-    })
-    .optional(),
+  permissions: z.array(z.string()).optional(),
   expiresIn: z.number().positive().optional(),
 });
 
+// Parse flat permissions back to nested format for service
+function parsePermissions(perms?: string[]): ApiKeyPermissions | undefined {
+  if (!perms?.length) return undefined;
+  const result: Record<string, string[]> = {};
+  for (const p of perms) {
+    const [resource, action] = p.split(":");
+    if (resource && action) {
+      (result[resource] ??= []).push(action);
+    }
+  }
+  return result as ApiKeyPermissions;
+}
+
 export const apiKeyRouter = {
   create: protectedProcedure
+    .route({ method: "POST", path: "/api-key" })
     .input(createApiKeyInput)
     .output(ApiKeyCreateOutput)
     .handler(async ({ context, input }) => {
@@ -27,7 +38,7 @@ export const apiKeyRouter = {
         context.session.user.id,
         {
           name: input.name,
-          permissions: input.permissions as ApiKeyPermissions,
+          permissions: parsePermissions(input.permissions),
           expiresIn: input.expiresIn,
         }
       );
@@ -48,6 +59,13 @@ export const apiKeyRouter = {
     }),
 
   list: protectedProcedure
+    .route({ method: "GET", path: "/api-key" })
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional(),
+        offset: z.number().min(0).optional(),
+      })
+    )
     .output(ApiKeyListOutput)
     .handler(async ({ context }) => {
       const result = await context.apiKeyService.list(context.session.user.id);
@@ -72,7 +90,8 @@ export const apiKeyRouter = {
     }),
 
   delete: protectedProcedure
-    .input(z.object({ keyId: z.string().min(1) }))
+    .route({ method: "DELETE", path: "/api-key/:keyId" })
+    .input(z.object({ keyId: ApiKeyId }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
       const result = await context.apiKeyService.delete(
