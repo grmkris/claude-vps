@@ -23,6 +23,7 @@ export default function CreateBoxForm() {
   const router = useRouter();
   const createMutation = useCreateBox();
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [telegramBotToken, setTelegramBotToken] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
@@ -38,6 +39,7 @@ export default function CreateBoxForm() {
       {
         name,
         skills: skills as SkillId[],
+        ...(password && { password }),
         ...(telegramBotToken && { telegramBotToken }),
         ...(telegramChatId && { telegramChatId }),
       },
@@ -99,6 +101,26 @@ export default function CreateBoxForm() {
               </span>
             </p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-sm font-medium">
+            Password (Optional)
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="Enter password for code-server"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={4}
+            maxLength={100}
+            className="h-12"
+          />
+          <p className="text-sm text-muted-foreground">
+            Password for code-server web IDE authentication. If not set, no
+            password will be required.
+          </p>
         </div>
 
         {/* Skills.sh Skills */}

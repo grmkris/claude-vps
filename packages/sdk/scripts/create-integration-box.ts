@@ -96,12 +96,13 @@ async function createTestBox() {
   // Create box
   console.log("Creating box...");
   const boxName = `test-int-${Date.now()}`;
+  const boxPassword = "test123456";
 
   try {
     const result = await apiKeyClient.box.create({
       name: boxName,
-      password: "test123456",
       skills: [],
+      password: boxPassword,
     });
 
     const box = result.box;
@@ -111,10 +112,11 @@ async function createTestBox() {
     console.log(`  Name: ${box.name}`);
     console.log(`  Subdomain: ${box.subdomain}`);
     console.log(`  Status: ${box.status}`);
+    console.log(`  Password: ${boxPassword}`);
     console.log(`\nAccess URLs:`);
     console.log(`  HTTP: http://${box.subdomain}.agents.localhost:8090`);
     console.log(
-      `  SSH: ssh coder@ssh.localhost -p 2222 (password: test123456)`
+      `  SSH: ssh coder@ssh.localhost -p 2222 (password: ${boxPassword})`
     );
     console.log(`\nExport for tests:`);
     console.log(`export TEST_BOX_SUBDOMAIN=${box.subdomain}`);

@@ -11,5 +11,7 @@ export const env = z
     BOX_AGENT_PORT: z.coerce.number().default(9999),
     BOX_INBOX_DIR: z.string().default("/home/coder/.inbox"),
     BOX_DB_PATH: z.string().default("/home/coder/.box-agent/sessions.db"),
+    // Agent-app directory for filesystem and sqlite tools
+    AGENT_APP_DIR: z.string().default("/home/coder/agent-app"),
   })
   .parse(bunEnv);

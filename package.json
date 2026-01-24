@@ -70,6 +70,7 @@
     "@types/bun": "catalog:",
     "@typescript/native-preview": "catalog:",
     "@vps-claude/config": "workspace:*",
+    "@vps-claude/logger": "workspace:*",
     "oxfmt": "^0.26.0",
     "oxlint": "^1.39.0",
     "oxlint-tsgolint": "^0.11.0",

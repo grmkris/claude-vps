@@ -13,12 +13,14 @@ See `package.json` for all available scripts. Key commands:
 ## Local Development
 
 ### Start Services
+
 ```bash
 bun run db:start   # Postgres + Redis
 bun run dev        # Server (33000) + Web (33001)
 ```
 
 ### Testing with Real Sprites
+
 Boxes deploy to actual Fly.io VMs. Requires `SPRITES_TOKEN` in `apps/server/.env`.
 
 1. Create box via UI at http://localhost:33001
@@ -28,7 +30,9 @@ Boxes deploy to actual Fly.io VMs. Requires `SPRITES_TOKEN` in `apps/server/.env
 5. Test email: POST to `https://{subdomain}.sprites.dev:9999/email/receive`
 
 ### Testing box-agent Changes
+
 **Fast iteration (SSH & replace):**
+
 ```bash
 cd apps/box-agent && bun run build:linux
 scp dist/box-agent-linux-x64 coder@{subdomain}.sprites.dev:/tmp/

@@ -64,6 +64,8 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         skills?: string[];
         telegramBotToken?: string;
         telegramChatId?: string;
+        /** Password for code-server authentication */
+        password?: string;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
@@ -112,6 +114,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         userId,
         subdomain: created.subdomain,
         skills,
+        password: input.password,
       });
 
       return ok(created);
@@ -119,7 +122,8 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
     async deploy(
       id: BoxId,
-      userId: UserId
+      userId: UserId,
+      password?: string
     ): Promise<Result<void, BoxServiceError>> {
       const boxResult = await getById(id);
       if (boxResult.isErr()) return err(boxResult.error);
@@ -152,6 +156,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         userId,
         subdomain: boxRecord.subdomain,
         skills: skills.map((s) => s.skillId),
+        password,
       });
 
       return ok(undefined);
@@ -246,10 +251,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       spriteName: string,
       spriteUrl: string
     ): Promise<Result<void, BoxServiceError>> {
-      await db
-        .update(box)
-        .set({ spriteName, spriteUrl })
-        .where(eq(box.id, id));
+      await db.update(box).set({ spriteName, spriteUrl }).where(eq(box.id, id));
       return ok(undefined);
     },
 

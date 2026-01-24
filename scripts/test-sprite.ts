@@ -1,5 +1,9 @@
 #!/usr/bin/env bun
+import { createLogger } from "@vps-claude/logger";
+
 import { createSpritesClient } from "../packages/sprites/src/sprites-client";
+
+const logger = createLogger({ appName: "vps-claude-server" });
 
 const SPRITES_TOKEN =
   process.env.SPRITES_TOKEN ||
@@ -8,7 +12,7 @@ const SPRITES_TOKEN =
 async function testSprite() {
   console.log("=== Sprite Test: Create & Exec ===\n");
 
-  const client = createSpritesClient({ token: SPRITES_TOKEN });
+  const client = createSpritesClient({ token: SPRITES_TOKEN, logger });
 
   // Generate unique sprite name
   const spriteName = `test-sprite-${Date.now()}`;

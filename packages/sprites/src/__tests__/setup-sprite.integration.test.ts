@@ -1,6 +1,9 @@
+import { createLogger } from "@vps-claude/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { createSpritesClient, type SpritesClient } from "..";
+
+const logger = createLogger({ appName: "vps-claude-server" });
 
 const SPRITES_TOKEN = process.env.SPRITES_TOKEN;
 
@@ -47,7 +50,7 @@ describe.skipIf(!SPRITES_TOKEN)("setupSprite Integration", () => {
   }
 
   beforeAll(async () => {
-    client = createSpritesClient({ token: SPRITES_TOKEN! });
+    client = createSpritesClient({ token: SPRITES_TOKEN!, logger });
     const suffix = Date.now().toString(36);
 
     console.log(`Creating sprite setup-test-${suffix}...`);

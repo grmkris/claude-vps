@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fly/sprites": "^0.0.1",
+    "@vps-claude/logger": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,3 +1,5 @@
+import type { Logger } from "@vps-claude/logger";
+
 import { SpritesClient as FlySpritesClient } from "@fly/sprites";
 
 import type {
@@ -15,13 +17,14 @@ import type {
 
 export interface SpritesClientOptions {
   token: string;
+  logger: Logger;
 }
 
 export function createSpritesClient(
   options: SpritesClientOptions
 ): SpritesClient {
-  const { token } = options;
-  const flyClient = new FlySpritesClient(token);
+  const { token, logger } = options;
+  const flySpritesClient = new FlySpritesClient(token);
 
   /**
    * Generate unique sprite name from userId and subdomain
@@ -44,7 +47,7 @@ export function createSpritesClient(
     const spriteName = generateSpriteName(config.userId, config.subdomain);
 
     // Create the sprite using official SDK
-    const sprite = await flyClient.createSprite(spriteName);
+    const sprite = await flySpritesClient.createSprite(spriteName);
 
     // Set environment variables via exec
     // Write to ~/.bashrc for persistence across sessions
@@ -66,17 +69,17 @@ ENVEOF`
   }
 
   async function listSprites(): Promise<Array<{ name: string }>> {
-    const sprites = await flyClient.listAllSprites();
+    const sprites = await flySpritesClient.listAllSprites();
     return sprites.map((s) => ({ name: s.name }));
   }
 
   async function deleteSprite(spriteName: string): Promise<void> {
-    await flyClient.deleteSprite(spriteName);
+    await flySpritesClient.deleteSprite(spriteName);
   }
 
   async function getSprite(spriteName: string): Promise<SpriteInfo | null> {
     try {
-      const sprite = await flyClient.getSprite(spriteName);
+      const sprite = await flySpritesClient.getSprite(spriteName);
       // Map SDK type to our type
       return {
         name: sprite.name,
@@ -122,7 +125,7 @@ ENVEOF`
     spriteName: string,
     command: string
   ): Promise<ExecResult> {
-    const sprite = flyClient.sprite(spriteName);
+    const sprite = flySpritesClient.sprite(spriteName);
     const result = await sprite.exec(command);
 
     return {
@@ -168,7 +171,7 @@ ENVEOF`
   }
 
   async function createCheckpoint(spriteName: string): Promise<Checkpoint> {
-    const sprite = flyClient.sprite(spriteName);
+    const sprite = flySpritesClient.sprite(spriteName);
     const response = await sprite.createCheckpoint();
 
     // The SDK returns a streaming Response, we need to consume it
@@ -198,7 +201,7 @@ ENVEOF`
   }
 
   async function listCheckpoints(spriteName: string): Promise<Checkpoint[]> {
-    const sprite = flyClient.sprite(spriteName);
+    const sprite = flySpritesClient.sprite(spriteName);
     const sdkCheckpoints = await sprite.listCheckpoints();
 
     return sdkCheckpoints.map((cp) => ({
@@ -212,7 +215,7 @@ ENVEOF`
     spriteName: string,
     checkpointId: string
   ): Promise<void> {
-    const sprite = flyClient.sprite(spriteName);
+    const sprite = flySpritesClient.sprite(spriteName);
     const response = await sprite.restoreCheckpoint(checkpointId);
 
     // Consume the streaming response to wait for completion
@@ -228,10 +231,16 @@ ENVEOF`
    * (heredocs, redirects, pipes, export, etc.)
    */
   async function setupSprite(config: SpriteSetupConfig): Promise<void> {
-    const { spriteName, boxAgentBinaryUrl, envVars } = config;
+    const { spriteName, boxAgentBinaryUrl, envVars, password } = config;
+
+    // Add PASSWORD to envVars for code-server if provided
+    const finalEnvVars = password
+      ? { ...envVars, PASSWORD: password }
+      : envVars;
 
     // Helper to run a setup step with error context
     async function runStep(stepNum: number, name: string, cmd: string) {
+      logger.info({ spriteName, step: stepNum }, `Setup: ${name}`);
       const result = await execShell(spriteName, cmd);
       if (result.exitCode !== 0) {
         throw new Error(
@@ -243,13 +252,14 @@ ENVEOF`
       return result;
     }
 
-    // Step 1: Create coder user (Sprites default user, no password needed - auth handled by Sprites)
+    // Step 1: Create coder user with optional password for code-server
     await runStep(
       1,
       "Create coder user",
       `
       sudo useradd -m -s /bin/bash -G sudo coder || true
       echo "coder ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/coder > /dev/null
+      ${password ? `echo "coder:${password.replace(/"/g, '\\"')}" | sudo chpasswd` : ""}
     `
     );
 
@@ -274,7 +284,7 @@ ENVEOF`
     );
 
     // Step 4: Set environment variables for coder user
-    const envExports = Object.entries(envVars)
+    const envExports = Object.entries(finalEnvVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
@@ -291,7 +301,7 @@ ENVEOF
     );
 
     // Step 5: Create env file for box-agent
-    const envFile = Object.entries(envVars)
+    const envFile = Object.entries(finalEnvVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
@@ -325,7 +335,7 @@ ENVEOF
    */
   function getProxyUrl(spriteName: string): string {
     // Use baseURL from SDK, converting https:// to wss://
-    const wsBase = flyClient.baseURL.replace(/^https?:\/\//, "wss://");
+    const wsBase = flySpritesClient.baseURL.replace(/^https?:\/\//, "wss://");
     return `${wsBase}/v1/sprites/${encodeURIComponent(spriteName)}/proxy`;
   }
 
@@ -385,7 +395,7 @@ systemctl restart box-agent`
     opts?: FsReadOptions
   ): Promise<Buffer> {
     const url = new URL(
-      `${flyClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/read`
+      `${flySpritesClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/read`
     );
     url.searchParams.set("path", path);
     if (opts?.workingDir) url.searchParams.set("workingDir", opts.workingDir);
@@ -409,7 +419,7 @@ systemctl restart box-agent`
     opts?: FsWriteOptions
   ): Promise<void> {
     const url = new URL(
-      `${flyClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/write`
+      `${flySpritesClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/write`
     );
     url.searchParams.set("path", path);
     if (opts?.workingDir) url.searchParams.set("workingDir", opts.workingDir);
@@ -435,7 +445,7 @@ systemctl restart box-agent`
     opts?: FsListOptions
   ): Promise<FileInfo[]> {
     const url = new URL(
-      `${flyClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/list`
+      `${flySpritesClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}/fs/list`
     );
     url.searchParams.set("path", path);
     if (opts?.workingDir) url.searchParams.set("workingDir", opts.workingDir);
@@ -448,6 +458,30 @@ systemctl restart box-agent`
     }
     const data = (await res.json()) as { entries: FileInfo[] };
     return data.entries;
+  }
+
+  /**
+   * Set URL auth mode for a sprite
+   * SDK v0.0.1 doesn't have updateURLSettings, so we use direct API call
+   */
+  async function setUrlAuth(
+    spriteName: string,
+    auth: "public" | "sprite"
+  ): Promise<void> {
+    const res = await fetch(
+      `${flySpritesClient.baseURL}/v1/sprites/${encodeURIComponent(spriteName)}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url_settings: { auth } }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(`setUrlAuth failed: ${res.status} ${await res.text()}`);
+    }
   }
 
   return {
@@ -467,5 +501,6 @@ systemctl restart box-agent`
     readFile,
     writeFile,
     listDir,
+    setUrlAuth,
   };
 }

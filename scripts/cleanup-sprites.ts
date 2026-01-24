@@ -1,5 +1,9 @@
 #!/usr/bin/env bun
+import { createLogger } from "@vps-claude/logger";
+
 import { createSpritesClient } from "../packages/sprites/src/sprites-client";
+
+const logger = createLogger({ appName: "vps-claude-server" });
 
 const SPRITES_TOKEN =
   process.env.SPRITES_TOKEN ||
@@ -8,7 +12,7 @@ const SPRITES_TOKEN =
 async function cleanup() {
   console.log("=== Cleaning Up Test Sprites ===\n");
 
-  const client = createSpritesClient({ token: SPRITES_TOKEN });
+  const client = createSpritesClient({ token: SPRITES_TOKEN, logger });
 
   // List all sprites
   console.log("Listing sprites...");

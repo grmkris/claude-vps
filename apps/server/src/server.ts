@@ -42,6 +42,7 @@ const emailClient = createEmailClient({
 
 const spritesClient = createSpritesClient({
   token: env.SPRITES_TOKEN,
+  logger,
 });
 
 const trustedOrigins = [

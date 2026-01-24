@@ -12,6 +12,7 @@
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
+        "@vps-claude/logger": "workspace:*",
         "oxfmt": "^0.26.0",
         "oxlint": "^1.39.0",
         "oxlint-tsgolint": "^0.11.0",
@@ -254,6 +255,7 @@
       "name": "@vps-claude/sprites",
       "dependencies": {
         "@fly/sprites": "^0.0.1",
+        "@vps-claude/logger": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {

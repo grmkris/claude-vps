@@ -81,7 +81,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
   const worker = new Worker<DeployBoxJobData>(
     WORKER_CONFIG.deployBox.name,
     async (job: Job<DeployBoxJobData>) => {
-      const { boxId, userId, subdomain, skills } = job.data;
+      const { boxId, userId, subdomain, skills, password } = job.data;
 
       try {
         const boxResult = await boxService.getById(boxId);
@@ -129,11 +129,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           envVars: {}, // Env vars set during setup
         });
 
-        await boxService.setSpriteInfo(
-          boxId,
-          sprite.spriteName,
-          sprite.url
-        );
+        await boxService.setSpriteInfo(boxId, sprite.spriteName, sprite.url);
 
         // Step 2: Set up the sprite with box-agent and env vars
         logger.info(
@@ -144,9 +140,17 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           spriteName: sprite.spriteName,
           boxAgentBinaryUrl,
           envVars,
+          password,
         });
 
-        // Step 3: Install skills.sh skills
+        // Step 3: Enable public URL access (Sprites are private by default)
+        logger.info(
+          { boxId, spriteName: sprite.spriteName },
+          "Enabling public URL access"
+        );
+        await spritesClient.setUrlAuth(sprite.spriteName, "public");
+
+        // Step 4: Install skills.sh skills
         if (skills && skills.length > 0) {
           logger.info(
             { boxId, skillCount: skills.length },

@@ -7,6 +7,8 @@ export const DeployBoxJobData = z.object({
   subdomain: z.string(),
   /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
   skills: z.array(z.string()).default([]),
+  /** Password for code-server authentication */
+  password: z.string().optional(),
 });
 
 export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;

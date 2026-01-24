@@ -48,6 +48,8 @@ export interface SpriteSetupConfig {
   spriteName: string;
   boxAgentBinaryUrl: string;
   envVars: Record<string, string>;
+  /** Password for code-server authentication */
+  password?: string;
 }
 
 // Proxy config for TCP tunneling
@@ -122,4 +124,7 @@ export interface SpritesClient {
     path: string,
     opts?: FsListOptions
   ) => Promise<FileInfo[]>;
+
+  /** Set URL auth mode (public or sprite-token required) */
+  setUrlAuth: (spriteName: string, auth: "public" | "sprite") => Promise<void>;
 }
