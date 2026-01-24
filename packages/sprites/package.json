@@ -10,6 +10,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@fly/sprites": "^0.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -75,4 +75,8 @@ export interface SpritesClient {
   ) => Promise<void>;
   getProxyUrl: (spriteName: string) => string;
   getToken: () => string;
+  updateEnvVars: (
+    spriteName: string,
+    envVars: Record<string, string>
+  ) => Promise<void>;
 }

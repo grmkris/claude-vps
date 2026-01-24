@@ -28,30 +28,29 @@ export const boxApiRouter = {
           context.boxToken!
         );
 
-        return boxResult.match(
-          (boxRecord) => {
-            if (!boxRecord) {
-              throw new ORPCError("UNAUTHORIZED", {
-                message: "Invalid box token",
-              });
-            }
+        if (boxResult.isErr()) {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: boxResult.error.message,
+          });
+        }
 
-            // Queue email send (fire and forget - errors handled by worker)
-            void context.emailService.queueSendEmail(
-              boxRecord.id,
-              input.to,
-              input.subject,
-              input.body,
-              input.inReplyTo
-            );
-            return { success: true as const };
-          },
-          (error) => {
-            throw new ORPCError("INTERNAL_SERVER_ERROR", {
-              message: error.message,
-            });
-          }
+        const boxRecord = boxResult.value;
+        if (!boxRecord) {
+          throw new ORPCError("UNAUTHORIZED", {
+            message: "Invalid box token",
+          });
+        }
+
+        // Queue email send - await to surface queue errors
+        await context.emailService.queueSendEmail(
+          boxRecord.id,
+          input.to,
+          input.subject,
+          input.body,
+          input.inReplyTo
         );
+
+        return { success: true as const };
       }),
   },
 };

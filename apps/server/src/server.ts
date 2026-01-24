@@ -61,7 +61,9 @@ const auth = createAuth({
 });
 
 const apiKeyService = createApiKeyService({ deps: { auth } });
-const boxService = createBoxService({ deps: { db, queueClient } });
+const boxService = createBoxService({
+  deps: { db, queueClient, spritesClient },
+});
 const emailService = createEmailService({ deps: { db, queueClient } });
 const secretService = createSecretService({ deps: { db } });
 const skillService = createSkillService({ deps: { db } });

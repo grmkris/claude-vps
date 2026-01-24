@@ -1,5 +1,6 @@
 import type { Database, SelectBoxSchema } from "@vps-claude/db";
 import type { QueueClient } from "@vps-claude/queue";
+import type { SpritesClient } from "@vps-claude/sprites";
 
 import { box, boxSkill } from "@vps-claude/db";
 import { type BoxId, type SkillId, type UserId } from "@vps-claude/shared";
@@ -16,10 +17,11 @@ export type BoxServiceError =
 interface BoxServiceDeps {
   db: Database;
   queueClient: QueueClient;
+  spritesClient?: SpritesClient;
 }
 
 export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
-  const { db, queueClient } = deps;
+  const { db, queueClient, spritesClient } = deps;
 
   const getById = async (
     id: BoxId
@@ -193,19 +195,23 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         })
         .where(eq(box.id, boxId));
 
-      // Queue redeploy to inject new env vars
-      const skills = await db
-        .select({ skillId: boxSkill.skillId })
-        .from(boxSkill)
-        .where(eq(boxSkill.boxId, boxId));
-
-      await queueClient.deployQueue.add("deploy", {
-        boxId,
-        userId: existing.userId,
-        subdomain: existing.subdomain,
-        password: "",
-        skills: skills.map((s) => s.skillId),
-      });
+      // Hot update env vars on running sprite (no full redeploy needed)
+      if (
+        spritesClient &&
+        existing.spriteName &&
+        existing.status === "running"
+      ) {
+        const envUpdates: Record<string, string> = {};
+        if (config.telegramBotToken) {
+          envUpdates.TAKOPI_BOT_TOKEN = config.telegramBotToken;
+        }
+        if (config.telegramChatId) {
+          envUpdates.TAKOPI_CHAT_ID = config.telegramChatId;
+        }
+        if (Object.keys(envUpdates).length > 0) {
+          await spritesClient.updateEnvVars(existing.spriteName, envUpdates);
+        }
+      }
 
       return ok(undefined);
     },

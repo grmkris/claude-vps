@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { SpritesClient as FlySpritesClient } from "@fly/sprites";
 
 import type {
   Checkpoint,
@@ -9,15 +9,6 @@ import type {
   SpritesClient,
 } from "./types";
 
-const API_BASE = "https://api.sprites.dev/v1";
-
-// Runtime validation for exec response
-const ExecResponseSchema = z.object({
-  stdout: z.string().optional(),
-  stderr: z.string().optional(),
-  exit_code: z.number().optional(),
-});
-
 export interface SpritesClientOptions {
   token: string;
 }
@@ -26,35 +17,7 @@ export function createSpritesClient(
   options: SpritesClientOptions
 ): SpritesClient {
   const { token } = options;
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-
-  async function apiRequest<T>(
-    method: string,
-    path: string,
-    body?: unknown
-  ): Promise<T> {
-    const response = await fetch(`${API_BASE}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!response.ok) {
-      const error = await response.text().catch(() => "Unknown error");
-      throw new Error(`Sprites API error (${response.status}): ${error}`);
-    }
-
-    // Handle empty responses (204 No Content)
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json() as Promise<T>;
-  }
+  const flyClient = new FlySpritesClient(token);
 
   /**
    * Generate unique sprite name from userId and subdomain
@@ -76,18 +39,13 @@ export function createSpritesClient(
   ): Promise<{ spriteName: string; url: string }> {
     const spriteName = generateSpriteName(config.userId, config.subdomain);
 
-    // Create the sprite
-    await apiRequest("POST", "/sprites", { name: spriteName });
+    // Create the sprite using official SDK
+    const sprite = await flyClient.createSprite(spriteName);
 
     // Set environment variables via exec
-    // Write to /etc/environment for persistence across sessions
-    const envLines = Object.entries(config.envVars)
-      .map(([key, value]) => `${key}="${value.replace(/"/g, '\\"')}"`)
-      .join("\n");
-
-    if (envLines) {
-      await execCommand(
-        spriteName,
+    // Write to ~/.bashrc for persistence across sessions
+    if (Object.keys(config.envVars).length > 0) {
+      await sprite.exec(
         `cat >> ~/.bashrc << 'ENVEOF'
 # Box environment variables
 ${Object.entries(config.envVars)
@@ -104,28 +62,55 @@ ENVEOF`
   }
 
   async function listSprites(): Promise<Array<{ name: string }>> {
-    const result = await apiRequest<{ sprites: Array<{ name: string }> }>(
-      "GET",
-      "/sprites"
-    );
-    return result.sprites || [];
+    const sprites = await flyClient.listAllSprites();
+    return sprites.map((s) => ({ name: s.name }));
   }
 
   async function deleteSprite(spriteName: string): Promise<void> {
-    await apiRequest("DELETE", `/sprites/${encodeURIComponent(spriteName)}`);
+    await flyClient.deleteSprite(spriteName);
   }
 
   async function getSprite(spriteName: string): Promise<SpriteInfo | null> {
     try {
-      return await apiRequest<SpriteInfo>(
-        "GET",
-        `/sprites/${encodeURIComponent(spriteName)}`
-      );
+      const sprite = await flyClient.getSprite(spriteName);
+      // Map SDK type to our type
+      return {
+        name: sprite.name,
+        status: mapSpriteStatus(sprite.status),
+        created_at: sprite.createdAt?.toISOString(),
+        updated_at: sprite.updatedAt?.toISOString(),
+      };
     } catch (error) {
-      if (String(error).includes("404")) {
+      // SDK throws on 404
+      if (
+        String(error).includes("404") ||
+        String(error).includes("not found")
+      ) {
         return null;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Map SDK status to our status enum
+   */
+  function mapSpriteStatus(
+    sdkStatus?: string
+  ): "running" | "sleeping" | "stopped" | "creating" | "error" {
+    switch (sdkStatus?.toLowerCase()) {
+      case "running":
+        return "running";
+      case "sleeping":
+      case "suspended":
+        return "sleeping";
+      case "stopped":
+        return "stopped";
+      case "creating":
+      case "pending":
+        return "creating";
+      default:
+        return "error";
     }
   }
 
@@ -133,68 +118,72 @@ ENVEOF`
     spriteName: string,
     command: string
   ): Promise<ExecResult> {
-    // Use POST /sprites/{name}/exec with cmd query param
-    // This is a simplified sync exec - for streaming use WebSocket
-    const url = new URL(
-      `${API_BASE}/sprites/${encodeURIComponent(spriteName)}/exec`
-    );
-    url.searchParams.set("cmd", command);
+    const sprite = flyClient.sprite(spriteName);
+    const result = await sprite.exec(command);
 
-    const response = await fetch(url.toString(), {
-      method: "POST",
-      headers,
-    });
-
-    const responseText = await response.text();
-
-    if (!response.ok) {
-      throw new Error(
-        `Exec failed (${response.status}): ${responseText || "Unknown error"}`
-      );
-    }
-
-    // Try to parse as JSON first (structured response)
-    try {
-      const json: unknown = JSON.parse(responseText);
-      const result = ExecResponseSchema.parse(json);
-      return {
-        stdout: result.stdout ?? "",
-        stderr: result.stderr ?? "",
-        exitCode: result.exit_code ?? 0,
-      };
-    } catch {
-      // Not JSON - treat as plain text stdout
-      return {
-        stdout: responseText,
-        stderr: "",
-        exitCode: 0,
-      };
-    }
+    return {
+      stdout:
+        typeof result.stdout === "string"
+          ? result.stdout
+          : result.stdout.toString("utf8"),
+      stderr:
+        typeof result.stderr === "string"
+          ? result.stderr
+          : result.stderr.toString("utf8"),
+      exitCode: result.exitCode,
+    };
   }
 
   async function createCheckpoint(spriteName: string): Promise<Checkpoint> {
-    return apiRequest<Checkpoint>(
-      "POST",
-      `/sprites/${encodeURIComponent(spriteName)}/checkpoints`
-    );
+    const sprite = flyClient.sprite(spriteName);
+    const response = await sprite.createCheckpoint();
+
+    // The SDK returns a streaming Response, we need to consume it
+    // and extract the checkpoint info from the NDJSON stream
+    const text = await response.text();
+    const lines = text.trim().split("\n").filter(Boolean);
+    const lastLine = lines[lines.length - 1];
+
+    if (lastLine) {
+      const data = JSON.parse(lastLine) as {
+        id?: string;
+        create_time?: string;
+      };
+      return {
+        id: data.id || `checkpoint-${Date.now()}`,
+        sprite_name: spriteName,
+        created_at: data.create_time || new Date().toISOString(),
+      };
+    }
+
+    // Fallback
+    return {
+      id: `checkpoint-${Date.now()}`,
+      sprite_name: spriteName,
+      created_at: new Date().toISOString(),
+    };
   }
 
   async function listCheckpoints(spriteName: string): Promise<Checkpoint[]> {
-    const result = await apiRequest<{ checkpoints: Checkpoint[] }>(
-      "GET",
-      `/sprites/${encodeURIComponent(spriteName)}/checkpoints`
-    );
-    return result.checkpoints || [];
+    const sprite = flyClient.sprite(spriteName);
+    const sdkCheckpoints = await sprite.listCheckpoints();
+
+    return sdkCheckpoints.map((cp) => ({
+      id: cp.id,
+      sprite_name: spriteName,
+      created_at: cp.createTime.toISOString(),
+    }));
   }
 
   async function restoreCheckpoint(
     spriteName: string,
     checkpointId: string
   ): Promise<void> {
-    await apiRequest(
-      "POST",
-      `/sprites/${encodeURIComponent(spriteName)}/checkpoints/${encodeURIComponent(checkpointId)}/restore`
-    );
+    const sprite = flyClient.sprite(spriteName);
+    const response = await sprite.restoreCheckpoint(checkpointId);
+
+    // Consume the streaming response to wait for completion
+    await response.text();
   }
 
   /**
@@ -346,7 +335,9 @@ ENVEOF
    * Get the WebSocket proxy URL for a sprite
    */
   function getProxyUrl(spriteName: string): string {
-    return `wss://api.sprites.dev/v1/sprites/${encodeURIComponent(spriteName)}/proxy`;
+    // Use baseURL from SDK, converting https:// to wss://
+    const wsBase = flyClient.baseURL.replace(/^https?:\/\//, "wss://");
+    return `${wsBase}/v1/sprites/${encodeURIComponent(spriteName)}/proxy`;
   }
 
   /**
@@ -354,6 +345,46 @@ ENVEOF
    */
   function getToken(): string {
     return token;
+  }
+
+  /**
+   * Update environment variables on a running sprite without full redeploy
+   * Updates .bashrc.env and restarts box-agent to pick up changes
+   */
+  async function updateEnvVars(
+    spriteName: string,
+    envVars: Record<string, string>
+  ): Promise<void> {
+    // Read existing env file, merge with new vars
+    const existingResult = await execCommand(
+      spriteName,
+      "cat /home/coder/.bashrc.env 2>/dev/null || echo ''"
+    );
+
+    // Parse existing vars
+    const existingVars: Record<string, string> = {};
+    for (const line of existingResult.stdout.split("\n")) {
+      const match = line.match(/^([A-Z_][A-Z0-9_]*)="(.*)"/);
+      if (match?.[1] !== undefined && match[2] !== undefined) {
+        existingVars[match[1]] = match[2];
+      }
+    }
+
+    // Merge with new vars (new vars override)
+    const mergedVars = { ...existingVars, ...envVars };
+
+    const envFile = Object.entries(mergedVars)
+      .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
+      .join("\n");
+
+    await execCommand(
+      spriteName,
+      `cat > /home/coder/.bashrc.env << 'ENVEOF'
+${envFile}
+ENVEOF
+chown coder:coder /home/coder/.bashrc.env
+systemctl restart box-agent`
+    );
   }
 
   return {
@@ -368,5 +399,6 @@ ENVEOF
     restoreCheckpoint,
     getProxyUrl,
     getToken,
+    updateEnvVars,
   };
 }

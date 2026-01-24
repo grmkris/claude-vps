@@ -10,3 +10,15 @@ export type {
   SpriteStatus,
   SpritesClient,
 } from "./types";
+
+// Re-export official SDK for advanced usage
+export {
+  SpritesClient as FlySpritesClient,
+  Sprite as FlySprite,
+} from "@fly/sprites";
+export type {
+  SpriteConfig,
+  SpawnOptions,
+  ExecOptions,
+  Session,
+} from "@fly/sprites";
