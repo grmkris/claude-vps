@@ -138,6 +138,35 @@ ENVEOF`
     };
   }
 
+  /**
+   * Execute a shell command with proper bash interpretation
+   * Sprites exec() runs commands directly without a shell, so shell syntax
+   * (heredocs, redirects, pipes, export) requires a workaround.
+   *
+   * Strategy: Write script to temp file via filesystem API, then execute it
+   */
+  async function execShell(
+    spriteName: string,
+    command: string
+  ): Promise<ExecResult> {
+    const scriptPath = `/tmp/exec-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`;
+
+    // Write the script to a temp file via filesystem API
+    await writeFile(spriteName, scriptPath, `#!/bin/bash\nset -e\n${command}`);
+
+    // Execute the script (no shell syntax needed - just command + arg)
+    const result = await execCommand(spriteName, `/bin/bash ${scriptPath}`);
+
+    // Best effort cleanup (ignore errors)
+    try {
+      await execCommand(spriteName, `/bin/rm ${scriptPath}`);
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    return result;
+  }
+
   async function createCheckpoint(spriteName: string): Promise<Checkpoint> {
     const sprite = flyClient.sprite(spriteName);
     const response = await sprite.createCheckpoint();
@@ -193,77 +222,102 @@ ENVEOF`
   /**
    * Set up a sprite with SSH, code-server, and box-agent
    * This runs after createSprite to install all required services
+   *
+   * Uses execShell() for all commands since they require shell syntax
+   * (heredocs, redirects, pipes, export, etc.)
    */
   async function setupSprite(config: SpriteSetupConfig): Promise<void> {
     const { spriteName, password, boxAgentBinaryUrl, envVars } = config;
 
-    // Step 1: Install SSH server
-    await execCommand(
-      spriteName,
+    // Helper to run a setup step with error context
+    async function runStep(stepNum: number, name: string, cmd: string) {
+      const result = await execShell(spriteName, cmd);
+      if (result.exitCode !== 0) {
+        throw new Error(
+          `Setup step ${stepNum} (${name}) failed with exit code ${result.exitCode}:\n` +
+            `stdout: ${result.stdout}\n` +
+            `stderr: ${result.stderr}`
+        );
+      }
+      return result;
+    }
+
+    // Step 1: Install SSH server (needs sudo for apt-get and system dirs)
+    await runStep(
+      1,
+      "Install SSH",
       `
-      apt-get update && apt-get install -y openssh-server sudo
-      mkdir -p /run/sshd
+      export DEBIAN_FRONTEND=noninteractive
+      sudo apt-get update && sudo apt-get install -y openssh-server sudo
+      sudo mkdir -p /run/sshd
     `
     );
 
-    // Step 2: Create coder user with password
-    await execCommand(
-      spriteName,
+    // Step 2: Create coder user with password (needs sudo for user management)
+    await runStep(
+      2,
+      "Create coder user",
       `
-      useradd -m -s /bin/bash -G sudo coder || true
-      echo "coder:${password}" | chpasswd
-      echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder
+      sudo useradd -m -s /bin/bash -G sudo coder || true
+      echo "coder:${password}" | sudo chpasswd
+      echo "coder ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/coder > /dev/null
     `
     );
 
-    // Step 3: Configure SSH
-    await execCommand(
-      spriteName,
+    // Step 3: Configure SSH (needs sudo for system config)
+    await runStep(
+      3,
+      "Configure SSH",
       `
-      sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-      sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
-      echo "PermitUserEnvironment yes" >> /etc/ssh/sshd_config
+      sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+      sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+      echo "PermitUserEnvironment yes" | sudo tee -a /etc/ssh/sshd_config > /dev/null
     `
     );
 
-    // Step 4: Install code-server
-    await execCommand(
-      spriteName,
+    // Step 4: Install code-server (script handles sudo internally)
+    await runStep(
+      4,
+      "Install code-server",
       `
+      export DEBIAN_FRONTEND=noninteractive
       curl -fsSL https://code-server.dev/install.sh | sh
     `
     );
 
-    // Step 5: Configure code-server
-    await execCommand(
-      spriteName,
+    // Step 5: Configure code-server (needs sudo for creating in coder's home)
+    await runStep(
+      5,
+      "Configure code-server",
       `
-      mkdir -p /home/coder/.config/code-server
-      cat > /home/coder/.config/code-server/config.yaml << 'EOF'
+      sudo mkdir -p /home/coder/.config/code-server
+      sudo tee /home/coder/.config/code-server/config.yaml > /dev/null << 'EOF'
 bind-addr: 0.0.0.0:8080
 auth: password
 password: ${password}
 cert: false
 EOF
-      chown -R coder:coder /home/coder/.config
+      sudo chown -R coder:coder /home/coder/.config
     `
     );
 
-    // Step 6: Download and install box-agent binary
-    await execCommand(
-      spriteName,
+    // Step 6: Download and install box-agent binary (needs sudo for /usr/local/bin)
+    await runStep(
+      6,
+      "Download box-agent",
       `
-      curl -fsSL "${boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
-      chmod +x /usr/local/bin/box-agent
+      sudo curl -fsSL "${boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
+      sudo chmod +x /usr/local/bin/box-agent
     `
     );
 
-    // Step 7: Create inbox directory
-    await execCommand(
-      spriteName,
+    // Step 7: Create inbox directory (needs sudo for coder's home)
+    await runStep(
+      7,
+      "Create inbox",
       `
-      mkdir -p /home/coder/.inbox
-      chown -R coder:coder /home/coder/.inbox
+      sudo mkdir -p /home/coder/.inbox
+      sudo chown -R coder:coder /home/coder/.inbox
     `
     );
 
@@ -272,22 +326,24 @@ EOF
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
-    await execCommand(
-      spriteName,
+    await runStep(
+      8,
+      "Set env vars",
       `
-      cat >> /home/coder/.bashrc << 'ENVEOF'
+      sudo tee -a /home/coder/.bashrc > /dev/null << 'ENVEOF'
 # Box environment variables
 ${envExports}
 ENVEOF
-      chown coder:coder /home/coder/.bashrc
+      sudo chown coder:coder /home/coder/.bashrc
     `
     );
 
-    // Step 9: Create systemd service for box-agent (runs as coder)
-    await execCommand(
-      spriteName,
+    // Step 9: Create systemd service for box-agent (needs sudo for /etc/systemd)
+    await runStep(
+      9,
+      "Create systemd service",
       `
-      cat > /etc/systemd/system/box-agent.service << 'EOF'
+      sudo tee /etc/systemd/system/box-agent.service > /dev/null << 'EOF'
 [Unit]
 Description=Box Agent Service
 After=network.target
@@ -307,30 +363,38 @@ EOF
     `
     );
 
-    // Step 10: Create env file for systemd
+    // Step 10: Create env file for systemd (needs sudo for coder's home)
     const envFile = Object.entries(envVars)
       .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
-    await execCommand(
-      spriteName,
+    await runStep(
+      10,
+      "Create env file",
       `
-      cat > /home/coder/.bashrc.env << 'ENVEOF'
+      sudo tee /home/coder/.bashrc.env > /dev/null << 'ENVEOF'
 ${envFile}
 ENVEOF
-      chown coder:coder /home/coder/.bashrc.env
+      sudo chown coder:coder /home/coder/.bashrc.env
     `
     );
 
-    // Step 11: Start services
-    await execCommand(
-      spriteName,
+    // Step 11: Start services directly (Sprites don't use systemd)
+    await runStep(
+      11,
+      "Start services",
       `
-      /usr/sbin/sshd
-      systemctl daemon-reload
-      systemctl enable box-agent
-      systemctl start box-agent
-      su - coder -c "code-server &"
+      # Start SSH server
+      sudo /usr/sbin/sshd
+
+      # Start box-agent as coder user (nohup to survive shell exit)
+      sudo -u coder bash -c 'cd /home/coder && source /home/coder/.bashrc.env && nohup /usr/local/bin/box-agent > /home/coder/.box-agent.log 2>&1 &'
+
+      # Start code-server as coder user
+      sudo -u coder bash -c 'nohup code-server --config /home/coder/.config/code-server/config.yaml > /home/coder/.code-server.log 2>&1 &'
+
+      # Give services a moment to start
+      sleep 1
     `
     );
   }
@@ -471,6 +535,7 @@ systemctl restart box-agent`
     deleteSprite,
     getSprite,
     execCommand,
+    execShell,
     setupSprite,
     createCheckpoint,
     listCheckpoints,

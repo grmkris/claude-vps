@@ -29,8 +29,15 @@ describe.skipIf(!SPRITES_TOKEN)("setupSprite Integration", () => {
   // Writes script to temp file, executes it (Sprites exec has no shell)
   async function execShell(cmd: string) {
     const scriptPath = `/tmp/exec-${Date.now()}-${Math.random().toString(36).slice(2)}.sh`;
-    await client.writeFile(spriteName, scriptPath, `#!/bin/bash\nset -e\n${cmd}`);
-    const result = await client.execCommand(spriteName, `/bin/bash ${scriptPath}`);
+    await client.writeFile(
+      spriteName,
+      scriptPath,
+      `#!/bin/bash\nset -e\n${cmd}`
+    );
+    const result = await client.execCommand(
+      spriteName,
+      `/bin/bash ${scriptPath}`
+    );
     try {
       await client.execCommand(spriteName, `/bin/rm ${scriptPath}`);
     } catch {

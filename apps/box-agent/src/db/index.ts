@@ -1,11 +1,10 @@
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
+import { env } from "../env";
 import * as schema from "./schema";
 
-const DB_PATH = "/home/coder/.box-agent/sessions.db";
-
-const sqlite = new Database(DB_PATH, { create: true });
+const sqlite = new Database(env.BOX_DB_PATH, { create: true });
 
 // Enable WAL mode for better performance
 sqlite.run("PRAGMA journal_mode = WAL;");

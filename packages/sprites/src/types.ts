@@ -90,6 +90,8 @@ export interface SpritesClient {
   deleteSprite: (spriteName: string) => Promise<void>;
   getSprite: (spriteName: string) => Promise<SpriteInfo | null>;
   execCommand: (spriteName: string, command: string) => Promise<ExecResult>;
+  /** Execute shell command with bash -c wrapper (supports heredocs, pipes, redirects) */
+  execShell: (spriteName: string, command: string) => Promise<ExecResult>;
   setupSprite: (config: SpriteSetupConfig) => Promise<void>;
   createCheckpoint: (spriteName: string) => Promise<Checkpoint>;
   listCheckpoints: (spriteName: string) => Promise<Checkpoint[]>;

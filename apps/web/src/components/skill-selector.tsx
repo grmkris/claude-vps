@@ -2,37 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2, Search, Sparkles } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-interface SkillsShSkill {
-  id: string;
-  name: string;
-  description: string;
-  installs: number;
-  topSource: string;
-}
-
-interface SkillsShResponse {
-  skills: SkillsShSkill[];
-  hasMore: boolean;
-}
-
-async function fetchSkillsCatalog(): Promise<SkillsShSkill[]> {
-  const res = await fetch("https://skills.sh/api/skills?limit=100");
-  if (!res.ok) throw new Error("Failed to fetch skills catalog");
-  const data = (await res.json()) as SkillsShResponse;
-  return data.skills;
-}
-
-function formatInstalls(count: number): string {
-  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-  return count.toString();
-}
+import { orpc } from "@/utils/orpc";
 
 interface SkillSelectorProps {
   value: string[];
@@ -46,23 +21,7 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
     data: skills,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["skills-sh-catalog"],
-    queryFn: fetchSkillsCatalog,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  const filteredSkills = useMemo(() => {
-    if (!skills) return [];
-    if (!search.trim()) return skills;
-    const lower = search.toLowerCase();
-    return skills.filter(
-      (s) =>
-        s.name.toLowerCase().includes(lower) ||
-        s.id.toLowerCase().includes(lower) ||
-        s.description.toLowerCase().includes(lower)
-    );
-  }, [skills, search]);
+  } = useQuery(orpc.skill.list.queryOptions({ input: {} }));
 
   const toggleSkill = (skillId: string) => {
     if (value.includes(skillId)) {
@@ -109,15 +68,13 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredSkills.length === 0 ? (
+        ) : skills?.skills.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            {search
-              ? "No skills found matching your search"
-              : "No skills available"}
+            No skills available
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredSkills.map((skill) => {
+            {skills?.skills.map((skill) => {
               const isSelected = value.includes(skill.id);
               return (
                 <button
@@ -146,7 +103,7 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
                           {skill.name}
                         </span>
                         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          {formatInstalls(skill.installs)}
+                          {skill.aptPackages.join(", ")}
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">

@@ -10,5 +10,6 @@ export const env = z
     BOX_SUBDOMAIN: z.string().min(1),
     BOX_AGENT_PORT: z.coerce.number().default(9999),
     BOX_INBOX_DIR: z.string().default("/home/coder/.inbox"),
+    BOX_DB_PATH: z.string().default("/home/coder/.box-agent/sessions.db"),
   })
   .parse(bunEnv);
