@@ -9,7 +9,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.6",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.19",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "dotenv": "catalog:",

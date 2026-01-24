@@ -21,7 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@react-email/preview-server": "5.2.2",
+    "@react-email/preview-server": "5.2.5",
     "@types/react": "catalog:",
     "@typescript/native-preview": "catalog:",
     "react-email": "^5.2.2"
