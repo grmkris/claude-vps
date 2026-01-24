@@ -2,14 +2,11 @@ name: Release Box Agent
 
 on:
   push:
-    tags:
-      - "box-agent-v*"
+    branches:
+      - main
+    paths:
+      - "apps/box-agent/**"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version tag (e.g., v1.0.0)"
-        required: true
-        default: "v1.0.0"
 
 jobs:
   build-and-release:
@@ -32,16 +29,14 @@ jobs:
       - name: Build Linux binary
         run: bun run --cwd apps/box-agent build:linux
 
-      - name: Get version
+      - name: Generate version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-            echo "tag=box-agent-${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${GITHUB_REF#refs/tags/box-agent-}" >> $GITHUB_OUTPUT
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
+          DATE=$(date -u +%Y.%m.%d)
+          VERSION="v${DATE}.${{ github.run_number }}"
+          TAG="box-agent-${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -52,6 +47,8 @@ jobs:
             ## Box Agent Binary Release
 
             Pre-compiled binary for Linux x64.
+
+            **Commit:** ${{ github.sha }}
 
             ### Installation
             ```bash

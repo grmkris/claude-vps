@@ -54,7 +54,7 @@ export const emailRouter = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${env.BOX_API_TOKEN}`,
+          "X-Box-Secret": env.BOX_API_TOKEN,
         },
         body: JSON.stringify({
           to: input.to,
