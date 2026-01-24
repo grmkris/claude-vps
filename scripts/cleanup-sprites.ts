@@ -41,7 +41,7 @@ async function cleanup() {
       await client.deleteSprite(sprite.name);
       console.log(`  ✓ Deleted: ${sprite.name}`);
     } catch (error) {
-      console.log(`  ✗ Failed to delete ${sprite.name}: ${error}`);
+      console.log(`  ✗ Failed to delete ${sprite.name}: ${String(error)}`);
     }
   }
 

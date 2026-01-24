@@ -162,7 +162,7 @@ ENVEOF`
         stderr: result.stderr ?? "",
         exitCode: result.exit_code ?? 0,
       };
-    } catch (e) {
+    } catch {
       // Not JSON - treat as plain text stdout
       return {
         stdout: responseText,

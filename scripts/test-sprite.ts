@@ -17,6 +17,7 @@ async function testSprite() {
   try {
     // Create sprite
     const sprite = await client.createSprite({
+      name: spriteName,
       userId: "test-user",
       subdomain: spriteName,
       envVars: {},
@@ -80,4 +81,7 @@ async function testSprite() {
   }
 }
 
-testSprite();
+testSprite().catch((error) => {
+  console.error("Fatal error:", error);
+  process.exit(1);
+});
