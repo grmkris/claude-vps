@@ -1,7 +1,5 @@
 "use client";
 
-import type { SkillId } from "@vps-claude/shared";
-
 import { slugify } from "@vps-claude/shared";
 import { ArrowLeft, Box } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +34,7 @@ export default function CreateBoxForm() {
     createMutation.mutate(
       {
         name,
-        skills: skills as SkillId[],
+        skills,
         ...(password && { password }),
       },
       {

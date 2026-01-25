@@ -31,6 +31,8 @@ export const box = pgTable(
     errorMessage: text("error_message"),
     lastHealthCheck: timestamp("last_health_check"),
 
+    skills: text("skills").array().notNull().default([]),
+
     userId: typeId("user", "user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" })

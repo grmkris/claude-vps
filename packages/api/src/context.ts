@@ -8,14 +8,12 @@ import type { ApiKeyService } from "./services/api-key.service";
 import type { BoxService } from "./services/box.service";
 import type { EmailService } from "./services/email.service";
 import type { SecretService } from "./services/secret.service";
-import type { SkillService } from "./services/skill.service";
 
 export interface Services {
   apiKeyService: ApiKeyService;
   boxService: BoxService;
   emailService: EmailService;
   secretService: SecretService;
-  skillService: SkillService;
   spritesClient: SpritesClient;
 }
 

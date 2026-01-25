@@ -1,9 +1,14 @@
+import type { ServerWebSocket } from "bun";
+
 import { createApi } from "@vps-claude/api/create-api";
+import {
+  createWebSocketTerminalHandler,
+  type TerminalConnectionData,
+} from "@vps-claude/api/handlers/websocket-terminal.handler";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
 import { createSecretService } from "@vps-claude/api/services/secret.service";
-import { createSkillService } from "@vps-claude/api/services/skill.service";
 import {
   createDeployWorker,
   createDeleteWorker,
@@ -67,84 +72,12 @@ const boxService = createBoxService({
 });
 const emailService = createEmailService({ deps: { db, queueClient } });
 const secretService = createSecretService({ deps: { db } });
-const skillService = createSkillService({ deps: { db } });
-
-const seedResult = await skillService.seedGlobalSkills([
-  {
-    slug: "hello-world",
-    name: "Hello World",
-    description:
-      "A simple greeting skill to test Claude Code skills. Use when asked to greet or say hello.",
-    aptPackages: [],
-    npmPackages: [],
-    pipPackages: [],
-    skillMdContent: `---
-name: hello-world
-description: A simple greeting skill. Use when asked to greet or say hello.
----
-
-# Hello World Skill
-
-When greeting the user, be friendly and enthusiastic!
-
-## Instructions
-1. Start with a warm greeting
-2. Ask how you can help today
-3. Be conversational and approachable
-`,
-  },
-  {
-    slug: "image-processing",
-    name: "Image Processing",
-    description:
-      "ImageMagick and libvips for image manipulation. Use when working with images, resizing, converting formats, or applying effects.",
-    aptPackages: ["imagemagick", "libvips-tools"],
-    npmPackages: [],
-    pipPackages: [],
-    skillMdContent: `---
-name: image-processing
-description: Process and manipulate images. Use when resizing, converting, or editing images.
----
-
-# Image Processing Skill
-
-Use ImageMagick and libvips for image manipulation.
-
-## Available Tools
-
-### ImageMagick (convert, identify, mogrify)
-- \`convert input.jpg -resize 800x600 output.jpg\` - Resize image
-- \`convert input.png -quality 85 output.jpg\` - Convert format
-- \`identify image.jpg\` - Get image info
-- \`mogrify -strip *.jpg\` - Remove metadata from all JPGs
-
-### libvips (vips, vipsthumbnail)
-- \`vipsthumbnail input.jpg -s 200x200 -o thumb.jpg\` - Create thumbnail
-- \`vips resize input.jpg output.jpg 0.5\` - Scale by 50%
-
-## Common Tasks
-- Resize: \`convert in.jpg -resize 50% out.jpg\`
-- Crop: \`convert in.jpg -crop 100x100+10+10 out.jpg\`
-- Rotate: \`convert in.jpg -rotate 90 out.jpg\`
-- Grayscale: \`convert in.jpg -colorspace Gray out.jpg\`
-`,
-  },
-]);
-if (seedResult.isErr()) {
-  logger.error({
-    msg: "Failed to seed global skills",
-    error: seedResult.error.message,
-  });
-} else {
-  logger.info({ msg: "Global skills seeded" });
-}
 
 const services = {
   apiKeyService,
   boxService,
   emailService,
   secretService,
-  skillService,
   spritesClient,
 };
 
@@ -197,6 +130,14 @@ const { app } = createApi({
   inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET,
 });
 
+// WebSocket terminal handler
+const wsTerminalHandler = createWebSocketTerminalHandler({
+  boxService,
+  spritesClient,
+  auth,
+  logger,
+});
+
 logger.info({ msg: "Server started", port: 33000 });
 
 const shutdown = async (signal: string) => {
@@ -215,7 +156,69 @@ const shutdown = async (signal: string) => {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
+// WebSocket terminal route pattern: /ws/box/:id/terminal
+const WS_TERMINAL_PATTERN = /^\/ws\/box\/([^/]+)\/terminal/;
+
 export default {
   port: 33000,
-  fetch: app.fetch,
+  async fetch(
+    req: Request,
+    server: {
+      upgrade: (
+        req: Request,
+        opts: { data: TerminalConnectionData }
+      ) => boolean;
+    }
+  ) {
+    const url = new URL(req.url);
+    const match = WS_TERMINAL_PATTERN.exec(url.pathname);
+
+    // Handle WebSocket terminal upgrade
+    if (match && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+      const boxId = match[1];
+      if (!boxId) {
+        return new Response(JSON.stringify({ error: "Invalid box ID" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const data = await wsTerminalHandler.validateUpgrade(req, boxId);
+      if (!data) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Attempt WebSocket upgrade
+      if (server.upgrade(req, { data })) {
+        // Upgrade successful, return undefined to signal Bun to complete it
+        return undefined;
+      }
+
+      return new Response(
+        JSON.stringify({ error: "WebSocket upgrade failed" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Delegate to Hono for all other requests
+    return app.fetch(req);
+  },
+  websocket: wsTerminalHandler.handlers as {
+    open: (ws: ServerWebSocket<TerminalConnectionData>) => void;
+    message: (
+      ws: ServerWebSocket<TerminalConnectionData>,
+      message: string | Buffer
+    ) => void;
+    close: (
+      ws: ServerWebSocket<TerminalConnectionData>,
+      code: number,
+      reason: string
+    ) => void;
+  },
 };

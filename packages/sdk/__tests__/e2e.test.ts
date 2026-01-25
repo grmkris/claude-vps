@@ -43,8 +43,8 @@ describe("SDK E2E Tests", () => {
       expect(Array.isArray(result.secrets)).toBe(true);
     });
 
-    test("can list skills with API key", async () => {
-      const result = await setup.client.skill.list({});
+    test("can fetch skills catalog", async () => {
+      const result = await setup.client.skill.catalog({});
 
       expect(result).toBeDefined();
       expect(result.skills).toBeDefined();

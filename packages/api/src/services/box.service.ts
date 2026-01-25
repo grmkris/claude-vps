@@ -10,12 +10,7 @@ import type {
 import type { QueueClient } from "@vps-claude/queue";
 import type { SpritesClient } from "@vps-claude/sprites";
 
-import {
-  box,
-  boxAgentConfig,
-  boxEmailSettings,
-  boxSkill,
-} from "@vps-claude/db";
+import { box, boxAgentConfig, boxEmailSettings } from "@vps-claude/db";
 import {
   type BoxAgentConfigId,
   type BoxId,
@@ -71,9 +66,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       userId: UserId,
       input: {
         name: string;
-        /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
         skills?: string[];
-        /** Password for code-server authentication */
         password?: string;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
@@ -97,6 +90,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           name: input.name,
           subdomain,
           status: "deploying",
+          skills,
           userId,
         })
         .returning();
@@ -109,7 +103,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         });
       }
 
-      // Create default agent config
       await db.insert(boxAgentConfig).values({
         boxId: created.id,
         triggerType: "default",
@@ -131,10 +124,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       return ok(created);
     },
 
-    /**
-     * Create a dev box that skips sprite deployment and points to localhost:9999.
-     * Only available when APP_ENV=dev.
-     */
     async createDev(
       userId: UserId,
       name: string
@@ -179,14 +168,12 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         });
       }
 
-      // Create email settings for auth
       const agentSecret = generateAgentSecret();
       await db.insert(boxEmailSettings).values({
         boxId: created.id,
         agentSecret,
       });
 
-      // Create default agent config
       await db.insert(boxAgentConfig).values({
         boxId: created.id,
         triggerType: "default",
@@ -220,11 +207,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         });
       }
 
-      const skills = await db
-        .select({ skillId: boxSkill.skillId })
-        .from(boxSkill)
-        .where(eq(boxSkill.boxId, id));
-
       await db.update(box).set({ status: "deploying" }).where(eq(box.id, id));
 
       await queueClient.deployQueue.add(
@@ -233,7 +215,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           boxId: id,
           userId,
           subdomain: boxRecord.subdomain,
-          skills: skills.map((s) => s.skillId),
+          skills: boxRecord.skills,
           password,
         },
         { jobId: id }
@@ -298,7 +280,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       boxId: BoxId,
       triggerType: TriggerType
     ): Promise<Result<BoxAgentConfigResponseSchema, BoxServiceError>> {
-      // Try specific trigger config first
       let config = await db.query.boxAgentConfig.findFirst({
         where: and(
           eq(boxAgentConfig.boxId, boxId),
@@ -306,7 +287,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         ),
       });
 
-      // Fallback to default config if no specific trigger config
       if (!config && triggerType !== "default") {
         config = await db.query.boxAgentConfig.findFirst({
           where: and(
@@ -316,7 +296,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         });
       }
 
-      // Return default config if nothing in database
       const DEFAULT_APPEND_PROMPT = `You are an AI assistant running inside a VPS box.
 You can read/write files, run commands, and interact with the system.
 When handling emails, read the content and respond appropriately.`;
@@ -406,7 +385,6 @@ When handling emails, read the content and respond appropriately.`;
         });
       }
 
-      // Prevent deleting default config
       if (config.triggerType === "default") {
         return err({
           type: "VALIDATION_FAILED",

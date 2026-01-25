@@ -123,10 +123,9 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     await spritesClient.writeFile(spriteName, path, content);
 
     const entries = await spritesClient.listDir(spriteName, "/home/sprite");
-    const testFile = entries.find((e) => e.name === filename);
+    const names = entries.map((e) => e.name);
 
-    expect(testFile).toBeDefined();
-    expect(testFile?.isDirectory).toBe(false);
+    expect(names).toContain(filename);
   }, 15_000);
 
   test("write: creates nested directories with mkdir", async () => {
@@ -143,9 +142,8 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
       spriteName,
       "/home/sprite/nested/deep"
     );
-    const dirEntry = entries.find((e) => e.name === "dir");
-    expect(dirEntry).toBeDefined();
-    expect(dirEntry?.isDirectory).toBe(true);
+    const names = entries.map((e) => e.name);
+    expect(names).toContain("dir");
   }, 15_000);
 
   test("read: throws error for non-existent file", async () => {

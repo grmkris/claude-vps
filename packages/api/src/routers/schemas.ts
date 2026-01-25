@@ -2,7 +2,6 @@ import {
   SelectBoxAgentConfigSchema,
   SelectBoxEmailSchema,
   SelectBoxSchema,
-  SelectSkillSchema,
   SelectUserSecretSchema,
 } from "@vps-claude/db";
 import { z } from "zod";
@@ -60,14 +59,6 @@ export const SecretListOutput = z.object({
   secrets: z.array(SelectUserSecretSchema),
 });
 
-// === Skill Router ===
-export const SkillListOutput = z.object({
-  skills: z.array(SelectSkillSchema),
-});
-export const SkillByIdOutput = z.object({ skill: SelectSkillSchema });
-export const SkillCreateOutput = z.object({ skill: SelectSkillSchema });
-export const SkillUpdateOutput = z.object({ skill: SelectSkillSchema });
-
 // === API Key Router ===
 export const ApiKeyCreateOutput = z.object({
   id: z.string(),
@@ -111,4 +102,11 @@ export const FsReadOutput = z.object({
 export const FsWriteOutput = z.object({
   success: z.literal(true),
   path: z.string(),
+});
+
+// === Command Execution ===
+export const BoxExecOutput = z.object({
+  stdout: z.string(),
+  stderr: z.string(),
+  exitCode: z.number(),
 });

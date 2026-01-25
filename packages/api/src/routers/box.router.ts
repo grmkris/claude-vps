@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { BoxEmailStatus } from "@vps-claude/db";
-import { BoxId, SkillId } from "@vps-claude/shared";
+import { BoxId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -9,6 +9,7 @@ import {
   BoxCreateOutput,
   BoxDeployProgressOutput,
   BoxEmailListOutput,
+  BoxExecOutput,
   BoxListOutput,
   BoxProxyOutput,
   SuccessOutput,
@@ -64,7 +65,7 @@ export const boxRouter = {
     .input(
       z.object({
         name: z.string().min(1).max(50),
-        skills: z.array(SkillId).default([]),
+        skills: z.array(z.string()).default([]),
         password: z.string().min(4).max(100).optional(),
       })
     )
@@ -137,7 +138,6 @@ export const boxRouter = {
     .input(z.object({ id: BoxId }))
     .output(BoxDeployProgressOutput)
     .handler(async ({ context, input }) => {
-      // Verify ownership
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -258,6 +258,41 @@ export const boxRouter = {
             message: error.message,
           });
         }
+      );
+    }),
+
+  exec: protectedProcedure
+    .route({ method: "POST", path: "/box/:id/exec" })
+    .input(
+      z.object({
+        id: BoxId,
+        command: z.string().min(1).max(10000),
+      })
+    )
+    .output(BoxExecOutput)
+    .handler(async ({ context, input }) => {
+      const boxResult = await context.boxService.getById(input.id);
+      if (boxResult.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: boxResult.error.message,
+        });
+      }
+      if (
+        !boxResult.value ||
+        boxResult.value.userId !== context.session.user.id
+      ) {
+        throw new ORPCError("NOT_FOUND", { message: "Box not found" });
+      }
+      if (
+        boxResult.value.status !== "running" ||
+        !boxResult.value.spriteName
+      ) {
+        throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
+      }
+
+      return context.spritesClient.execShell(
+        boxResult.value.spriteName,
+        input.command
       );
     }),
 };

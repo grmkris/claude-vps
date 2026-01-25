@@ -10,7 +10,9 @@ import {
   ExternalLink,
   Mail,
   MailOpen,
+  Terminal,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -23,6 +25,24 @@ import { useBox } from "@/hooks/use-boxes";
 import { useBoxEmails } from "@/hooks/use-emails";
 
 import { FileBrowser } from "./components/file-browser";
+
+// Lazy load terminal component to avoid SSR issues with xterm
+const BoxTerminal = dynamic(
+  () =>
+    import("@/components/box-terminal").then((mod) => ({
+      default: mod.BoxTerminal,
+    })),
+  {
+    loading: () => (
+      <div className="h-[400px] bg-[#0d0d0d] rounded-lg flex items-center justify-center">
+        <span className="text-zinc-400 animate-pulse">Loading terminal...</span>
+      </div>
+    ),
+    ssr: false,
+  }
+);
+
+type TabType = "inbox" | "terminal" | "files";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -86,6 +106,7 @@ export default function BoxDetailPage() {
   const { data: emailsData, isLoading: emailsLoading } = useBoxEmails(id);
 
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("inbox");
 
   const box = boxData?.box;
   const emails = emailsData?.emails ?? [];
@@ -178,109 +199,165 @@ export default function BoxDetailPage() {
         </div>
       )}
 
-      {box.status === "running" && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Files</h2>
-          <FileBrowser boxId={id} />
-        </div>
-      )}
-
+      {/* Tabs */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Inbox</h2>
-
-        {emailsLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : emails.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <MailOpen className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No emails yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Send an email to <span className="font-mono">{emailAddress}</span>{" "}
-              to get started
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {emails.map((email) => (
-              <div
-                key={email.id}
-                className="rounded-lg border border-border bg-card overflow-hidden"
+        <div className="flex gap-1 border-b border-border">
+          <button
+            type="button"
+            onClick={() => setActiveTab("inbox")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "inbox"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Mail className="h-4 w-4 inline-block mr-2" />
+            Inbox
+          </button>
+          {box.status === "running" && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("terminal")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "terminal"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <button
-                  type="button"
-                  className="w-full px-4 py-3 flex items-center gap-4 hover:bg-secondary/50 transition-colors text-left"
-                  onClick={() =>
-                    setExpandedEmail(
-                      expandedEmail === email.id ? null : email.id
-                    )
-                  }
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium truncate">
-                        {email.fromName ?? email.fromEmail}
+                <Terminal className="h-4 w-4 inline-block mr-2" />
+                Terminal
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("files")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "files"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Files
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Tab content */}
+        {activeTab === "inbox" && (
+          <div className="space-y-4">
+            {emailsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : emails.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <MailOpen className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No emails yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Send an email to{" "}
+                  <span className="font-mono">{emailAddress}</span> to get
+                  started
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {emails.map((email) => (
+                  <div
+                    key={email.id}
+                    className="rounded-lg border border-border bg-card overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      className="w-full px-4 py-3 flex items-center gap-4 hover:bg-secondary/50 transition-colors text-left"
+                      onClick={() =>
+                        setExpandedEmail(
+                          expandedEmail === email.id ? null : email.id
+                        )
+                      }
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium truncate">
+                            {email.fromName ?? email.fromEmail}
+                          </span>
+                          <EmailStatusBadge status={email.status} />
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {email.subject ?? "(no subject)"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatRelativeTime(email.receivedAt)}
                       </span>
-                      <EmailStatusBadge status={email.status} />
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {email.subject ?? "(no subject)"}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatRelativeTime(email.receivedAt)}
-                  </span>
-                </button>
+                    </button>
 
-                {expandedEmail === email.id && (
-                  <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
-                    <div className="text-sm space-y-1">
-                      <p>
-                        <span className="text-muted-foreground">From:</span>{" "}
-                        {email.fromName && <>{email.fromName} </>}
-                        <span className="font-mono text-xs">
-                          &lt;{email.fromEmail}&gt;
-                        </span>
-                      </p>
-                      <p>
-                        <span className="text-muted-foreground">Subject:</span>{" "}
-                        {email.subject ?? "(no subject)"}
-                      </p>
-                      <p>
-                        <span className="text-muted-foreground">Received:</span>{" "}
-                        {new Date(email.receivedAt).toLocaleString()}
-                      </p>
-                      {email.deliveredAt && (
-                        <p>
-                          <span className="text-muted-foreground">
-                            Delivered:
-                          </span>{" "}
-                          {new Date(email.deliveredAt).toLocaleString()}
-                        </p>
-                      )}
-                      {email.errorMessage && (
-                        <p className="text-destructive">
-                          <span className="text-muted-foreground">Error:</span>{" "}
-                          {email.errorMessage}
-                        </p>
-                      )}
-                    </div>
+                    {expandedEmail === email.id && (
+                      <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
+                        <div className="text-sm space-y-1">
+                          <p>
+                            <span className="text-muted-foreground">From:</span>{" "}
+                            {email.fromName && <>{email.fromName} </>}
+                            <span className="font-mono text-xs">
+                              &lt;{email.fromEmail}&gt;
+                            </span>
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">
+                              Subject:
+                            </span>{" "}
+                            {email.subject ?? "(no subject)"}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">
+                              Received:
+                            </span>{" "}
+                            {new Date(email.receivedAt).toLocaleString()}
+                          </p>
+                          {email.deliveredAt && (
+                            <p>
+                              <span className="text-muted-foreground">
+                                Delivered:
+                              </span>{" "}
+                              {new Date(email.deliveredAt).toLocaleString()}
+                            </p>
+                          )}
+                          {email.errorMessage && (
+                            <p className="text-destructive">
+                              <span className="text-muted-foreground">
+                                Error:
+                              </span>{" "}
+                              {email.errorMessage}
+                            </p>
+                          )}
+                        </div>
 
-                    {email.textBody && (
-                      <div className="bg-secondary/50 rounded-md p-3">
-                        <pre className="text-sm whitespace-pre-wrap font-mono">
-                          {email.textBody}
-                        </pre>
+                        {email.textBody && (
+                          <div className="bg-secondary/50 rounded-md p-3">
+                            <pre className="text-sm whitespace-pre-wrap font-mono">
+                              {email.textBody}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
+            )}
           </div>
+        )}
+
+        {activeTab === "terminal" && box.status === "running" && (
+          <div className="h-[500px]">
+            <BoxTerminal boxId={id} className="h-full" />
+          </div>
+        )}
+
+        {activeTab === "files" && box.status === "running" && (
+          <FileBrowser boxId={id} />
         )}
       </div>
     </div>

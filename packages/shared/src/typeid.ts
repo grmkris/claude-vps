@@ -9,9 +9,7 @@ export const idTypesMapNameToPrefix = {
   account: "acc",
   verification: "ver",
   box: "box",
-  boxSkill: "bsk",
   userSecret: "usk",
-  skill: "skl",
   boxEmail: "bem",
   boxEmailSettings: "bes",
   boxAgentConfig: "bac",
@@ -101,14 +99,8 @@ export type VerificationId = z.infer<typeof VerificationId>;
 export const BoxId = typeIdValidator("box");
 export type BoxId = z.infer<typeof BoxId>;
 
-export const BoxSkillId = typeIdValidator("boxSkill");
-export type BoxSkillId = z.infer<typeof BoxSkillId>;
-
 export const UserSecretId = typeIdValidator("userSecret");
 export type UserSecretId = z.infer<typeof UserSecretId>;
-
-export const SkillId = typeIdValidator("skill");
-export type SkillId = z.infer<typeof SkillId>;
 
 export const BoxEmailId = typeIdValidator("boxEmail");
 export type BoxEmailId = z.infer<typeof BoxEmailId>;

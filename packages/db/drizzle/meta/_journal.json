@@ -8,6 +8,13 @@
       "when": 1769268487751,
       "tag": "0000_reflective_sinister_six",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769367034443,
+      "tag": "0001_thick_expediter",
+      "breakpoints": true
     }
   ]
 }

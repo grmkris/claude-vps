@@ -18,10 +18,10 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
   const [search, setSearch] = useState("");
 
   const {
-    data: skills,
+    data: catalog,
     isLoading,
     error,
-  } = useQuery(orpc.skill.list.queryOptions({ input: {} }));
+  } = useQuery(orpc.skill.catalog.queryOptions({}));
 
   const toggleSkill = (skillId: string) => {
     if (value.includes(skillId)) {
@@ -30,6 +30,13 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
       onChange([...value, skillId]);
     }
   };
+
+  const filteredSkills =
+    catalog?.skills.filter(
+      (skill) =>
+        skill.name.toLowerCase().includes(search.toLowerCase()) ||
+        skill.description.toLowerCase().includes(search.toLowerCase())
+    ) ?? [];
 
   if (error) {
     return (
@@ -68,13 +75,13 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : skills?.skills.length === 0 ? (
+        ) : filteredSkills.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            No skills available
+            {search ? "No skills match your search" : "No skills available"}
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {skills?.skills.map((skill) => {
+            {filteredSkills.map((skill) => {
               const isSelected = value.includes(skill.id);
               return (
                 <button
@@ -103,7 +110,7 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
                           {skill.name}
                         </span>
                         <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          {skill.aptPackages.join(", ")}
+                          {skill.installs.toLocaleString()} installs
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
