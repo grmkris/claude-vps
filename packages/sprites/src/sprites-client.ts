@@ -446,7 +446,7 @@ STARTEOF
       6,
       "Install nginx",
       `
-      apt-get update && apt-get install -y nginx
+      sudo apt-get update && sudo apt-get install -y nginx
     `
     );
 
@@ -456,7 +456,7 @@ STARTEOF
       7,
       "Create nginx service",
       `
-      nginx -t
+      sudo nginx -t
 
       # Wrapper script to run nginx in foreground
       cat > /usr/local/bin/start-nginx.sh << 'NGINXEOF'
@@ -518,7 +518,7 @@ STARTEOF
       11,
       "Install code-server",
       `
-      curl -fsSL https://code-server.dev/install.sh | sh
+      curl -fsSL https://code-server.dev/install.sh | sudo sh
       mkdir -p /home/sprite/.config/code-server
       tee /home/sprite/.config/code-server/config.yaml > /dev/null << 'CODESERVEOF'
 bind-addr: 127.0.0.1:8443

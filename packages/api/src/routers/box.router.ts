@@ -80,6 +80,30 @@ export const boxRouter = {
       );
     }),
 
+  createDev: protectedProcedure
+    .route({ method: "POST", path: "/box/create-dev" })
+    .input(
+      z.object({
+        name: z.string().min(1).max(50),
+      })
+    )
+    .output(BoxCreateOutput)
+    .handler(async ({ context, input }) => {
+      const result = await context.boxService.createDev(
+        context.session.user.id,
+        input.name
+      );
+      return result.match(
+        (box) => ({ box }),
+        (error) => {
+          if (error.type === "FORBIDDEN") {
+            throw new ORPCError("FORBIDDEN", { message: error.message });
+          }
+          throw new ORPCError("BAD_REQUEST", { message: error.message });
+        }
+      );
+    }),
+
   deploy: protectedProcedure
     .route({ method: "POST", path: "/box/deploy" })
     .input(

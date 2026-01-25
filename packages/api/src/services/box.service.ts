@@ -10,7 +10,12 @@ import type {
 import type { QueueClient } from "@vps-claude/queue";
 import type { SpritesClient } from "@vps-claude/sprites";
 
-import { box, boxAgentConfig, boxSkill } from "@vps-claude/db";
+import {
+  box,
+  boxAgentConfig,
+  boxEmailSettings,
+  boxSkill,
+} from "@vps-claude/db";
 import {
   type BoxAgentConfigId,
   type BoxId,
@@ -19,12 +24,18 @@ import {
 import { generateSubdomain } from "@vps-claude/shared";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+import { randomBytes } from "node:crypto";
 
 export type BoxServiceError =
   | { type: "NOT_FOUND"; message: string }
   | { type: "ALREADY_EXISTS"; message: string }
   | { type: "INVALID_STATUS"; message: string }
-  | { type: "VALIDATION_FAILED"; message: string };
+  | { type: "VALIDATION_FAILED"; message: string }
+  | { type: "FORBIDDEN"; message: string };
+
+function generateAgentSecret(): string {
+  return randomBytes(32).toString("hex");
+}
 
 interface BoxServiceDeps {
   db: Database;
@@ -120,6 +131,71 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         },
         { jobId: created.id }
       );
+
+      return ok(created);
+    },
+
+    /**
+     * Create a dev box that skips sprite deployment and points to localhost:9999.
+     * Only available when APP_ENV=dev.
+     */
+    async createDev(
+      userId: UserId,
+      name: string
+    ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
+      if (process.env.APP_ENV !== "dev") {
+        return err({
+          type: "FORBIDDEN",
+          message: "Dev boxes only available in dev environment",
+        });
+      }
+
+      const existingByName = await db.query.box.findFirst({
+        where: eq(box.name, name),
+      });
+
+      if (existingByName) {
+        return err({
+          type: "ALREADY_EXISTS",
+          message: "Box with this name already exists",
+        });
+      }
+
+      const subdomain = generateSubdomain(name);
+
+      const result = await db
+        .insert(box)
+        .values({
+          name,
+          subdomain,
+          status: "running",
+          spriteUrl: "http://localhost:9999",
+          spriteName: null,
+          userId,
+        })
+        .returning();
+
+      const created = result[0];
+      if (!created) {
+        return err({
+          type: "VALIDATION_FAILED",
+          message: "Failed to create dev box",
+        });
+      }
+
+      // Create email settings for auth
+      const agentSecret = generateAgentSecret();
+      await db.insert(boxEmailSettings).values({
+        boxId: created.id,
+        agentSecret,
+      });
+
+      // Create default agent config
+      await db.insert(boxAgentConfig).values({
+        boxId: created.id,
+        triggerType: "default",
+        name: "Default",
+      });
 
       return ok(created);
     },

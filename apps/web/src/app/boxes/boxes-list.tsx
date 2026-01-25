@@ -24,12 +24,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { env } from "@/env";
 import {
   useBoxes,
   useDeployBox,
   useDeleteBox,
   useDeployProgress,
+  useCreateDevBox,
 } from "@/hooks/use-boxes";
+
+function isDevBox(box: BoxType): boolean {
+  return box.spriteUrl?.startsWith("http://localhost") ?? false;
+}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -142,6 +148,11 @@ function BoxCard({ box }: { box: BoxType }) {
       {/* Status */}
       <div className="flex items-center gap-2 mb-4">
         <StatusDot status={box.status} showLabel />
+        {isDevBox(box) && (
+          <span className="text-xs font-medium bg-amber-500/20 text-amber-600 px-1.5 py-0.5 rounded">
+            DEV
+          </span>
+        )}
         {box.errorMessage && (
           <span className="text-xs text-destructive truncate max-w-[200px]">
             {box.errorMessage}
@@ -224,6 +235,12 @@ function LoadingSkeleton() {
 
 export default function BoxesList() {
   const { data, isLoading, error } = useBoxes();
+  const createDevBox = useCreateDevBox();
+
+  const handleCreateDevBox = () => {
+    const name = `dev-${Date.now().toString(36)}`;
+    createDevBox.mutate({ name });
+  };
 
   if (error) {
     return (
@@ -251,12 +268,23 @@ export default function BoxesList() {
           </p>
         </div>
         {boxes.length > 0 && (
-          <Link href="/boxes/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Box
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {env.NEXT_PUBLIC_ENV === "dev" && (
+              <Button
+                variant="outline"
+                onClick={handleCreateDevBox}
+                disabled={createDevBox.isPending}
+              >
+                {createDevBox.isPending ? "Creating..." : "Dev Box"}
+              </Button>
+            )}
+            <Link href="/boxes/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New Box
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 

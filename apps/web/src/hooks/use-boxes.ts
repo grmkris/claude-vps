@@ -45,6 +45,25 @@ export function useCreateBox() {
   });
 }
 
+export function useCreateDevBox() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { name: string }) => client.box.createDev(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
+      });
+      toast.success("Dev box created!");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create dev box"
+      );
+    },
+  });
+}
+
 export function useDeployBox() {
   const queryClient = useQueryClient();
 
