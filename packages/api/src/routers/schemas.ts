@@ -1,5 +1,6 @@
 import {
   SelectBoxAgentConfigSchema,
+  SelectBoxEmailSchema,
   SelectBoxSchema,
   SelectSkillSchema,
   SelectUserSecretSchema,
@@ -39,6 +40,11 @@ export const BoxProxyOutput = z.object({
   token: z.string(),
   host: z.string(),
   port: z.number(),
+});
+
+// === Box Emails ===
+export const BoxEmailListOutput = z.object({
+  emails: z.array(SelectBoxEmailSchema),
 });
 
 // === Box Agent Config ===

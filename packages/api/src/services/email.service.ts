@@ -9,7 +9,7 @@ import {
   type BoxEmail,
   type BoxEmailSettings,
 } from "@vps-claude/db";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 import { randomBytes } from "node:crypto";
 
@@ -189,12 +189,13 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
       boxId: BoxId,
       options?: { status?: BoxEmail["status"]; limit?: number }
     ): Promise<Result<BoxEmail[], EmailServiceError>> {
+      const whereConditions = options?.status
+        ? and(eq(boxEmail.boxId, boxId), eq(boxEmail.status, options.status))
+        : eq(boxEmail.boxId, boxId);
+
       const emails = await db.query.boxEmail.findMany({
-        where: and(
-          eq(boxEmail.boxId, boxId),
-          eq(boxEmail.status, options?.status ?? "received")
-        ),
-        orderBy: boxEmail.receivedAt,
+        where: whereConditions,
+        orderBy: desc(boxEmail.receivedAt),
         limit: options?.limit ?? 50,
       });
       return ok(emails);

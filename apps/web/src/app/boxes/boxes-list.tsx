@@ -1,5 +1,7 @@
 "use client";
 
+import type { Route } from "next";
+
 import {
   ExternalLink,
   Plus,
@@ -7,11 +9,8 @@ import {
   Rocket,
   Box,
   MoreHorizontal,
-  Copy,
-  Check,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 
 import type { Box as BoxType } from "@/lib/orpc-types";
 
@@ -35,31 +34,6 @@ import {
 
 function isDevBox(box: BoxType): boolean {
   return box.spriteUrl?.startsWith("http://localhost") ?? false;
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="p-0.5 hover:bg-secondary rounded transition-colors"
-      title="Copy to clipboard"
-    >
-      {copied ? (
-        <Check className="h-3 w-3 text-green-500" />
-      ) : (
-        <Copy className="h-3 w-3 text-muted-foreground" />
-      )}
-    </button>
-  );
 }
 
 function DeployProgressMessage({ boxId }: { boxId: string }) {
@@ -92,30 +66,30 @@ function BoxCard({ box }: { box: BoxType }) {
 
   return (
     <div className="group relative rounded-xl border border-border bg-card p-6 transition-all hover:border-border/80 hover:bg-card/80">
-      {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <Link
+          href={`/boxes/${box.id}` as Route}
+          className="flex items-center gap-3"
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
             <Box className="h-5 w-5 text-muted-foreground" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">{box.name}</h3>
+            <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
+              {box.name}
+            </h3>
             {box.spriteUrl ? (
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-mono text-muted-foreground">
-                  {box.spriteUrl.replace("https://", "")}
-                </p>
-                <CopyButton text={box.spriteUrl} />
-              </div>
+              <p className="text-sm font-mono text-muted-foreground">
+                {box.spriteUrl.replace("https://", "")}
+              </p>
             ) : (
               <p className="text-sm font-mono text-muted-foreground">
                 {box.subdomain}
               </p>
             )}
           </div>
-        </div>
+        </Link>
 
-        {/* Dropdown Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -145,7 +119,6 @@ function BoxCard({ box }: { box: BoxType }) {
         </DropdownMenu>
       </div>
 
-      {/* Status */}
       <div className="flex items-center gap-2 mb-4">
         <StatusDot status={box.status} showLabel />
         {isDevBox(box) && (
@@ -160,7 +133,6 @@ function BoxCard({ box }: { box: BoxType }) {
         )}
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2">
         {canRetry && (
           <Button
@@ -255,7 +227,6 @@ export default function BoxesList() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Your Boxes</h1>
@@ -288,7 +259,6 @@ export default function BoxesList() {
         )}
       </div>
 
-      {/* Content */}
       {isLoading ? (
         <LoadingSkeleton />
       ) : boxes.length === 0 ? (

@@ -22,3 +22,10 @@ export type BoxStatus = Box["status"];
 export type CreateBoxInput = Parameters<typeof client.box.create>[0];
 export type DeployBoxInput = Parameters<typeof client.box.deploy>[0];
 export type DeleteBoxInput = Parameters<typeof client.box.delete>[0];
+
+// ─── Email Types ─────────────────────────────────────────────────────────────
+
+export type BoxEmailsResponse = ExtractSuccess<
+  Awaited<ReturnType<typeof client.box.emails>>
+>;
+export type BoxEmail = BoxEmailsResponse["emails"][0];

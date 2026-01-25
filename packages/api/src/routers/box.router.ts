@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server";
+import { BoxEmailStatus } from "@vps-claude/db";
 import { BoxId, SkillId } from "@vps-claude/shared";
 import { z } from "zod";
 
@@ -7,6 +8,7 @@ import {
   BoxByIdOutput,
   BoxCreateOutput,
   BoxDeployProgressOutput,
+  BoxEmailListOutput,
   BoxListOutput,
   BoxProxyOutput,
   SuccessOutput,
@@ -212,6 +214,45 @@ export const boxRouter = {
             port: input.port,
           };
         },
+        (error) => {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: error.message,
+          });
+        }
+      );
+    }),
+
+  emails: protectedProcedure
+    .route({ method: "GET", path: "/box/:id/emails" })
+    .input(
+      z.object({
+        id: BoxId,
+        status: BoxEmailStatus.optional(),
+        limit: z.number().min(1).max(100).default(50),
+      })
+    )
+    .output(BoxEmailListOutput)
+    .handler(async ({ context, input }) => {
+      const boxResult = await context.boxService.getById(input.id);
+      if (boxResult.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: boxResult.error.message,
+        });
+      }
+      if (
+        !boxResult.value ||
+        boxResult.value.userId !== context.session.user.id
+      ) {
+        throw new ORPCError("NOT_FOUND", { message: "Box not found" });
+      }
+
+      const emailsResult = await context.emailService.listByBox(input.id, {
+        status: input.status,
+        limit: input.limit,
+      });
+
+      return emailsResult.match(
+        (emails) => ({ emails }),
         (error) => {
           throw new ORPCError("INTERNAL_SERVER_ERROR", {
             message: error.message,
