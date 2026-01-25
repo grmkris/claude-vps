@@ -2,6 +2,7 @@ import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
 import { apiKeyRouter } from "./api-key.router";
+import { boxAiRouter } from "./box-ai.router";
 import { boxApiRouter } from "./box-api.router";
 import { boxFsRouter } from "./box-fs.router";
 import { boxRouter } from "./box.router";
@@ -29,7 +30,7 @@ export const appRouter = {
 };
 
 // Exported separately to avoid TS7056 type explosion when combined
-export { boxApiRouter, apiKeyRouter, skillRouter, boxFsRouter };
+export { boxApiRouter, boxAiRouter, apiKeyRouter, skillRouter, boxFsRouter };
 
 export type AppRouter = typeof appRouter;
 export type ApiKeyRouterType = typeof apiKeyRouter;

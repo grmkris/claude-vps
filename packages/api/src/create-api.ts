@@ -13,6 +13,7 @@ import { cors } from "hono/cors";
 import { createContext, type Services } from "./context";
 import {
   appRouter,
+  boxAiRouter,
   boxApiRouter,
   boxFsRouter,
   apiKeyRouter,
@@ -170,8 +171,13 @@ export function createApi({
     ],
   });
 
-  // Separate handler for /box/* routes (uses box token auth, not session)
-  const boxApiHandler = new OpenAPIHandler(boxApiRouter, {
+  // Combined box router for /box/* routes (uses box token auth, not session)
+  const combinedBoxRouter = {
+    ...boxApiRouter,
+    ai: boxAiRouter,
+  };
+
+  const boxApiHandler = new OpenAPIHandler(combinedBoxRouter, {
     interceptors: [
       onError((error) => {
         logger.error({ msg: "Box API error", error });

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.19",
+    "@modelcontextprotocol/sdk": "^1.13.0",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "dotenv": "catalog:",

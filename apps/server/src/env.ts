@@ -15,6 +15,11 @@ export const env = z
     INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
     APP_ENV: z.enum(["dev", "prod", "local"]).default("dev"),
     BOX_AGENT_BINARY_URL: z.string().url().optional(),
+    // AI Provider API Keys (optional - service gracefully degrades if missing)
+    FAL_API_KEY: z.string().optional(),
+    ELEVENLABS_API_KEY: z.string().optional(),
+    GOOGLE_CLOUD_API_KEY: z.string().optional(),
+    REPLICATE_API_TOKEN: z.string().optional(),
   })
   .parse(bunEnv);
 

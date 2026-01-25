@@ -1,4 +1,5 @@
 import { createApi } from "@vps-claude/api/create-api";
+import { createAiService } from "@vps-claude/api/services/ai.service";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
@@ -60,6 +61,17 @@ const auth = createAuth({
   appEnv: env.APP_ENV,
 });
 
+const aiService = createAiService({
+  deps: {
+    db,
+    env: {
+      FAL_API_KEY: env.FAL_API_KEY,
+      ELEVENLABS_API_KEY: env.ELEVENLABS_API_KEY,
+      GOOGLE_CLOUD_API_KEY: env.GOOGLE_CLOUD_API_KEY,
+      REPLICATE_API_TOKEN: env.REPLICATE_API_TOKEN,
+    },
+  },
+});
 const apiKeyService = createApiKeyService({ deps: { auth } });
 const boxService = createBoxService({
   deps: { db, queueClient, spritesClient },
@@ -68,6 +80,7 @@ const emailService = createEmailService({ deps: { db, queueClient } });
 const secretService = createSecretService({ deps: { db } });
 
 const services = {
+  aiService,
   apiKeyService,
   boxService,
   emailService,

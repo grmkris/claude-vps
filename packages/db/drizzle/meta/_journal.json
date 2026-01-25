@@ -15,6 +15,13 @@
       "when": 1769367034443,
       "tag": "0001_thick_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769370268224,
+      "tag": "0002_flippant_forgotten_one",
+      "breakpoints": true
     }
   ]
 }

@@ -300,6 +300,28 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 You can read/write files, run commands, and interact with the system.
 When handling emails, read the content and respond appropriately.`;
 
+      // Default MCP servers - always include ai-tools
+      type McpServerConfig = {
+        command: string;
+        args?: string[];
+        env?: Record<string, string>;
+      };
+      const defaultMcpServers: Record<string, McpServerConfig> = {
+        "ai-tools": {
+          command: "/usr/local/bin/box-agent",
+          args: ["mcp"],
+          env: {},
+        },
+      };
+
+      // Merge user-configured MCP servers with defaults
+      const mcpServers = config?.mcpServers
+        ? {
+            ...defaultMcpServers,
+            ...(config.mcpServers as Record<string, McpServerConfig>),
+          }
+        : defaultMcpServers;
+
       return ok({
         model: config?.model ?? "claude-sonnet-4-5-20250929",
         systemPrompt: config?.systemPrompt ?? null,
@@ -311,7 +333,7 @@ When handling emails, read the content and respond appropriately.`;
         maxTurns: config?.maxTurns ?? 50,
         maxBudgetUsd: config?.maxBudgetUsd ?? "1.00",
         persistSession: config?.persistSession ?? true,
-        mcpServers: config?.mcpServers ?? null,
+        mcpServers,
         agents: config?.agents ?? null,
       });
     },
