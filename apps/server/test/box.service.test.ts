@@ -27,13 +27,6 @@ describe("BoxService", () => {
 
   beforeEach(async () => {
     await testSetup.cleanup();
-    const schema = await import("@vps-claude/db");
-    await testSetup.db.insert(schema.user).values({
-      id: testSetup.users.authenticated.id,
-      email: testSetup.users.authenticated.email,
-      name: testSetup.users.authenticated.name,
-      emailVerified: true,
-    });
   });
 
   describe("create", () => {
