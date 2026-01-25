@@ -1,7 +1,11 @@
+import { box, boxEmail, boxEmailSettings } from "@vps-claude/db";
+import {
+  typeIdGenerator,
+  type BoxId,
+  type BoxEmailId,
+} from "@vps-claude/shared";
 import { createTestSetup, type TestSetup } from "@vps-claude/test-utils";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { box, boxEmail, boxEmailSettings } from "@vps-claude/db";
-import { typeIdGenerator, type BoxId, type BoxEmailId } from "@vps-claude/shared";
 import { eq } from "drizzle-orm";
 
 import { createBoxService, type BoxService } from "./box.service";
