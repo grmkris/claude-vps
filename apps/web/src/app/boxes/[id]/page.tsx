@@ -12,11 +12,11 @@ import {
   MailOpen,
   Terminal,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { BoxCommandRunner } from "@/components/box-command-runner";
 import { StatusDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,23 +26,7 @@ import { useBoxEmails } from "@/hooks/use-emails";
 
 import { FileBrowser } from "./components/file-browser";
 
-// Lazy load terminal component to avoid SSR issues with xterm
-const BoxTerminal = dynamic(
-  () =>
-    import("@/components/box-terminal").then((mod) => ({
-      default: mod.BoxTerminal,
-    })),
-  {
-    loading: () => (
-      <div className="h-[400px] bg-[#0d0d0d] rounded-lg flex items-center justify-center">
-        <span className="text-zinc-400 animate-pulse">Loading terminal...</span>
-      </div>
-    ),
-    ssr: false,
-  }
-);
-
-type TabType = "inbox" | "terminal" | "files";
+type TabType = "inbox" | "console" | "files";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -218,15 +202,15 @@ export default function BoxDetailPage() {
             <>
               <button
                 type="button"
-                onClick={() => setActiveTab("terminal")}
+                onClick={() => setActiveTab("console")}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "terminal"
+                  activeTab === "console"
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Terminal className="h-4 w-4 inline-block mr-2" />
-                Terminal
+                Console
               </button>
               <button
                 type="button"
@@ -350,10 +334,8 @@ export default function BoxDetailPage() {
           </div>
         )}
 
-        {activeTab === "terminal" && box.status === "running" && (
-          <div className="h-[500px]">
-            <BoxTerminal boxId={id} className="h-full" />
-          </div>
+        {activeTab === "console" && box.status === "running" && (
+          <BoxCommandRunner boxId={id} className="h-[500px]" />
         )}
 
         {activeTab === "files" && box.status === "running" && (

@@ -283,10 +283,7 @@ export const boxRouter = {
       ) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (
-        boxResult.value.status !== "running" ||
-        !boxResult.value.spriteName
-      ) {
+      if (boxResult.value.status !== "running" || !boxResult.value.spriteName) {
         throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
       }
 

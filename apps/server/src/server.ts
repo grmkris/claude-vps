@@ -1,10 +1,4 @@
-import type { ServerWebSocket } from "bun";
-
 import { createApi } from "@vps-claude/api/create-api";
-import {
-  createWebSocketTerminalHandler,
-  type TerminalConnectionData,
-} from "@vps-claude/api/handlers/websocket-terminal.handler";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
@@ -130,14 +124,6 @@ const { app } = createApi({
   inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET,
 });
 
-// WebSocket terminal handler
-const wsTerminalHandler = createWebSocketTerminalHandler({
-  boxService,
-  spritesClient,
-  auth,
-  logger,
-});
-
 logger.info({ msg: "Server started", port: 33000 });
 
 const shutdown = async (signal: string) => {
@@ -156,69 +142,7 @@ const shutdown = async (signal: string) => {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-// WebSocket terminal route pattern: /ws/box/:id/terminal
-const WS_TERMINAL_PATTERN = /^\/ws\/box\/([^/]+)\/terminal/;
-
 export default {
   port: 33000,
-  async fetch(
-    req: Request,
-    server: {
-      upgrade: (
-        req: Request,
-        opts: { data: TerminalConnectionData }
-      ) => boolean;
-    }
-  ) {
-    const url = new URL(req.url);
-    const match = WS_TERMINAL_PATTERN.exec(url.pathname);
-
-    // Handle WebSocket terminal upgrade
-    if (match && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
-      const boxId = match[1];
-      if (!boxId) {
-        return new Response(JSON.stringify({ error: "Invalid box ID" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      const data = await wsTerminalHandler.validateUpgrade(req, boxId);
-      if (!data) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      // Attempt WebSocket upgrade
-      if (server.upgrade(req, { data })) {
-        // Upgrade successful, return undefined to signal Bun to complete it
-        return undefined;
-      }
-
-      return new Response(
-        JSON.stringify({ error: "WebSocket upgrade failed" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Delegate to Hono for all other requests
-    return app.fetch(req);
-  },
-  websocket: wsTerminalHandler.handlers as {
-    open: (ws: ServerWebSocket<TerminalConnectionData>) => void;
-    message: (
-      ws: ServerWebSocket<TerminalConnectionData>,
-      message: string | Buffer
-    ) => void;
-    close: (
-      ws: ServerWebSocket<TerminalConnectionData>,
-      code: number,
-      reason: string
-    ) => void;
-  },
+  fetch: app.fetch,
 };
