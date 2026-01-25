@@ -25,6 +25,15 @@ export const PrivateDataOutput = z.object({
 export const BoxListOutput = z.object({ boxes: z.array(SelectBoxSchema) });
 export const BoxByIdOutput = z.object({ box: SelectBoxSchema });
 export const BoxCreateOutput = z.object({ box: SelectBoxSchema });
+export const BoxDeployProgressOutput = z.object({
+  progress: z
+    .object({
+      step: z.number(),
+      total: z.number(),
+      message: z.string(),
+    })
+    .nullable(),
+});
 export const BoxProxyOutput = z.object({
   proxyUrl: z.string(),
   token: z.string(),

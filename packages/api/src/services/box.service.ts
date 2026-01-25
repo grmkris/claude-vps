@@ -109,13 +109,17 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: "Default",
       });
 
-      await queueClient.deployQueue.add("deploy", {
-        boxId: created.id,
-        userId,
-        subdomain: created.subdomain,
-        skills,
-        password: input.password,
-      });
+      await queueClient.deployQueue.add(
+        "deploy",
+        {
+          boxId: created.id,
+          userId,
+          subdomain: created.subdomain,
+          skills,
+          password: input.password,
+        },
+        { jobId: created.id }
+      );
 
       return ok(created);
     },
@@ -151,13 +155,17 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
       await db.update(box).set({ status: "deploying" }).where(eq(box.id, id));
 
-      await queueClient.deployQueue.add("deploy", {
-        boxId: id,
-        userId,
-        subdomain: boxRecord.subdomain,
-        skills: skills.map((s) => s.skillId),
-        password,
-      });
+      await queueClient.deployQueue.add(
+        "deploy",
+        {
+          boxId: id,
+          userId,
+          subdomain: boxRecord.subdomain,
+          skills: skills.map((s) => s.skillId),
+          password,
+        },
+        { jobId: id }
+      );
 
       return ok(undefined);
     },
@@ -377,6 +385,25 @@ When handling emails, read the content and respond appropriately.`;
 
       await db.delete(boxAgentConfig).where(eq(boxAgentConfig.id, configId));
       return ok(undefined);
+    },
+
+    async getDeployProgress(
+      boxId: BoxId
+    ): Promise<
+      Result<
+        { step: number; total: number; message: string } | null,
+        BoxServiceError
+      >
+    > {
+      const job = await queueClient.deployQueue.getJob(boxId);
+      if (!job) return ok(null);
+
+      const progress = job.progress as
+        | { step: number; total: number; message: string }
+        | undefined;
+      if (!progress || typeof progress.step !== "number") return ok(null);
+
+      return ok(progress);
     },
   };
 }

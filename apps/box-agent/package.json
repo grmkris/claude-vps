@@ -6,7 +6,10 @@
     "build": "bun build --compile --minify --sourcemap ./src/index.ts --outfile dist/box-agent",
     "build:linux": "bun build --compile --target=bun-linux-x64 --minify ./src/index.ts --outfile dist/box-agent-linux-x64",
     "start": "bun run src/index.ts",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.19",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "@vps-claude/config": "workspace:*"
+    "@vps-claude/config": "workspace:*",
+    "drizzle-kit": "catalog:"
   }
 }

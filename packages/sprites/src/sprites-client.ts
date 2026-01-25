@@ -2,6 +2,125 @@ import type { Logger } from "@vps-claude/logger";
 
 import { SpritesClient as FlySpritesClient } from "@fly/sprites";
 
+/**
+ * Embedded nginx config for sprite reverse proxy.
+ * Routes:
+ *   /code/*   → code-server :8443 (VS Code IDE)
+ *   /email/*  → box-agent :9999 (email webhooks)
+ *   /agent/*  → box-agent :9999 (agent API)
+ *   /health   → box-agent :9999 (health check)
+ *   /*        → agent-app :3000 (Next.js user app)
+ */
+const NGINX_CONFIG = `events {
+    worker_connections 1024;
+}
+
+http {
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    keepalive_timeout 65;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    upstream box_agent {
+        server 127.0.0.1:9999;
+        keepalive 8;
+    }
+
+    upstream agent_app {
+        server 127.0.0.1:3000;
+        keepalive 8;
+    }
+
+    upstream code_server {
+        server 127.0.0.1:8443;
+        keepalive 8;
+    }
+
+    server {
+        listen 8080;
+        server_name _;
+
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+
+        location /email/ {
+            proxy_pass http://box_agent;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 120s;
+            proxy_connect_timeout 10s;
+        }
+
+        location /agent/ {
+            proxy_pass http://box_agent;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_connect_timeout 10s;
+        }
+
+        location /health {
+            proxy_pass http://box_agent;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+
+        location /code/ {
+            proxy_pass http://code_server/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 86400s;
+            proxy_connect_timeout 10s;
+        }
+
+        location / {
+            proxy_pass http://agent_app;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_cache_bypass $http_upgrade;
+            proxy_read_timeout 60s;
+            proxy_connect_timeout 10s;
+        }
+
+        location /_next/static/ {
+            proxy_pass http://agent_app;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        error_page 502 503 504 /50x.html;
+        location = /50x.html {
+            root /usr/share/nginx/html;
+            internal;
+        }
+    }
+}`;
+
 import type {
   Checkpoint,
   CreateSpriteConfig,
@@ -223,12 +342,14 @@ ENVEOF`
   }
 
   /**
-   * Set up a sprite with box-agent
-   * This runs after createSprite to install the agent service
-   * Sprites handles its own auth (private by default, token-based access)
+   * Set up a sprite with all services:
+   * - box-agent (email handling, Claude sessions) on port 9999
+   * - nginx (reverse proxy on port 8080) - HTTP entry point
+   * - agent-app (Next.js app on port 3000)
+   * - code-server (VS Code IDE on port 8443)
    *
-   * Uses execShell() for all commands since they require shell syntax
-   * (heredocs, redirects, pipes, export, etc.)
+   * This runs after createSprite to configure the full service stack.
+   * Uses sprite-env services for persistent service management.
    */
   async function setupSprite(config: SpriteSetupConfig): Promise<void> {
     const { spriteName, boxAgentBinaryUrl, envVars, password } = config;
@@ -252,80 +373,176 @@ ENVEOF`
       return result;
     }
 
-    // Step 1: Create coder user with optional password for code-server
+    // Step 1: Download and install box-agent binary
     await runStep(
       1,
-      "Create coder user",
-      `
-      sudo useradd -m -s /bin/bash -G sudo coder || true
-      echo "coder ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/coder > /dev/null
-      ${password ? `echo "coder:${password.replace(/"/g, '\\"')}" | sudo chpasswd` : ""}
-    `
-    );
-
-    // Step 2: Download and install box-agent binary
-    await runStep(
-      2,
       "Download box-agent",
       `
-      sudo curl -fsSL "${boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
-      sudo chmod +x /usr/local/bin/box-agent
+      curl -fsSL "${boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
+      chmod +x /usr/local/bin/box-agent
     `
     );
 
-    // Step 3: Create data directories
+    // Step 2: Create data directories
     await runStep(
-      3,
+      2,
       "Create directories",
       `
-      sudo mkdir -p /home/coder/.inbox /home/coder/.box-agent
-      sudo chown -R coder:coder /home/coder/.inbox /home/coder/.box-agent
+      mkdir -p /home/sprite/.inbox /home/sprite/.box-agent
     `
     );
 
-    // Step 4: Set environment variables for coder user
+    // Step 3: Set environment variables for sprite user
     const envExports = Object.entries(finalEnvVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
     await runStep(
-      4,
+      3,
       "Set env vars",
       `
-      sudo tee -a /home/coder/.bashrc > /dev/null << 'ENVEOF'
+      tee -a /home/sprite/.bashrc > /dev/null << 'ENVEOF'
 # Box environment variables
 ${envExports}
 ENVEOF
-      sudo chown coder:coder /home/coder/.bashrc
     `
     );
 
-    // Step 5: Create env file for box-agent
-    const envFile = Object.entries(finalEnvVars)
-      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
-      .join("\n");
-
+    // Step 4: Create env file for box-agent
     await runStep(
-      5,
+      4,
       "Create env file",
       `
-      sudo tee /home/coder/.bashrc.env > /dev/null << 'ENVEOF'
-${envFile}
+      tee /home/sprite/.bashrc.env > /dev/null << 'ENVEOF'
+${Object.entries(finalEnvVars)
+  .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
+  .join("\n")}
 ENVEOF
-      sudo chown coder:coder /home/coder/.bashrc.env
     `
     );
 
-    // Step 6: Start box-agent
+    // Step 5: Create box-agent wrapper script and service
+    // Using a wrapper script to properly load environment variables
+    await runStep(
+      5,
+      "Create box-agent service",
+      `
+      cat > /home/sprite/start-box-agent.sh << 'STARTEOF'
+#!/bin/bash
+source /home/sprite/.bashrc.env
+exec /usr/local/bin/box-agent
+STARTEOF
+      chmod +x /home/sprite/start-box-agent.sh
+
+      sprite-env services create box-agent \\
+        --cmd /home/sprite/start-box-agent.sh \\
+        --dir /home/sprite \\
+        --no-stream
+    `
+    );
+
+    // Step 6: Install nginx
     await runStep(
       6,
-      "Start box-agent",
+      "Install nginx",
       `
-      # Start box-agent as coder user (nohup to survive shell exit)
-      sudo -u coder bash -c 'cd /home/coder && source /home/coder/.bashrc.env && nohup /usr/local/bin/box-agent > /home/coder/.box-agent.log 2>&1 &'
+      apt-get update && apt-get install -y nginx
+    `
+    );
 
-      # Give service a moment to start
-      sleep 1
+    // Step 7: Configure nginx and create service (HTTP entry point)
+    await writeFile(spriteName, "/etc/nginx/nginx.conf", NGINX_CONFIG);
+    await runStep(
+      7,
+      "Create nginx service",
+      `
+      nginx -t
+
+      # Wrapper script to run nginx in foreground
+      cat > /usr/local/bin/start-nginx.sh << 'NGINXEOF'
+#!/bin/bash
+exec /usr/sbin/nginx -g "daemon off;"
+NGINXEOF
+      chmod +x /usr/local/bin/start-nginx.sh
+
+      sprite-env services create nginx \\
+        --cmd /usr/local/bin/start-nginx.sh \\
+        --http-port 8080 \\
+        --no-stream
+    `
+    );
+
+    // Step 8: Clone agent-next-app (to sprite user home for service access)
+    await runStep(
+      8,
+      "Clone agent-app",
+      `
+      git clone https://github.com/grmkris/agent-next-app /home/sprite/agent-app
+    `
+    );
+
+    // Step 9: Install agent-app dependencies
+    await runStep(
+      9,
+      "Install agent-app",
+      `
+      cd /home/sprite/agent-app && /.sprite/bin/bun install
+    `
+    );
+
+    // Step 10: Create agent-app service (dev mode)
+    await runStep(
+      10,
+      "Create agent-app service",
+      `
+      cat > /home/sprite/start-agent-app.sh << 'STARTEOF'
+#!/bin/bash
+source /home/sprite/.bashrc.env 2>/dev/null || true
+cd /home/sprite/agent-app
+# TODO: Make DATABASE_URL configurable via box settings
+export DATABASE_URL="file:/home/sprite/agent-app/local.db"
+exec /.sprite/bin/bun dev
+STARTEOF
+      chmod +x /home/sprite/start-agent-app.sh
+
+      sprite-env services create agent-app \\
+        --cmd /home/sprite/start-agent-app.sh \\
+        --needs box-agent \\
+        --no-stream
+    `
+    );
+
+    // Step 11: Install and configure code-server
+    const codeServerPassword = password || "changeme";
+    await runStep(
+      11,
+      "Install code-server",
+      `
+      curl -fsSL https://code-server.dev/install.sh | sh
+      mkdir -p /home/sprite/.config/code-server
+      tee /home/sprite/.config/code-server/config.yaml > /dev/null << 'CODESERVEOF'
+bind-addr: 127.0.0.1:8443
+auth: password
+password: ${codeServerPassword}
+cert: false
+CODESERVEOF
+    `
+    );
+
+    // Step 12: Create code-server service
+    await runStep(
+      12,
+      "Create code-server service",
+      `
+      cat > /home/sprite/start-code-server.sh << 'CODEEOF'
+#!/bin/bash
+exec /usr/bin/code-server --config /home/sprite/.config/code-server/config.yaml /home/sprite/agent-app
+CODEEOF
+      chmod +x /home/sprite/start-code-server.sh
+
+      sprite-env services create code-server \\
+        --cmd /home/sprite/start-code-server.sh \\
+        --no-stream
     `
     );
   }
@@ -357,7 +574,7 @@ ENVEOF
     // Read existing env file, merge with new vars
     const existingResult = await execCommand(
       spriteName,
-      "cat /home/coder/.bashrc.env 2>/dev/null || echo ''"
+      "cat /home/sprite/.bashrc.env 2>/dev/null || echo ''"
     );
 
     // Parse existing vars
@@ -378,11 +595,10 @@ ENVEOF
 
     await execCommand(
       spriteName,
-      `cat > /home/coder/.bashrc.env << 'ENVEOF'
+      `cat > /home/sprite/.bashrc.env << 'ENVEOF'
 ${envFile}
 ENVEOF
-chown coder:coder /home/coder/.bashrc.env
-systemctl restart box-agent`
+sprite-env services restart box-agent`
     );
   }
 

@@ -6,6 +6,7 @@ import { protectedProcedure } from "../index";
 import {
   BoxByIdOutput,
   BoxCreateOutput,
+  BoxDeployProgressOutput,
   BoxListOutput,
   BoxProxyOutput,
   SuccessOutput,
@@ -101,6 +102,38 @@ export const boxRouter = {
             throw new ORPCError("NOT_FOUND", { message: error.message });
           }
           throw new ORPCError("BAD_REQUEST", { message: error.message });
+        }
+      );
+    }),
+
+  deployProgress: protectedProcedure
+    .route({ method: "GET", path: "/box/:id/deploy-progress" })
+    .input(z.object({ id: BoxId }))
+    .output(BoxDeployProgressOutput)
+    .handler(async ({ context, input }) => {
+      // Verify ownership
+      const boxResult = await context.boxService.getById(input.id);
+      if (boxResult.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: boxResult.error.message,
+        });
+      }
+      if (
+        !boxResult.value ||
+        boxResult.value.userId !== context.session.user.id
+      ) {
+        throw new ORPCError("NOT_FOUND", { message: "Box not found" });
+      }
+
+      const progressResult = await context.boxService.getDeployProgress(
+        input.id
+      );
+      return progressResult.match(
+        (progress) => ({ progress }),
+        (error) => {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: error.message,
+          });
         }
       );
     }),

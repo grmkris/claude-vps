@@ -24,7 +24,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBoxes, useDeployBox, useDeleteBox } from "@/hooks/use-boxes";
+import {
+  useBoxes,
+  useDeployBox,
+  useDeleteBox,
+  useDeployProgress,
+} from "@/hooks/use-boxes";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -48,6 +53,23 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="h-3 w-3 text-muted-foreground" />
       )}
     </button>
+  );
+}
+
+function DeployProgressMessage({ boxId }: { boxId: string }) {
+  const { data } = useDeployProgress(boxId as BoxType["id"]);
+  const progress = data?.progress;
+
+  if (!progress) {
+    return (
+      <span className="text-muted-foreground">Deployment in progress...</span>
+    );
+  }
+
+  return (
+    <span className="text-muted-foreground">
+      Step {progress.step}/{progress.total}: {progress.message}
+    </span>
   );
 }
 
@@ -151,8 +173,8 @@ function BoxCard({ box }: { box: BoxType }) {
           </Button>
         )}
         {box.status === "deploying" && (
-          <div className="flex-1 text-center text-sm text-muted-foreground">
-            Deployment in progress...
+          <div className="flex-1 text-center text-sm">
+            <DeployProgressMessage boxId={box.id} />
           </div>
         )}
       </div>

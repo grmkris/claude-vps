@@ -82,6 +82,8 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
     WORKER_CONFIG.deployBox.name,
     async (job: Job<DeployBoxJobData>) => {
       const { boxId, userId, subdomain, skills, password } = job.data;
+      const hasSkills = skills && skills.length > 0;
+      const totalSteps = hasSkills ? 4 : 3;
 
       try {
         const boxResult = await boxService.getById(boxId);
@@ -121,6 +123,11 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
         }
 
         // Step 1: Create the sprite (blank VM)
+        await job.updateProgress({
+          step: 1,
+          total: totalSteps,
+          message: "Creating sprite",
+        });
         logger.info({ boxId, subdomain }, "Creating Sprite");
         const sprite = await spritesClient.createSprite({
           name: subdomain,
@@ -131,10 +138,16 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
 
         await boxService.setSpriteInfo(boxId, sprite.spriteName, sprite.url);
 
-        // Step 2: Set up the sprite with box-agent and env vars
+        // Step 2: Set up the sprite with all services
+        // (box-agent, nginx, agent-app, code-server)
+        await job.updateProgress({
+          step: 2,
+          total: totalSteps,
+          message: "Setting up services",
+        });
         logger.info(
           { boxId, subdomain, spriteName: sprite.spriteName },
-          "Setting up Sprite"
+          "Setting up Sprite with all services"
         );
         await spritesClient.setupSprite({
           spriteName: sprite.spriteName,
@@ -144,14 +157,24 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
         });
 
         // Step 3: Enable public URL access (Sprites are private by default)
+        await job.updateProgress({
+          step: 3,
+          total: totalSteps,
+          message: "Enabling public access",
+        });
         logger.info(
           { boxId, spriteName: sprite.spriteName },
           "Enabling public URL access"
         );
         await spritesClient.setUrlAuth(sprite.spriteName, "public");
 
-        // Step 4: Install skills.sh skills
-        if (skills && skills.length > 0) {
+        // Step 4: Install skills.sh skills (parallelized)
+        if (hasSkills) {
+          await job.updateProgress({
+            step: 4,
+            total: totalSteps,
+            message: "Installing skills",
+          });
           logger.info(
             { boxId, skillCount: skills.length },
             "Installing skills.sh skills"
@@ -163,55 +186,69 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
             "mkdir -p /home/coder/.claude/skills && chown -R coder:coder /home/coder/.claude"
           );
 
-          for (const skillId of skills) {
-            try {
-              // Fetch skill metadata to get topSource
+          // Fetch all skill metadata in parallel
+          const metadataResults = await Promise.all(
+            skills.map(async (skillId) => {
               const metadata = await fetchSkillMetadata(skillId);
-              if (!metadata) {
-                logger.warn(
-                  { skillId },
-                  "Could not find skill metadata, skipping"
-                );
-                continue;
-              }
+              return { skillId, metadata };
+            })
+          );
 
-              // Fetch SKILL.md content
-              const skillMd = await fetchSkillMd(metadata.topSource, skillId);
-              if (!skillMd) {
-                logger.warn(
-                  { skillId, topSource: metadata.topSource },
-                  "Could not fetch SKILL.md, skipping"
-                );
-                continue;
-              }
+          // Filter valid and fetch SKILL.md in parallel
+          const validSkills = metadataResults.filter((r) => r.metadata);
+          const skillContents = await Promise.all(
+            validSkills.map(async ({ skillId, metadata }) => {
+              const skillMd = await fetchSkillMd(metadata!.topSource, skillId);
+              return { skillId, skillMd };
+            })
+          );
 
-              // Create skill directory and write SKILL.md
-              const skillDir = `/home/coder/.claude/skills/${skillId}`;
-              await spritesClient.execCommand(
-                sprite.spriteName,
-                `mkdir -p ${skillDir} && chown coder:coder ${skillDir}`
+          // Write all skill files in parallel
+          await Promise.all(
+            skillContents
+              .filter((s) => s.skillMd)
+              .map(async ({ skillId, skillMd }) => {
+                try {
+                  const skillDir = `/home/coder/.claude/skills/${skillId}`;
+                  await spritesClient.execCommand(
+                    sprite.spriteName,
+                    `mkdir -p ${skillDir} && chown coder:coder ${skillDir}`
+                  );
+                  await spritesClient.writeFile(
+                    sprite.spriteName,
+                    `${skillDir}/SKILL.md`,
+                    skillMd!,
+                    { mkdir: true }
+                  );
+                  await spritesClient.execCommand(
+                    sprite.spriteName,
+                    `chown coder:coder ${skillDir}/SKILL.md`
+                  );
+                  logger.info({ skillId }, "Installed skill");
+                } catch (err) {
+                  logger.error(
+                    {
+                      skillId,
+                      error: err instanceof Error ? err.message : err,
+                    },
+                    "Failed to install skill"
+                  );
+                }
+              })
+          );
+
+          // Log skipped skills
+          for (const { skillId, metadata } of metadataResults) {
+            if (!metadata) {
+              logger.warn(
+                { skillId },
+                "Could not find skill metadata, skipping"
               );
-
-              // Write SKILL.md using filesystem API
-              await spritesClient.writeFile(
-                sprite.spriteName,
-                `${skillDir}/SKILL.md`,
-                skillMd,
-                { mkdir: true }
-              );
-
-              // Set ownership
-              await spritesClient.execCommand(
-                sprite.spriteName,
-                `chown coder:coder ${skillDir}/SKILL.md`
-              );
-
-              logger.info({ skillId }, "Installed skill");
-            } catch (err) {
-              logger.error(
-                { skillId, error: err instanceof Error ? err.message : err },
-                "Failed to install skill"
-              );
+            }
+          }
+          for (const { skillId, skillMd } of skillContents) {
+            if (!skillMd) {
+              logger.warn({ skillId }, "Could not fetch SKILL.md, skipping");
             }
           }
         }

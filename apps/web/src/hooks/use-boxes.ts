@@ -78,3 +78,11 @@ export function useDeleteBox() {
     },
   });
 }
+
+export function useDeployProgress(id: BoxId | undefined) {
+  return useQuery({
+    ...orpc.box.deployProgress.queryOptions({ input: { id: id! } }),
+    enabled: Boolean(id),
+    refetchInterval: 2000,
+  });
+}
