@@ -22,6 +22,8 @@ import { env } from "@/env";
 import { useBox } from "@/hooks/use-boxes";
 import { useBoxEmails } from "@/hooks/use-emails";
 
+import { FileBrowser } from "./components/file-browser";
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -173,6 +175,13 @@ export default function BoxDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {box.status === "running" && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Files</h2>
+          <FileBrowser boxId={id} />
         </div>
       )}
 

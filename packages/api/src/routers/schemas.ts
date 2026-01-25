@@ -87,3 +87,28 @@ export const ApiKeyListOutput = z.object({
     })
   ),
 });
+
+// === Filesystem ===
+export const FileInfoSchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  isDirectory: z.boolean(),
+  size: z.number().optional(),
+  modTime: z.string().optional(),
+  mode: z.string().optional(),
+});
+
+export const FsListOutput = z.object({
+  entries: z.array(FileInfoSchema),
+  currentPath: z.string(),
+});
+
+export const FsReadOutput = z.object({
+  content: z.string(), // base64
+  size: z.number(),
+});
+
+export const FsWriteOutput = z.object({
+  success: z.literal(true),
+  path: z.string(),
+});

@@ -14,6 +14,7 @@ import { createContext, type Services } from "./context";
 import {
   appRouter,
   boxApiRouter,
+  boxFsRouter,
   apiKeyRouter,
   skillRouter,
 } from "./routers/index";
@@ -24,6 +25,7 @@ const fullAppRouter = {
   ...appRouter,
   apiKey: apiKeyRouter,
   skill: skillRouter,
+  boxFs: boxFsRouter,
 };
 
 type HonoVariables = {

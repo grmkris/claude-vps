@@ -29,3 +29,18 @@ export type BoxEmailsResponse = ExtractSuccess<
   Awaited<ReturnType<typeof client.box.emails>>
 >;
 export type BoxEmail = BoxEmailsResponse["emails"][0];
+
+// ─── Filesystem Types ────────────────────────────────────────────────────────
+
+export type FsListResponse = ExtractSuccess<
+  Awaited<ReturnType<typeof client.boxFs.list>>
+>;
+export type FileEntry = FsListResponse["entries"][0];
+
+export type FsReadResponse = ExtractSuccess<
+  Awaited<ReturnType<typeof client.boxFs.read>>
+>;
+
+export type FsWriteResponse = ExtractSuccess<
+  Awaited<ReturnType<typeof client.boxFs.write>>
+>;
