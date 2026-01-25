@@ -165,6 +165,16 @@ export function createSpritesClient(
   ): Promise<{ spriteName: string; url: string }> {
     const spriteName = generateSpriteName(config.userId, config.subdomain);
 
+    // Check if sprite already exists (idempotent for retry scenarios)
+    const existing = await getSprite(spriteName);
+    if (existing) {
+      logger.info({ spriteName }, "Sprite already exists, reusing");
+      return {
+        spriteName,
+        url: `https://${spriteName}.sprites.dev`,
+      };
+    }
+
     // Create the sprite using official SDK
     const sprite = await flySpritesClient.createSprite(spriteName);
 
@@ -207,10 +217,12 @@ ENVEOF`
         updated_at: sprite.updatedAt?.toISOString(),
       };
     } catch (error) {
-      // SDK throws on 404
+      // SDK throws on 404 or 500 (Sprites API returns 500 for non-existent sprites)
       if (
         String(error).includes("404") ||
-        String(error).includes("not found")
+        String(error).includes("500") ||
+        String(error).includes("not found") ||
+        String(error).includes("failed to retrieve sprite")
       ) {
         return null;
       }
