@@ -115,13 +115,6 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           BOX_SUBDOMAIN: subdomain,
         };
 
-        if (box.telegramBotToken) {
-          envVars.TAKOPI_BOT_TOKEN = box.telegramBotToken;
-        }
-        if (box.telegramChatId) {
-          envVars.TAKOPI_CHAT_ID = box.telegramChatId;
-        }
-
         // Step 1: Create the sprite (blank VM)
         await job.updateProgress({
           step: 1,

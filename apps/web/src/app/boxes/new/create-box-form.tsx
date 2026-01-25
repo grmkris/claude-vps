@@ -25,8 +25,6 @@ export default function CreateBoxForm() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
-  const [telegramBotToken, setTelegramBotToken] = useState("");
-  const [telegramChatId, setTelegramChatId] = useState("");
 
   const subdomainPreview = useMemo(
     () => generateSubdomainPreview(name),
@@ -40,8 +38,6 @@ export default function CreateBoxForm() {
         name,
         skills: skills as SkillId[],
         ...(password && { password }),
-        ...(telegramBotToken && { telegramBotToken }),
-        ...(telegramChatId && { telegramChatId }),
       },
       {
         onSuccess: () => {
@@ -126,61 +122,6 @@ export default function CreateBoxForm() {
         {/* Skills.sh Skills */}
         <div className="pt-6 border-t">
           <SkillSelector value={skills} onChange={setSkills} />
-        </div>
-
-        {/* Telegram Configuration (Optional) */}
-        <div className="space-y-4 pt-6 border-t">
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">
-              Telegram Integration (Optional)
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Connect your box to Telegram for chat-based Claude Code
-              interaction
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="telegramBotToken" className="text-sm font-medium">
-              Bot Token
-            </Label>
-            <Input
-              id="telegramBotToken"
-              type="text"
-              placeholder="123456:ABCdefGHIjklmnoPQRstuVWXyz"
-              value={telegramBotToken}
-              onChange={(e) => setTelegramBotToken(e.target.value)}
-              className="h-12"
-            />
-            <p className="text-xs text-muted-foreground">
-              Create a bot via{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                @BotFather
-              </code>{" "}
-              on Telegram
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="telegramChatId" className="text-sm font-medium">
-              Chat ID
-            </Label>
-            <Input
-              id="telegramChatId"
-              type="text"
-              placeholder="123456789"
-              value={telegramChatId}
-              onChange={(e) => setTelegramChatId(e.target.value)}
-              className="h-12"
-            />
-            <p className="text-xs text-muted-foreground">
-              Message your bot, then use{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                @userinfobot
-              </code>{" "}
-              to get your chat ID
-            </p>
-          </div>
         </div>
 
         <Button

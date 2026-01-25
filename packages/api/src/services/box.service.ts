@@ -44,7 +44,7 @@ interface BoxServiceDeps {
 }
 
 export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
-  const { db, queueClient, spritesClient } = deps;
+  const { db, queueClient } = deps;
 
   const getById = async (
     id: BoxId
@@ -73,8 +73,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: string;
         /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
         skills?: string[];
-        telegramBotToken?: string;
-        telegramChatId?: string;
         /** Password for code-server authentication */
         password?: string;
       }
@@ -100,8 +98,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           subdomain,
           status: "deploying",
           userId,
-          telegramBotToken: input.telegramBotToken,
-          telegramChatId: input.telegramChatId,
         })
         .returning();
 
@@ -269,47 +265,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           boxId: id,
           userId: boxRecord.userId,
         });
-      }
-
-      return ok(undefined);
-    },
-
-    async updateTelegramConfig(
-      boxId: BoxId,
-      config: { telegramBotToken?: string; telegramChatId?: string }
-    ): Promise<Result<void, BoxServiceError>> {
-      const existingResult = await getById(boxId);
-      if (existingResult.isErr()) return err(existingResult.error);
-      const existing = existingResult.value;
-
-      if (!existing) {
-        return err({ type: "NOT_FOUND", message: "Box not found" });
-      }
-
-      await db
-        .update(box)
-        .set({
-          telegramBotToken: config.telegramBotToken,
-          telegramChatId: config.telegramChatId,
-        })
-        .where(eq(box.id, boxId));
-
-      // Hot update env vars on running sprite (no full redeploy needed)
-      if (
-        spritesClient &&
-        existing.spriteName &&
-        existing.status === "running"
-      ) {
-        const envUpdates: Record<string, string> = {};
-        if (config.telegramBotToken) {
-          envUpdates.TAKOPI_BOT_TOKEN = config.telegramBotToken;
-        }
-        if (config.telegramChatId) {
-          envUpdates.TAKOPI_CHAT_ID = config.telegramChatId;
-        }
-        if (Object.keys(envUpdates).length > 0) {
-          await spritesClient.updateEnvVars(existing.spriteName, envUpdates);
-        }
       }
 
       return ok(undefined);

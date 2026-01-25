@@ -30,8 +30,6 @@ export const box = pgTable(
     passwordHash: text("password_hash"),
     errorMessage: text("error_message"),
     lastHealthCheck: timestamp("last_health_check"),
-    telegramBotToken: text("telegram_bot_token"),
-    telegramChatId: text("telegram_chat_id"),
 
     userId: typeId("user", "user_id")
       .notNull()
