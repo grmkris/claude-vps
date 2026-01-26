@@ -127,8 +127,9 @@ export function createApi({
       return c.json({ error: "Missing to address" }, 400);
     }
 
+    // Match format: subdomain@agentsDomain (e.g., claude-box-abc1@yoda.fun)
     const match = toAddress.match(
-      new RegExp(`^[^@]+@([^.]+)\\.${agentsDomain.replace(".", "\\.")}$`, "i")
+      new RegExp(`^([^@]+)@${agentsDomain.replace(".", "\\.")}$`, "i")
     );
 
     if (!match) {
