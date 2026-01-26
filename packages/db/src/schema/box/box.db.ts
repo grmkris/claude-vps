@@ -1,5 +1,12 @@
 import { type BoxId, typeIdGenerator, type UserId } from "@vps-claude/shared";
-import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 import { baseEntityFields, typeId } from "../../utils/db-utils";
 import { user } from "../auth";
@@ -32,6 +39,7 @@ export const box = pgTable(
     lastHealthCheck: timestamp("last_health_check"),
 
     skills: text("skills").array().notNull().default([]),
+    deploymentAttempt: integer("deployment_attempt").notNull().default(1),
 
     userId: typeId("user", "user_id")
       .notNull()

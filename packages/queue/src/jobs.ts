@@ -9,6 +9,8 @@ export const DeployBoxJobData = z.object({
   skills: z.array(z.string()).default([]),
   /** Password for code-server authentication */
   password: z.string().optional(),
+  /** Deployment attempt number (for retry tracking) */
+  deploymentAttempt: z.number().int().min(1).default(1),
 });
 
 export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;

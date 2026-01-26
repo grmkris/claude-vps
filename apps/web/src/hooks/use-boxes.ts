@@ -23,7 +23,7 @@ export function useBoxes() {
 }
 
 export function useBox(id: BoxId) {
-  return useQuery(orpc.box.byId.queryOptions({ input: { id } }));
+  return useQuery(orpc.boxDetails.byId.queryOptions({ input: { id } }));
 }
 
 export function useCreateBox() {
@@ -100,7 +100,7 @@ export function useDeleteBox() {
 
 export function useDeployProgress(id: BoxId | undefined) {
   return useQuery({
-    ...orpc.box.deployProgress.queryOptions({ input: { id: id! } }),
+    ...orpc.boxDetails.deploySteps.queryOptions({ input: { id: id! } }),
     enabled: Boolean(id),
     refetchInterval: 2000,
   });

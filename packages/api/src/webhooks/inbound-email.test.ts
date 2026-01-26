@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 
 import { createApi } from "../create-api";
 import { createBoxService, type BoxService } from "../services/box.service";
+import { createDeployStepService } from "../services/deploy-step.service";
 import {
   createEmailService,
   type EmailService,
@@ -28,13 +29,16 @@ describe("inbound-email webhook", () => {
     emailService = createEmailService({
       deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
     });
+    const deployStepService = createDeployStepService({
+      deps: { db: testEnv.db },
+    });
 
     const { app: honoApp } = createApi({
       db: testEnv.db,
       logger,
       services: {
         boxService,
-        deployStepService: {} as never,
+        deployStepService,
         emailService,
         secretService: {} as never,
         apiKeyService: {} as never,

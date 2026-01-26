@@ -8,7 +8,7 @@ import { orpc } from "@/utils/orpc";
 
 export function useBoxEmails(boxId: BoxId | undefined) {
   return useQuery({
-    ...orpc.box.emails.queryOptions({ input: { id: boxId! } }),
+    ...orpc.boxDetails.emails.queryOptions({ input: { id: boxId! } }),
     enabled: Boolean(boxId),
     refetchInterval: 10000,
   });

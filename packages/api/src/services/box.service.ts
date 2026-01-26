@@ -117,6 +117,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           subdomain: created.subdomain,
           skills,
           password: input.password,
+          deploymentAttempt: 1,
         },
         { jobId: created.id }
       );
@@ -207,7 +208,13 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         });
       }
 
-      await db.update(box).set({ status: "deploying" }).where(eq(box.id, id));
+      // Increment deployment attempt for retry tracking
+      const newAttempt = boxRecord.deploymentAttempt + 1;
+
+      await db
+        .update(box)
+        .set({ status: "deploying", deploymentAttempt: newAttempt })
+        .where(eq(box.id, id));
 
       await queueClient.deployQueue.add(
         "deploy",
@@ -217,8 +224,9 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           subdomain: boxRecord.subdomain,
           skills: boxRecord.skills,
           password,
+          deploymentAttempt: newAttempt,
         },
-        { jobId: id }
+        { jobId: `${id}-${newAttempt}` }
       );
 
       return ok(undefined);

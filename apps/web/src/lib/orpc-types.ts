@@ -11,7 +11,7 @@ export type BoxListResponse = ExtractSuccess<
 export type Box = BoxListResponse["boxes"][0];
 
 export type BoxByIdResponse = ExtractSuccess<
-  Awaited<ReturnType<typeof client.box.byId>>
+  Awaited<ReturnType<typeof client.boxDetails.byId>>
 >;
 
 // Status type inferred from Box
@@ -26,7 +26,7 @@ export type DeleteBoxInput = Parameters<typeof client.box.delete>[0];
 // ─── Email Types ─────────────────────────────────────────────────────────────
 
 export type BoxEmailsResponse = ExtractSuccess<
-  Awaited<ReturnType<typeof client.box.emails>>
+  Awaited<ReturnType<typeof client.boxDetails.emails>>
 >;
 export type BoxEmail = BoxEmailsResponse["emails"][0];
 

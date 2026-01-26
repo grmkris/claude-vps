@@ -43,6 +43,13 @@ export interface ExecResult {
   exitCode: number;
 }
 
+/** Progress callback for tracking setup steps */
+export type SetupProgressCallback = (
+  stepKey: string,
+  status: "start" | "complete" | "error",
+  error?: string
+) => Promise<void>;
+
 // Setup config for sprite provisioning
 export interface SpriteSetupConfig {
   spriteName: string;
@@ -52,6 +59,10 @@ export interface SpriteSetupConfig {
   password?: string;
   /** Sprite public URL (e.g., https://subdomain.sprites.dev) */
   spriteUrl: string;
+  /** Callback for progress tracking */
+  onProgress?: SetupProgressCallback;
+  /** Resume from specific step order (skip completed steps) */
+  resumeFromStep?: number;
 }
 
 // Proxy config for TCP tunneling

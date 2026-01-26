@@ -360,40 +360,89 @@ ENVEOF`
     await response.text();
   }
 
-  /**
-   * Set up a sprite with all services:
-   * - box-agent (email handling, Claude sessions) on port 9999
-   * - nginx (reverse proxy on port 8080) - HTTP entry point
-   * - agent-app (Next.js app on port 3000)
-   * - code-server (VS Code IDE on port 8443)
-   *
-   * This runs after createSprite to configure the full service stack.
-   * Uses sprite-env services for persistent service management.
-   */
-  async function setupSprite(config: SpriteSetupConfig): Promise<void> {
-    const { spriteName, boxAgentBinaryUrl, envVars, password, spriteUrl } =
-      config;
+  const SETUP_STEP_KEYS = [
+    "SETUP_DOWNLOAD_AGENT",
+    "SETUP_CREATE_DIRS",
+    "SETUP_ENV_VARS",
+    "SETUP_CREATE_ENV_FILE",
+    "SETUP_BOX_AGENT_SERVICE",
+    "SETUP_INSTALL_NGINX",
+    "SETUP_NGINX_SERVICE",
+    "SETUP_CLONE_AGENT_APP",
+    "SETUP_INSTALL_AGENT_APP",
+    "SETUP_AGENT_APP_SERVICE",
+    "SETUP_INSTALL_CODE_SERVER",
+    "SETUP_CODE_SERVER_SERVICE",
+  ] as const;
 
-    // Add PASSWORD to envVars for code-server if provided
+  async function setupSprite(config: SpriteSetupConfig): Promise<void> {
+    const {
+      spriteName,
+      boxAgentBinaryUrl,
+      envVars,
+      password,
+      spriteUrl,
+      onProgress,
+      resumeFromStep,
+    } = config;
+
     const finalEnvVars = password
       ? { ...envVars, PASSWORD: password }
       : envVars;
 
-    // Helper to run a setup step with error context
     async function runStep(stepNum: number, name: string, cmd: string) {
-      logger.info({ spriteName, step: stepNum }, `Setup: ${name}`);
-      const result = await execShell(spriteName, cmd);
-      if (result.exitCode !== 0) {
-        throw new Error(
-          `Setup step ${stepNum} (${name}) failed with exit code ${result.exitCode}:\n` +
-            `stdout: ${result.stdout}\n` +
-            `stderr: ${result.stderr}`
+      const stepKey = SETUP_STEP_KEYS[stepNum - 1];
+
+      if (resumeFromStep && stepNum < resumeFromStep) {
+        logger.info(
+          { spriteName, step: stepNum },
+          `Skipping: ${name} (already completed)`
         );
+        return { stdout: "", stderr: "", exitCode: 0 };
       }
-      return result;
+
+      if (onProgress && stepKey) {
+        await onProgress(stepKey, "start");
+      }
+
+      logger.info({ spriteName, step: stepNum }, `Setup: ${name}`);
+
+      try {
+        const result = await execShell(spriteName, cmd);
+        if (result.exitCode !== 0) {
+          const errorMsg =
+            `Setup step ${stepNum} (${name}) failed with exit code ${result.exitCode}:\n` +
+            `stdout: ${result.stdout}\n` +
+            `stderr: ${result.stderr}`;
+
+          if (onProgress && stepKey) {
+            await onProgress(stepKey, "error", errorMsg);
+          }
+
+          throw new Error(errorMsg);
+        }
+
+        if (onProgress && stepKey) {
+          await onProgress(stepKey, "complete");
+        }
+
+        return result;
+      } catch (error) {
+        if (
+          onProgress &&
+          stepKey &&
+          !(error instanceof Error && error.message.includes("Setup step"))
+        ) {
+          await onProgress(
+            stepKey,
+            "error",
+            error instanceof Error ? error.message : String(error)
+          );
+        }
+        throw error;
+      }
     }
 
-    // Step 1: Download and install box-agent binary
     await runStep(
       1,
       "Download box-agent",
@@ -403,7 +452,6 @@ ENVEOF`
     `
     );
 
-    // Step 2: Create data directories
     await runStep(
       2,
       "Create directories",
@@ -412,7 +460,6 @@ ENVEOF`
     `
     );
 
-    // Step 3: Set environment variables for sprite user
     const envExports = Object.entries(finalEnvVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
@@ -428,7 +475,6 @@ ENVEOF
     `
     );
 
-    // Step 4: Create env file for box-agent
     await runStep(
       4,
       "Create env file",
@@ -441,8 +487,6 @@ ENVEOF
     `
     );
 
-    // Step 5: Create box-agent wrapper script and service
-    // Using a wrapper script to properly load environment variables
     await runStep(
       5,
       "Create box-agent service",
@@ -461,7 +505,6 @@ STARTEOF
     `
     );
 
-    // Step 6: Install nginx
     await runStep(
       6,
       "Install nginx",
@@ -470,7 +513,6 @@ STARTEOF
     `
     );
 
-    // Step 7: Configure nginx and create service (HTTP entry point)
     await writeFile(spriteName, "/etc/nginx/nginx.conf", NGINX_CONFIG);
     await runStep(
       7,
@@ -492,7 +534,6 @@ NGINXEOF
     `
     );
 
-    // Step 8: Clone agent-next-app (to sprite user home for service access)
     await runStep(
       8,
       "Clone agent-app",
@@ -501,7 +542,6 @@ NGINXEOF
     `
     );
 
-    // Step 9: Install agent-app dependencies
     await runStep(
       9,
       "Install agent-app",
@@ -510,8 +550,6 @@ NGINXEOF
     `
     );
 
-    // Step 10: Create agent-app service (dev mode)
-    // Export auth env vars required by agent-next-app's createEnv validation
     await runStep(
       10,
       "Create agent-app service",
@@ -535,7 +573,6 @@ STARTEOF
     `
     );
 
-    // Step 11: Install and configure code-server
     const codeServerPassword = password || "changeme";
     await runStep(
       11,
@@ -552,7 +589,6 @@ CODESERVEOF
     `
     );
 
-    // Step 12: Create code-server service
     await runStep(
       12,
       "Create code-server service",
@@ -695,8 +731,8 @@ sprite-env services restart box-agent`
     if (!res.ok) {
       throw new Error(`listDir failed: ${res.status} ${await res.text()}`);
     }
-    const data = (await res.json()) as { entries: FileInfo[] };
-    return data.entries;
+    const data = (await res.json()) as { entries: FileInfo[] | null };
+    return data.entries ?? [];
   }
 
   /**

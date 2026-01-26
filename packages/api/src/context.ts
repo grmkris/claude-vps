@@ -7,6 +7,7 @@ import { UserId } from "@vps-claude/shared";
 import type { AiService } from "./services/ai.service";
 import type { ApiKeyService } from "./services/api-key.service";
 import type { BoxService } from "./services/box.service";
+import type { DeployStepService } from "./services/deploy-step.service";
 import type { EmailService } from "./services/email.service";
 import type { SecretService } from "./services/secret.service";
 
@@ -14,6 +15,7 @@ export interface Services {
   aiService: AiService;
   apiKeyService: ApiKeyService;
   boxService: BoxService;
+  deployStepService: DeployStepService;
   emailService: EmailService;
   secretService: SecretService;
   spritesClient: SpritesClient;

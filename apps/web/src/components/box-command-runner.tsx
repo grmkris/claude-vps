@@ -28,7 +28,8 @@ export function BoxCommandRunner({ boxId, className }: BoxCommandRunnerProps) {
   const outputRef = useRef<HTMLDivElement>(null);
 
   const execMutation = useMutation({
-    mutationFn: (cmd: string) => client.box.exec({ id: boxId, command: cmd }),
+    mutationFn: (cmd: string) =>
+      client.boxDetails.exec({ id: boxId, command: cmd }),
     onSuccess: (result) => {
       setHistory((prev) => [...prev, { command, result }]);
       setCommand("");

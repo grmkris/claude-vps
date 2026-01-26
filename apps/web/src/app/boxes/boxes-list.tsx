@@ -38,17 +38,21 @@ function isDevBox(box: BoxType): boolean {
 
 function DeployProgressMessage({ boxId }: { boxId: string }) {
   const { data } = useDeployProgress(boxId as BoxType["id"]);
-  const progress = data?.progress;
-
-  if (!progress) {
+  const steps = data?.steps;
+  if (!steps) {
     return (
       <span className="text-muted-foreground">Deployment in progress...</span>
     );
   }
-
   return (
     <span className="text-muted-foreground">
-      Step {progress.step}/{progress.total}: {progress.message}
+      <ul>
+        {steps.map((step) => (
+          <li key={step.id}>
+            {step.stepOrder}: {step.name} {step.status}
+          </li>
+        ))}
+      </ul>
     </span>
   );
 }

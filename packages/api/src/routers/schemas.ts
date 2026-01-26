@@ -1,5 +1,6 @@
 import {
   SelectBoxAgentConfigSchema,
+  SelectBoxDeployStepSchema,
   SelectBoxEmailSchema,
   SelectBoxSchema,
   SelectUserSecretSchema,
@@ -34,6 +35,11 @@ export const BoxDeployProgressOutput = z.object({
     })
     .nullable(),
 });
+export const BoxDeployStepsOutput = z.object({
+  steps: z.array(SelectBoxDeployStepSchema),
+  deploymentAttempt: z.number(),
+});
+export type BoxDeployStepsOutput = z.infer<typeof BoxDeployStepsOutput>;
 export const BoxProxyOutput = z.object({
   proxyUrl: z.string(),
   token: z.string(),

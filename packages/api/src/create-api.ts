@@ -15,6 +15,7 @@ import {
   appRouter,
   boxAiRouter,
   boxApiRouter,
+  boxDetailsRouter,
   boxFsRouter,
   apiKeyRouter,
   skillRouter,
@@ -27,6 +28,7 @@ const fullAppRouter = {
   apiKey: apiKeyRouter,
   skill: skillRouter,
   boxFs: boxFsRouter,
+  boxDetails: boxDetailsRouter,
 };
 
 type HonoVariables = {

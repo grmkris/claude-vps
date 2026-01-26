@@ -18,6 +18,7 @@ export const InsertBoxSchema = createInsertSchema(box).omit({
   lastCheckpointId: true,
   errorMessage: true,
   lastHealthCheck: true,
+  deploymentAttempt: true,
   createdAt: true,
   updatedAt: true,
 });

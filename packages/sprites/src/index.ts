@@ -10,7 +10,9 @@ export type {
   FsListOptions,
   FsReadOptions,
   FsWriteOptions,
+  SetupProgressCallback,
   SpriteInfo,
+  SpriteSetupConfig,
   SpriteStatus,
   SpritesClient,
 } from "./types";

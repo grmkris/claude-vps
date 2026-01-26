@@ -13,6 +13,7 @@ export const idTypesMapNameToPrefix = {
   boxEmail: "bem",
   boxEmailSettings: "bes",
   boxAgentConfig: "bac",
+  boxDeployStep: "bds",
   apiKey: "apk",
   aiUsage: "aiu",
 } as const;
@@ -117,3 +118,6 @@ export type ApiKeyId = z.infer<typeof ApiKeyId>;
 
 export const AiUsageId = typeIdValidator("aiUsage");
 export type AiUsageId = z.infer<typeof AiUsageId>;
+
+export const BoxDeployStepId = typeIdValidator("boxDeployStep");
+export type BoxDeployStepId = z.infer<typeof BoxDeployStepId>;
