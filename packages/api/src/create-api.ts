@@ -106,15 +106,25 @@ export function createApi({
   app.get("/health", (c) => c.text("OK"));
 
   app.post("/webhooks/inbound-email", async (c) => {
+    logger.debug({ msg: "Inbound email webhook received" });
+
     if (inboundWebhookSecret) {
       const token = c.req.header("X-Webhook-Verification-Token");
       if (token !== inboundWebhookSecret) {
+        logger.debug({ msg: "Webhook auth failed" });
         return c.json({ error: "Unauthorized" }, 401);
       }
     }
 
     const body = await c.req.json();
     const emailData = body.email || body;
+
+    logger.debug({
+      msg: "Parsing email",
+      hasEmailWrapper: !!body.email,
+      subject: emailData.subject,
+      recipient: emailData.recipient,
+    });
 
     // Extract to address - inbound.new uses { to: { addresses: [{address}] }, recipient }
     const toAddress =
@@ -124,6 +134,7 @@ export function createApi({
       (Array.isArray(emailData.to) ? emailData.to[0] : null);
 
     if (!toAddress) {
+      logger.debug({ msg: "Missing to address in email payload" });
       return c.json({ error: "Missing to address" }, 400);
     }
 
@@ -131,6 +142,14 @@ export function createApi({
     const match = toAddress.match(
       new RegExp(`^([^@]+)@${agentsDomain.replace(".", "\\.")}$`, "i")
     );
+
+    logger.debug({
+      msg: "Regex match result",
+      toAddress,
+      agentsDomain,
+      matched: !!match,
+      subdomain: match?.[1],
+    });
 
     if (!match) {
       return c.json({ message: "Unknown recipient" }, 200);
@@ -171,9 +190,20 @@ export function createApi({
     });
 
     if (result.isErr()) {
+      logger.debug({
+        msg: "processInbound failed",
+        subdomain,
+        error: result.error.message,
+        errorType: result.error.type,
+      });
       return c.json({ message: result.error.message }, 200);
     }
 
+    logger.debug({
+      msg: "Email processed",
+      subdomain,
+      emailId: result.value.id,
+    });
     return c.json({ success: true, emailId: result.value.id });
   });
 

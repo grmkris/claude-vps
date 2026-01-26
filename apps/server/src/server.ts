@@ -2,6 +2,7 @@ import { createApi } from "@vps-claude/api/create-api";
 import { createAiService } from "@vps-claude/api/services/ai.service";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
+import { createDeployStepService } from "@vps-claude/api/services/deploy-step.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
 import { createSecretService } from "@vps-claude/api/services/secret.service";
 import {
@@ -23,17 +24,26 @@ import { createSpritesClient } from "@vps-claude/sprites";
 
 import { env, BOX_AGENT_BINARY_URL } from "./env";
 
-const logger = createLogger({ appName: "vps-claude-server" });
+const logger = createLogger({
+  appName: "vps-claude-server",
+  level: env.LOG_LEVEL,
+  environment: env.APP_ENV,
+});
 
+logger.debug({ msg: "Connecting to database..." });
 const db = createDb({
   type: "bun-sql",
   connectionString: env.DATABASE_URL,
 });
 await runMigrations(db, logger);
+logger.debug({ msg: "Database connected" });
 
+logger.debug({ msg: "Connecting to Redis..." });
 const redis = createRedisClient({ url: env.REDIS_URL });
+logger.debug({ msg: "Redis connected" });
 
 const queueClient = createQueueClient({ redis });
+logger.debug({ msg: "Queue client initialized" });
 
 const emailClient = createEmailClient({
   apiKey: env.INBOUND_EMAIL_API_KEY,
@@ -76,6 +86,7 @@ const apiKeyService = createApiKeyService({ deps: { auth } });
 const boxService = createBoxService({
   deps: { db, queueClient, spritesClient },
 });
+const deployStepService = createDeployStepService({ deps: { db } });
 const emailService = createEmailService({ deps: { db, queueClient } });
 const secretService = createSecretService({ deps: { db } });
 
@@ -83,6 +94,7 @@ const services = {
   aiService,
   apiKeyService,
   boxService,
+  deployStepService,
   emailService,
   secretService,
   spritesClient,
@@ -91,6 +103,7 @@ const services = {
 const deployWorker = createDeployWorker({
   deps: {
     boxService,
+    deployStepService,
     emailService,
     secretService,
     spritesClient,
@@ -137,7 +150,18 @@ const { app } = createApi({
   inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET,
 });
 
-logger.info({ msg: "Server started", port: 33000 });
+logger.debug({
+  msg: "Workers registered",
+  workers: ["deploy", "delete", "emailDelivery", "emailSend"],
+});
+
+logger.info({
+  msg: "Server started",
+  port: 33000,
+  env: env.APP_ENV,
+  logLevel: env.LOG_LEVEL,
+  agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
+});
 
 const shutdown = async (signal: string) => {
   logger.info({ msg: `${signal} received, shutting down` });

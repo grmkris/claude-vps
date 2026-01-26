@@ -14,6 +14,9 @@ export const env = z
     INBOUND_EMAIL_API_KEY: z.string().min(1),
     INBOUND_WEBHOOK_SECRET: z.string().min(1).optional(),
     APP_ENV: z.enum(["dev", "prod", "local"]).default("dev"),
+    LOG_LEVEL: z
+      .enum(["trace", "debug", "info", "warn", "error", "fatal"])
+      .default("info"),
     BOX_AGENT_BINARY_URL: z.string().url().optional(),
     // Override API URL for sprite callbacks (useful for ngrok testing)
     SERVER_URL: z.string().url().optional(),

@@ -3,10 +3,12 @@ import type { LoggerOptions } from "pino";
 import { pino } from "pino";
 import pkg from "pino-std-serializers";
 
-export type Environment = "dev" | "staging" | "prod";
+export type Environment = "dev" | "staging" | "prod" | "local";
+
+export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
 
 export interface LoggerConfig {
-  level?: string;
+  level?: LogLevel;
   environment?: Environment;
   appName?: string;
 }
@@ -27,12 +29,12 @@ export interface Logger {
 
 export function createLogger(config: LoggerConfig = {}): Logger {
   const {
-    level = "info",
+    level = (process.env.LOG_LEVEL as LogLevel) || "info",
     appName = "vps-claude",
-    environment = "dev",
+    environment = (process.env.APP_ENV as Environment) || "dev",
   } = config;
 
-  const isDevelopment = environment === "dev";
+  const isDevelopment = environment === "dev" || environment === "local";
 
   const loggerOptions: LoggerOptions = {
     level,
