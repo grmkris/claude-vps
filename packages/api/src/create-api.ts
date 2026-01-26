@@ -115,7 +115,13 @@ export function createApi({
 
     const body = await c.req.json();
     const emailData = body.email || body;
-    const toAddress = emailData.to as string;
+
+    // Extract to address - inbound.new uses { to: { addresses: [{address}] }, recipient }
+    const toAddress =
+      emailData.recipient ||
+      emailData.to?.addresses?.[0]?.address ||
+      (typeof emailData.to === "string" ? emailData.to : null) ||
+      (Array.isArray(emailData.to) ? emailData.to[0] : null);
 
     if (!toAddress) {
       return c.json({ error: "Missing to address" }, 400);
@@ -133,22 +139,34 @@ export function createApi({
     if (!subdomain) {
       return c.json({ message: "Invalid recipient format" }, 200);
     }
+    // Extract from - inbound.new uses { from: { addresses: [{name, address}] } }
+    const fromAddr = emailData.from?.addresses?.[0];
+    const fromEmail =
+      fromAddr?.address ||
+      (typeof emailData.from === "string" ? emailData.from : null) ||
+      emailData.from_email;
+    const fromName = fromAddr?.name || emailData.from?.name;
+
     const result = await services.emailService.processInbound(subdomain, {
       messageId:
         emailData.messageId || emailData.message_id || crypto.randomUUID(),
       from: {
-        email:
-          typeof emailData.from === "string"
-            ? emailData.from
-            : emailData.from?.email || emailData.from_email,
-        name:
-          typeof emailData.from === "object" ? emailData.from?.name : undefined,
+        email: fromEmail,
+        name: fromName,
       },
       to: toAddress,
       subject: emailData.subject,
-      textBody: emailData.text || emailData.text_body,
-      htmlBody: emailData.html || emailData.html_body,
-      rawEmail: emailData.raw,
+      textBody:
+        emailData.parsedData?.textBody ||
+        emailData.cleanedContent?.text ||
+        emailData.text ||
+        emailData.text_body,
+      htmlBody:
+        emailData.parsedData?.htmlBody ||
+        emailData.cleanedContent?.html ||
+        emailData.html ||
+        emailData.html_body,
+      rawEmail: emailData.parsedData?.raw || emailData.raw,
     });
 
     if (result.isErr()) {

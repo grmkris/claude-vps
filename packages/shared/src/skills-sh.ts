@@ -6,7 +6,7 @@
 export interface SkillsShSkill {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   installs: number;
   /** GitHub repo path like "vercel-labs/agent-skills" */
   topSource: string;

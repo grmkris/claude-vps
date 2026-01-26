@@ -108,6 +108,7 @@ async function callAiEndpoint(
     headers: {
       "Content-Type": "application/json",
       "X-Box-Secret": env.BOX_API_TOKEN,
+      "ngrok-skip-browser-warning": "true", // Skip ngrok interstitial page
     },
     body: JSON.stringify(args),
   });

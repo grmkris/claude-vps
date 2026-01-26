@@ -147,6 +147,7 @@ export function createDeployWorker({ deps }: { deps: DeployWorkerDeps }) {
           boxAgentBinaryUrl,
           envVars,
           password,
+          spriteUrl: sprite.url,
         });
 
         // Step 3: Enable public URL access (Sprites are private by default)

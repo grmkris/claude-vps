@@ -295,6 +295,7 @@ ENVEOF
 describe.skipIf(!SPRITES_TOKEN)("setupSprite E2E", () => {
   let client: SpritesClient;
   let spriteName: string;
+  let spriteUrl: string;
 
   const TEST_PASSWORD = "testpass123";
   // BOX_AGENT_SECRET needs >= 32 chars (box-agent validation)
@@ -339,7 +340,10 @@ describe.skipIf(!SPRITES_TOKEN)("setupSprite E2E", () => {
       envVars: {},
     });
     spriteName = result.spriteName;
-    console.log(`Created sprite: ${spriteName}, waiting for init...`);
+    spriteUrl = result.url;
+    console.log(
+      `Created sprite: ${spriteName} at ${spriteUrl}, waiting for init...`
+    );
 
     // Wait for sprite initialization
     await new Promise((r) => setTimeout(r, 10_000));
@@ -366,6 +370,7 @@ describe.skipIf(!SPRITES_TOKEN)("setupSprite E2E", () => {
         "https://github.com/grmkris/claude-vps/releases/latest/download/box-agent-linux-x64",
       envVars: TEST_ENV_VARS,
       password: TEST_PASSWORD,
+      spriteUrl,
     });
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

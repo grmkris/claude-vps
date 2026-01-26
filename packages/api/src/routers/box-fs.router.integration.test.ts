@@ -70,6 +70,15 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     expect(Array.isArray(entries)).toBe(true);
     // Should have some default files/dirs
     expect(entries.length).toBeGreaterThanOrEqual(0);
+
+    // Validate schema fields match what ORPC expects
+    const entry = entries[0];
+    if (entry) {
+      expect(entry).toHaveProperty("name");
+      expect(entry).toHaveProperty("path");
+      expect(entry).toHaveProperty("isDir");
+      expect(typeof entry.isDir).toBe("boolean");
+    }
   }, 15_000);
 
   test("list: throws error for non-existent directory", async () => {

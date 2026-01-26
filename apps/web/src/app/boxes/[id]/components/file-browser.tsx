@@ -32,8 +32,8 @@ function formatFileSize(bytes?: number): string {
 function sortEntries(entries: FileEntry[]): FileEntry[] {
   return [...entries].sort((a, b) => {
     // Directories first
-    if (a.isDirectory && !b.isDirectory) return -1;
-    if (!a.isDirectory && b.isDirectory) return 1;
+    if (a.isDir && !b.isDir) return -1;
+    if (!a.isDir && b.isDir) return 1;
     // Then alphabetically
     return a.name.localeCompare(b.name);
   });
@@ -54,7 +54,7 @@ export function FileBrowser({ boxId }: FileBrowserProps) {
   const pathParts = currentPath.split("/").filter(Boolean);
 
   const handleNavigate = (entry: FileEntry) => {
-    if (entry.isDirectory) {
+    if (entry.isDir) {
       setCurrentPath(entry.path);
     }
   };
@@ -189,20 +189,20 @@ export function FileBrowser({ boxId }: FileBrowserProps) {
                 key={entry.path}
                 type="button"
                 onClick={() => handleNavigate(entry)}
-                disabled={!entry.isDirectory}
+                disabled={!entry.isDir}
                 className={`w-full px-4 py-2 flex items-center gap-3 text-left transition-colors ${
-                  entry.isDirectory
+                  entry.isDir
                     ? "hover:bg-secondary/50 cursor-pointer"
                     : "cursor-default"
                 }`}
               >
-                {entry.isDirectory ? (
+                {entry.isDir ? (
                   <Folder className="h-4 w-4 text-blue-500" />
                 ) : (
                   <File className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className="flex-1 truncate">{entry.name}</span>
-                {!entry.isDirectory && (
+                {!entry.isDir && (
                   <span className="text-xs text-muted-foreground">
                     {formatFileSize(entry.size)}
                   </span>

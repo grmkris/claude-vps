@@ -1,14 +1,17 @@
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { sqlite } from "./client";
 
-import { db } from "./client";
+// Create sessions table directly (migrations don't work in compiled binary)
+// Schema matches: contextType, contextId as composite primary key
+// Timestamps are INTEGER (Unix epoch) for Drizzle timestamp mode
+sqlite.run(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    context_type TEXT NOT NULL,
+    context_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (context_type, context_id)
+  )
+`);
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const migrationsFolder = join(__dirname, "migrations");
-
-// Only run migrations if folder exists (allows first-time setup)
-if (existsSync(migrationsFolder)) {
-  migrate(db, { migrationsFolder });
-}
+console.log("Database migrations complete");

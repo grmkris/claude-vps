@@ -13,6 +13,9 @@ export * from "./schema";
 export { schema };
 export { schema as DB_SCHEMA };
 
+// Re-export common drizzle-orm operators for convenience
+export { eq, ne, gt, gte, lt, lte, and, or, not, inArray } from "drizzle-orm";
+
 export type Database =
   | BunSQLDatabase<typeof schema>
   | PgliteDatabase<typeof schema>;

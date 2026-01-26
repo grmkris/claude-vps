@@ -83,7 +83,7 @@ export const ApiKeyListOutput = z.object({
 export const FileInfoSchema = z.object({
   name: z.string(),
   path: z.string(),
-  isDirectory: z.boolean(),
+  isDir: z.boolean(),
   size: z.number().optional(),
   modTime: z.string().optional(),
   mode: z.string().optional(),

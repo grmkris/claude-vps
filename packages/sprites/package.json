@@ -18,6 +18,9 @@
   },
   "devDependencies": {
     "@typescript/native-preview": "catalog:",
-    "@vps-claude/config": "workspace:*"
+    "@vps-claude/config": "workspace:*",
+    "@vps-claude/db": "workspace:*",
+    "@vps-claude/shared": "workspace:*",
+    "drizzle-orm": "catalog:"
   }
 }

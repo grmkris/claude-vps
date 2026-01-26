@@ -6,7 +6,7 @@ import { publicProcedure } from "../index";
 const SkillsShSkill = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string(),
+  description: z.string().optional(),
   installs: z.number(),
   topSource: z.string(),
 });

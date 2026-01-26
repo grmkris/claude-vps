@@ -136,8 +136,6 @@ Copy `.env.example` to `.env` in `apps/server/` and `apps/web/`:
 - `DATABASE_URL` - PostgreSQL connection
 - `REDIS_URL` - Redis connection (BullMQ)
 - `SPRITES_TOKEN` - Sprites API token from https://sprites.dev
-- `RESEND_API_KEY` - Email service
-- `ANTHROPIC_API_KEY` - Claude AI (for box-agent)
 
 See `.env.example` files for complete list.
 

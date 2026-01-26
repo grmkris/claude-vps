@@ -35,7 +35,7 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
     catalog?.skills.filter(
       (skill) =>
         skill.name.toLowerCase().includes(search.toLowerCase()) ||
-        skill.description.toLowerCase().includes(search.toLowerCase())
+        skill.description?.toLowerCase().includes(search.toLowerCase())
     ) ?? [];
 
   if (error) {

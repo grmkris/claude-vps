@@ -26,7 +26,7 @@ export const SERVICE_URLS: Record<
     apiInternal: "http://localhost:33000",
     web: "http://localhost:33001",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
-    agentsDomain: "agents.grm.wtf",
+    agentsDomain: "yoda.fun",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
     cookieDomain: "localhost",
   },

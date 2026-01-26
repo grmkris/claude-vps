@@ -166,12 +166,15 @@ export function createSpritesClient(
     const spriteName = generateSpriteName(config.userId, config.subdomain);
 
     // Check if sprite already exists (idempotent for retry scenarios)
-    const existing = await getSprite(spriteName);
-    if (existing) {
+    const existingSprite = await flySpritesClient
+      .getSprite(spriteName)
+      .catch(() => null);
+    if (existingSprite) {
       logger.info({ spriteName }, "Sprite already exists, reusing");
       return {
         spriteName,
-        url: `https://${spriteName}.sprites.dev`,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        url: (existingSprite as any).url as string,
       };
     }
 
@@ -191,9 +194,13 @@ ENVEOF`
       );
     }
 
+    // Fetch full sprite info to get the URL (createSprite doesn't return it)
+    const spriteInfo = await flySpritesClient.getSprite(spriteName);
+
     return {
       spriteName,
-      url: `https://${spriteName}.sprites.dev`,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      url: (spriteInfo as any).url as string,
     };
   }
 
@@ -364,7 +371,8 @@ ENVEOF`
    * Uses sprite-env services for persistent service management.
    */
   async function setupSprite(config: SpriteSetupConfig): Promise<void> {
-    const { spriteName, boxAgentBinaryUrl, envVars, password } = config;
+    const { spriteName, boxAgentBinaryUrl, envVars, password, spriteUrl } =
+      config;
 
     // Add PASSWORD to envVars for code-server if provided
     const finalEnvVars = password
@@ -503,6 +511,7 @@ NGINXEOF
     );
 
     // Step 10: Create agent-app service (dev mode)
+    // Export auth env vars required by agent-next-app's createEnv validation
     await runStep(
       10,
       "Create agent-app service",
@@ -511,9 +520,11 @@ NGINXEOF
 #!/bin/bash
 source /home/sprite/.bashrc.env 2>/dev/null || true
 cd /home/sprite/agent-app
-# TODO: Make DATABASE_URL configurable via box settings
 export DATABASE_URL="file:/home/sprite/agent-app/local.db"
-exec /.sprite/bin/bun dev
+export BETTER_AUTH_SECRET="${envVars.BOX_AGENT_SECRET}"
+export BETTER_AUTH_URL="${spriteUrl}"
+export CORS_ORIGIN="${spriteUrl}"
+exec /.sprite/bin/bun dev --port 3000
 STARTEOF
       chmod +x /home/sprite/start-agent-app.sh
 

@@ -96,7 +96,7 @@ const deployWorker = createDeployWorker({
     spritesClient,
     redis,
     logger,
-    serverUrl: SERVICE_URLS[env.APP_ENV].api,
+    serverUrl: env.SERVER_URL ?? SERVICE_URLS[env.APP_ENV].api,
     boxAgentBinaryUrl: BOX_AGENT_BINARY_URL,
   },
 });

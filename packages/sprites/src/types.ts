@@ -50,6 +50,8 @@ export interface SpriteSetupConfig {
   envVars: Record<string, string>;
   /** Password for code-server authentication */
   password?: string;
+  /** Sprite public URL (e.g., https://subdomain.sprites.dev) */
+  spriteUrl: string;
 }
 
 // Proxy config for TCP tunneling
@@ -62,7 +64,7 @@ export interface ProxyConfig {
 export interface FileInfo {
   name: string;
   path: string;
-  isDirectory: boolean;
+  isDir: boolean;
   size?: number;
   modTime?: string;
   mode?: string;
