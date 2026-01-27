@@ -235,6 +235,11 @@ export function createApi({
   };
 
   const boxApiHandler = new OpenAPIHandler(combinedBoxRouter, {
+    plugins: [
+      new OpenAPIReferencePlugin({
+        schemaConverters: [new ZodToJsonSchemaConverter()],
+      }),
+    ],
     interceptors: [
       onError((error) => {
         logger.error({ msg: "Box API error", error });
