@@ -19,6 +19,8 @@ import {
   type HealthCheckJobData,
   type InstallSkillJobData,
   type EnableAccessJobData,
+  type FinalizeJobData,
+  type SkillsGateJobData,
 } from "./deploy-flow-jobs";
 
 export type {
@@ -97,6 +99,15 @@ export function createQueueClient(config: QueueClientConfig) {
     { connection: redis }
   );
 
+  const finalizeQueue = new Queue<FinalizeJobData>(DEPLOY_QUEUES.finalize, {
+    connection: redis,
+  });
+
+  const skillsGateQueue = new Queue<SkillsGateJobData>(
+    DEPLOY_QUEUES.skillsGate,
+    { connection: redis }
+  );
+
   // FlowProducer for creating job DAGs
   const flowProducer = new FlowProducer({ connection: redis });
 
@@ -115,6 +126,8 @@ export function createQueueClient(config: QueueClientConfig) {
     healthCheckQueue,
     installSkillQueue,
     enableAccessQueue,
+    finalizeQueue,
+    skillsGateQueue,
 
     // FlowProducer for DAG creation
     flowProducer,
@@ -131,6 +144,8 @@ export function createQueueClient(config: QueueClientConfig) {
       await healthCheckQueue.close();
       await installSkillQueue.close();
       await enableAccessQueue.close();
+      await finalizeQueue.close();
+      await skillsGateQueue.close();
       await flowProducer.close();
     },
   };
@@ -149,6 +164,8 @@ export {
   type HealthCheckJobData,
   type InstallSkillJobData,
   type EnableAccessJobData,
+  type FinalizeJobData,
+  type SkillsGateJobData,
   type DeployJobResult,
 } from "./deploy-flow-jobs";
 export {
@@ -158,4 +175,6 @@ export {
   HealthCheckJobData as HealthCheckJobDataSchema,
   InstallSkillJobData as InstallSkillJobDataSchema,
   EnableAccessJobData as EnableAccessJobDataSchema,
+  FinalizeJobData as FinalizeJobDataSchema,
+  SkillsGateJobData as SkillsGateJobDataSchema,
 } from "./deploy-flow-jobs";

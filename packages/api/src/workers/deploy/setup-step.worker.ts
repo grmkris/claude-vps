@@ -1,0 +1,157 @@
+import type { Logger } from "@vps-claude/logger";
+import type { Redis } from "@vps-claude/redis";
+import type { SpritesClient } from "@vps-claude/sprites";
+
+import {
+  type SetupStepJobData,
+  type DeployJobResult,
+  DEPLOY_QUEUES,
+  Worker,
+  type Job,
+} from "@vps-claude/queue";
+import { WORKER_CONFIG } from "@vps-claude/shared";
+
+import type { BoxService } from "../../services/box.service";
+import type { DeployStepService } from "../../services/deploy-step.service";
+
+// Last setup step - when this completes, mark SETUP_SERVICES as completed
+const LAST_SETUP_STEP = "SETUP_AGENT_APP_SERVICE" as const;
+
+interface SetupStepWorkerDeps {
+  boxService: BoxService;
+  deployStepService: DeployStepService;
+  spritesClient: SpritesClient;
+  redis: Redis;
+  logger: Logger;
+}
+
+export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
+  const { boxService, deployStepService, spritesClient, redis, logger } = deps;
+
+  const worker = new Worker<SetupStepJobData, DeployJobResult>(
+    DEPLOY_QUEUES.setupStep,
+    async (job: Job<SetupStepJobData>): Promise<DeployJobResult> => {
+      const {
+        boxId,
+        deploymentAttempt,
+        spriteName,
+        spriteUrl,
+        stepKey,
+        envVars,
+        boxAgentBinaryUrl,
+      } = job.data;
+
+      logger.info(
+        { boxId, spriteName, stepKey, attempt: deploymentAttempt },
+        `SETUP_STEP: Starting ${stepKey}`
+      );
+
+      // Get parent step ID for tracking substeps
+      const parentResult = await deployStepService.getStepByKey(
+        boxId,
+        deploymentAttempt,
+        "SETUP_SERVICES"
+      );
+      const parentId = parentResult.isOk() ? parentResult.value?.id : undefined;
+
+      try {
+        // Update step status to running
+        await deployStepService.updateStepStatus(
+          boxId,
+          deploymentAttempt,
+          stepKey,
+          "running",
+          { parentId }
+        );
+
+        // Run the setup step
+        await spritesClient.runSetupStep({
+          spriteName,
+          stepKey,
+          boxAgentBinaryUrl,
+          envVars,
+          spriteUrl,
+        });
+
+        // Mark step as completed
+        await deployStepService.updateStepStatus(
+          boxId,
+          deploymentAttempt,
+          stepKey,
+          "completed",
+          { parentId }
+        );
+
+        // If this is the last setup step, mark SETUP_SERVICES as completed
+        if (stepKey === LAST_SETUP_STEP) {
+          await deployStepService.updateStepStatus(
+            boxId,
+            deploymentAttempt,
+            "SETUP_SERVICES",
+            "completed"
+          );
+          logger.info(
+            { boxId, spriteName },
+            "SETUP_STEP: All setup steps completed"
+          );
+        }
+
+        logger.info(
+          { boxId, spriteName, stepKey },
+          `SETUP_STEP: Completed ${stepKey}`
+        );
+
+        return { success: true };
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : "Unknown error";
+
+        await deployStepService.updateStepStatus(
+          boxId,
+          deploymentAttempt,
+          stepKey,
+          "failed",
+          { errorMessage: errorMsg, parentId }
+        );
+
+        logger.error(
+          { boxId, stepKey, error: errorMsg },
+          `SETUP_STEP: Failed ${stepKey}`
+        );
+
+        throw error;
+      }
+    },
+    {
+      connection: redis,
+      concurrency: WORKER_CONFIG.setupStep.concurrency,
+      lockDuration: WORKER_CONFIG.setupStep.timeout,
+    }
+  );
+
+  worker.on("failed", async (job, err) => {
+    logger.error({
+      msg: "SETUP_STEP job failed",
+      jobId: job?.id,
+      boxId: job?.data.boxId,
+      stepKey: job?.data.stepKey,
+      error: err.message,
+      attemptsMade: job?.attemptsMade,
+    });
+
+    // On permanent failure, mark box as error
+    if (job && job.attemptsMade >= (job.opts?.attempts ?? 1)) {
+      try {
+        await boxService.updateStatus(
+          job.data.boxId,
+          "error",
+          `Setup step ${job.data.stepKey} failed: ${err.message}`
+        );
+      } catch {
+        // Ignore - best effort
+      }
+    }
+  });
+
+  return worker;
+}

@@ -88,6 +88,18 @@ export const WORKER_CONFIG = {
     },
     concurrency: 10,
   },
+  finalize: {
+    name: "deploy-finalize",
+    timeout: 30000, // 30 sec
+    attempts: 1, // No retries - just marks box as running
+    concurrency: 10,
+  },
+  skillsGate: {
+    name: "deploy-skills-gate",
+    timeout: 30000, // 30 sec
+    attempts: 1, // No retries - aggregates skill results
+    concurrency: 10,
+  },
 
   // Cronjob worker
   triggerCronjob: {

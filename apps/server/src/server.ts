@@ -2,13 +2,21 @@ import { createApi } from "@vps-claude/api/create-api";
 import { createAiService } from "@vps-claude/api/services/ai.service";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
+import { createCronjobService } from "@vps-claude/api/services/cronjob.service";
 import { createDeployStepService } from "@vps-claude/api/services/deploy-step.service";
 import { createEmailService } from "@vps-claude/api/services/email.service";
 import { createSecretService } from "@vps-claude/api/services/secret.service";
 import {
-  createDeployWorker,
-  createDeleteWorker,
-} from "@vps-claude/api/workers/deploy-box.worker";
+  createOrchestratorWorker,
+  createSetupStepWorker,
+  createHealthCheckWorker,
+  createInstallSkillWorker,
+  createEnableAccessWorker,
+  createFinalizeWorker,
+  createSkillsGateWorker,
+} from "@vps-claude/api/workers";
+import { createCronjobWorker } from "@vps-claude/api/workers/cronjob.worker";
+import { createDeleteWorker } from "@vps-claude/api/workers/delete-box.worker";
 import {
   createEmailDeliveryWorker,
   createEmailSendWorker,
@@ -86,21 +94,24 @@ const apiKeyService = createApiKeyService({ deps: { auth } });
 const boxService = createBoxService({
   deps: { db, queueClient, spritesClient },
 });
+const cronjobService = createCronjobService({ deps: { db, queueClient } });
 const deployStepService = createDeployStepService({ deps: { db } });
 const emailService = createEmailService({ deps: { db, queueClient } });
-const secretService = createSecretService({ deps: { db } });
+const secretService = createSecretService({ deps: { db, spritesClient } });
 
 const services = {
   aiService,
   apiKeyService,
   boxService,
+  cronjobService,
   deployStepService,
   emailService,
   secretService,
   spritesClient,
 };
 
-const deployWorker = createDeployWorker({
+// Modular deploy orchestrator worker
+const { worker: orchestratorWorker, flowProducer } = createOrchestratorWorker({
   deps: {
     boxService,
     deployStepService,
@@ -113,6 +124,32 @@ const deployWorker = createDeployWorker({
     boxAgentBinaryUrl: BOX_AGENT_BINARY_URL,
   },
 });
+
+// Deploy flow workers (execute steps from FlowProducer DAG)
+const setupStepWorker = createSetupStepWorker({
+  deps: { boxService, deployStepService, spritesClient, redis, logger },
+});
+
+const healthCheckWorker = createHealthCheckWorker({
+  deps: { boxService, deployStepService, spritesClient, redis, logger },
+});
+
+const installSkillWorker = createInstallSkillWorker({
+  deps: { deployStepService, spritesClient, redis, logger },
+});
+
+const enableAccessWorker = createEnableAccessWorker({
+  deps: { boxService, deployStepService, spritesClient, redis, logger },
+});
+
+const finalizeWorker = createFinalizeWorker({
+  deps: { boxService, redis, logger },
+});
+
+const skillsGateWorker = createSkillsGateWorker({
+  deps: { deployStepService, redis, logger },
+});
+
 const deleteWorker = createDeleteWorker({
   deps: { boxService, spritesClient, redis, logger },
 });
@@ -140,6 +177,24 @@ const emailSendWorker = createEmailSendWorker({
   },
 });
 
+const cronjobWorker = createCronjobWorker({
+  deps: {
+    cronjobService,
+    emailService,
+    redis,
+    logger,
+  },
+});
+
+// Sync cronjob repeatable jobs on startup
+void cronjobService.syncAllRepeatableJobs().then((result) => {
+  result.match(
+    (count) => logger.info({ msg: "Cronjobs synced", count }),
+    (error) =>
+      logger.error({ msg: "Failed to sync cronjobs", error: error.message })
+  );
+});
+
 const { app } = createApi({
   db,
   logger,
@@ -152,7 +207,19 @@ const { app } = createApi({
 
 logger.debug({
   msg: "Workers registered",
-  workers: ["deploy", "delete", "emailDelivery", "emailSend"],
+  workers: [
+    "orchestrator",
+    "setupStep",
+    "healthCheck",
+    "installSkill",
+    "enableAccess",
+    "finalize",
+    "skillsGate",
+    "delete",
+    "emailDelivery",
+    "emailSend",
+    "cronjob",
+  ],
 });
 
 logger.info({
@@ -166,10 +233,22 @@ logger.info({
 const shutdown = async (signal: string) => {
   logger.info({ msg: `${signal} received, shutting down` });
 
-  await deployWorker.close();
+  // Deploy flow workers
+  await orchestratorWorker.close();
+  await flowProducer.close();
+  await setupStepWorker.close();
+  await healthCheckWorker.close();
+  await installSkillWorker.close();
+  await enableAccessWorker.close();
+  await finalizeWorker.close();
+  await skillsGateWorker.close();
+
+  // Other workers
   await deleteWorker.close();
   await emailDeliveryWorker.close();
   await emailSendWorker.close();
+  await cronjobWorker.close();
+
   await queueClient.close();
   await redis.quit();
 
