@@ -116,3 +116,21 @@ export const BoxExecOutput = z.object({
   stderr: z.string(),
   exitCode: z.number(),
 });
+
+// === Sessions ===
+export const BoxSessionSchema = z.object({
+  contextType: z.string(),
+  contextId: z.string(),
+  sessionId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const BoxSessionListOutput = z.object({
+  sessions: z.array(BoxSessionSchema),
+});
+
+export const BoxSessionSendOutput = z.object({
+  success: z.boolean(),
+  contextId: z.string(),
+});

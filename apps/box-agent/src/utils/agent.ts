@@ -3,9 +3,11 @@ import {
   type Options,
   type SDKMessage,
 } from "@anthropic-ai/claude-agent-sdk";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 
 import { env } from "../env";
+import { saveSession } from "./sessions";
 
 interface AgentResult {
   result: string;
@@ -186,6 +188,13 @@ export async function runWithSession(opts: {
     `[runWithSession] Starting session for ${opts.contextType}:${opts.contextId}`
   );
 
+  // Generate a session ID for tracking (SDK doesn't expose resumable session IDs yet)
+  const sessionId = randomUUID();
+
+  // Save session record before starting (so it appears in UI immediately)
+  saveSession(opts.contextType, opts.contextId, sessionId);
+  console.log(`[runWithSession] Saved session: ${sessionId}`);
+
   try {
     const triggerType = (opts.contextType as TriggerType) || "default";
     console.log(
@@ -211,6 +220,9 @@ export async function runWithSession(opts: {
       console.log(`[runWithSession] Received message type: ${msg.type}`);
       result += extractText(msg);
     }
+
+    // Update session timestamp on completion
+    saveSession(opts.contextType, opts.contextId, sessionId);
 
     console.log(`[runWithSession] Done. Result length: ${result.length}`);
     return { result };

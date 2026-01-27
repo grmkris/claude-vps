@@ -4,10 +4,12 @@ import { Hono } from "hono";
 import { env } from "./env";
 import { emailRouter } from "./routers/email.router";
 import { healthRouter } from "./routers/health.router";
+import { sessionRouter } from "./routers/session.router";
 
 const appRouter = {
   ...healthRouter,
   email: emailRouter,
+  session: sessionRouter,
 };
 
 const apiHandler = new OpenAPIHandler(appRouter, {});

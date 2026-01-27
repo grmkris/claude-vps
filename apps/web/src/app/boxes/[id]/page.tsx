@@ -5,11 +5,13 @@ import type { BoxId } from "@vps-claude/shared";
 import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import {
   ArrowLeft,
+  Bot,
   Check,
   Copy,
   ExternalLink,
   Mail,
   MailOpen,
+  Send,
   Terminal,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,10 +25,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { env } from "@/env";
 import { useBox } from "@/hooks/use-boxes";
 import { useBoxEmails } from "@/hooks/use-emails";
+import { useBoxSessions, useSendMessage } from "@/hooks/use-sessions";
 
 import { FileBrowser } from "./components/file-browser";
 
-type TabType = "inbox" | "console" | "files";
+type TabType = "inbox" | "console" | "files" | "agent";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -223,6 +226,18 @@ export default function BoxDetailPage() {
               >
                 Files
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("agent")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "agent"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Bot className="h-4 w-4 inline-block mr-2" />
+                Agent
+              </button>
             </>
           )}
         </div>
@@ -341,7 +356,91 @@ export default function BoxDetailPage() {
         {activeTab === "files" && box.status === "running" && (
           <FileBrowser boxId={id} />
         )}
+
+        {activeTab === "agent" && box.status === "running" && (
+          <SessionsPanel boxId={id} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function SessionsPanel({ boxId }: { boxId: BoxId }) {
+  const { data: sessionsData, isLoading } = useBoxSessions(boxId);
+  const sendMessage = useSendMessage(boxId);
+  const [message, setMessage] = useState("");
+
+  const sessions = sessionsData?.sessions ?? [];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim() || sendMessage.isPending) return;
+
+    sendMessage.mutate({ message: message.trim() });
+    setMessage("");
+  };
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Send a message to Claude..."
+          className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          disabled={sendMessage.isPending}
+        />
+        <Button
+          type="submit"
+          disabled={!message.trim() || sendMessage.isPending}
+        >
+          <Send className="h-4 w-4 mr-2" />
+          Send
+        </Button>
+      </form>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : sessions.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-8 text-center">
+          <Bot className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">No sessions yet</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Send a message above to start a new agent session
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sessions.map((session) => (
+            <div
+              key={`${session.contextType}-${session.contextId}`}
+              className="rounded-lg border border-border bg-card p-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
+                    {session.contextType}
+                  </span>
+                  <span className="font-mono text-sm text-muted-foreground">
+                    {session.contextId}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {formatRelativeTime(session.updatedAt)}
+                </span>
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Session: {session.sessionId.slice(0, 16)}...
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

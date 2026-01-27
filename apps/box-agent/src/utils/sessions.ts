@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "../db";
-import { sessions } from "../db/schema";
+import { type Session, sessions } from "../db/schema";
 
 export function getSession(type: string, id: string): string | null {
   const result = db
@@ -30,4 +30,8 @@ export function saveSession(type: string, id: string, sessionId: string): void {
       },
     })
     .run();
+}
+
+export function listSessions(): Session[] {
+  return db.select().from(sessions).orderBy(desc(sessions.updatedAt)).all();
 }
