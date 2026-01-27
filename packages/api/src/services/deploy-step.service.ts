@@ -496,6 +496,54 @@ export function createDeployStepService({
 
       return ok(undefined);
     },
+
+    /**
+     * Get all steps for a box/attempt (flat list)
+     */
+    async getStepsByBox(
+      boxId: BoxId,
+      attempt: number
+    ): Promise<Result<SelectBoxDeployStepSchema[], DeployStepServiceError>> {
+      const steps = await db
+        .select()
+        .from(boxDeployStep)
+        .where(
+          and(
+            eq(boxDeployStep.boxId, boxId),
+            eq(boxDeployStep.deploymentAttempt, attempt)
+          )
+        )
+        .orderBy(asc(boxDeployStep.stepOrder));
+
+      return ok(steps);
+    },
+
+    /**
+     * Reset failed steps to pending (for retry)
+     */
+    async resetFailedSteps(
+      boxId: BoxId,
+      attempt: number
+    ): Promise<Result<number, DeployStepServiceError>> {
+      const result = await db
+        .update(boxDeployStep)
+        .set({
+          status: "pending",
+          errorMessage: null,
+          startedAt: null,
+          completedAt: null,
+        })
+        .where(
+          and(
+            eq(boxDeployStep.boxId, boxId),
+            eq(boxDeployStep.deploymentAttempt, attempt),
+            eq(boxDeployStep.status, "failed")
+          )
+        )
+        .returning();
+
+      return ok(result.length);
+    },
   };
 }
 

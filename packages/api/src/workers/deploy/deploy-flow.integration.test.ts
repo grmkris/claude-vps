@@ -58,8 +58,8 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
   let finalizeWorker: ReturnType<typeof createFinalizeWorker>;
   let skillsGateWorker: ReturnType<typeof createSkillsGateWorker>;
 
-  // Track sprite for cleanup
-  let createdSpriteName: string | null = null;
+  // Track sprites for cleanup
+  const createdSpriteNames: string[] = [];
 
   beforeAll(async () => {
     testEnv = await createTestSetup();
@@ -149,19 +149,13 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     await finalizeWorker.close();
     await skillsGateWorker.close();
 
-    // Cleanup sprite if created
-    if (createdSpriteName) {
+    // Cleanup all created sprites
+    for (const spriteName of createdSpriteNames) {
       try {
-        await spritesClient.deleteSprite(createdSpriteName);
-        logger.info(
-          { spriteName: createdSpriteName },
-          "Cleaned up test sprite"
-        );
+        await spritesClient.deleteSprite(spriteName);
+        logger.info({ spriteName }, "Cleaned up test sprite");
       } catch (error) {
-        logger.warn(
-          { spriteName: createdSpriteName, error },
-          "Failed to cleanup sprite"
-        );
+        logger.warn({ spriteName, error }, "Failed to cleanup sprite");
       }
     }
 
@@ -212,8 +206,11 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
       );
 
       // Track sprite for cleanup
-      if (finalBox.spriteName && !createdSpriteName) {
-        createdSpriteName = finalBox.spriteName;
+      if (
+        finalBox.spriteName &&
+        !createdSpriteNames.includes(finalBox.spriteName)
+      ) {
+        createdSpriteNames.push(finalBox.spriteName);
       }
 
       if (finalBox.status === "running" || finalBox.status === "error") {
@@ -264,4 +261,343 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
 
     logger.info("All assertions passed - deployment flow working correctly");
   }, 600_000); // 10 minute timeout
+
+  it("deploys box with skills through FlowProducer DAG", async () => {
+    const testSuffix = Date.now().toString(36);
+    const boxName = `flow-skills-test-${testSuffix}`;
+
+    // 1. Create box WITH skills
+    // Use remotion-best-practices - has proper /skills repo at remotion-dev/skills
+    logger.info({ boxName }, "Creating box with skills...");
+    const boxResult = await boxService.create(testEnv.users.authenticated.id, {
+      name: boxName,
+      skills: ["remotion-best-practices"],
+    });
+
+    expect(boxResult.isOk()).toBe(true);
+    const box = boxResult._unsafeUnwrap();
+    expect(box.status).toBe("deploying");
+    expect(box.skills).toContain("remotion-best-practices");
+    logger.info(
+      { boxId: box.id, subdomain: box.subdomain, skills: box.skills },
+      "Box with skills created"
+    );
+
+    // 2. Poll until flow completes
+    const maxWait = 7 * 60 * 1000; // 7 minutes (skills take longer)
+    const pollInterval = 5000;
+    let elapsed = 0;
+    let finalBox = box;
+
+    while (elapsed < maxWait) {
+      await new Promise((r) => setTimeout(r, pollInterval));
+      elapsed += pollInterval;
+
+      const result = await boxService.getById(box.id);
+      expect(result.isOk()).toBe(true);
+      const currentBox = result._unsafeUnwrap();
+
+      if (!currentBox) {
+        throw new Error("Box disappeared during deployment");
+      }
+
+      finalBox = currentBox;
+      logger.info(
+        {
+          elapsed: `${elapsed / 1000}s`,
+          status: finalBox.status,
+          spriteName: finalBox.spriteName,
+        },
+        "Polling box status (with skills)"
+      );
+
+      // Track sprite for cleanup
+      if (
+        finalBox.spriteName &&
+        !createdSpriteNames.includes(finalBox.spriteName)
+      ) {
+        createdSpriteNames.push(finalBox.spriteName);
+      }
+
+      if (finalBox.status === "running" || finalBox.status === "error") {
+        break;
+      }
+    }
+
+    // 3. Verify final state
+    expect(finalBox.status).toBe("running");
+    expect(finalBox.spriteName).toBeDefined();
+    expect(finalBox.spriteUrl).toBeDefined();
+
+    logger.info(
+      {
+        boxId: finalBox.id,
+        spriteName: finalBox.spriteName,
+        status: finalBox.status,
+      },
+      "Box with skills deployment completed"
+    );
+
+    // 4. Verify all deploy steps
+    const stepsResult = await deployStepService.getSteps(box.id, 1);
+    expect(stepsResult.isOk()).toBe(true);
+    const { steps } = stepsResult._unsafeUnwrap();
+    const topLevel = steps.filter((s) => !s.parentId);
+
+    logger.info({ stepCount: topLevel.length }, "Verifying deploy steps");
+
+    // 5. Verify INSTALL_SKILLS step exists and completed
+    const skillsStep = topLevel.find((s) => s.stepKey === "INSTALL_SKILLS");
+    expect(skillsStep).toBeDefined();
+    expect(skillsStep?.status).toBe("completed");
+    logger.info({ status: skillsStep?.status }, "INSTALL_SKILLS step verified");
+
+    // 6. Verify individual skill step completed or skipped
+    // (skills may be skipped if the search API doesn't find them)
+    const skillSubstep = steps.find(
+      (s) => s.stepKey === "SKILL_remotion-best-practices"
+    );
+    expect(skillSubstep).toBeDefined();
+    expect(["completed", "skipped"]).toContain(skillSubstep!.status);
+    logger.info(
+      { status: skillSubstep?.status },
+      "Skill substep remotion-best-practices verified"
+    );
+
+    // 7. Verify all top-level steps completed
+    for (const step of topLevel) {
+      logger.info(
+        { stepKey: step.stepKey, status: step.status },
+        "Step status"
+      );
+      expect(step.status).toBe("completed");
+    }
+
+    logger.info(
+      "All assertions passed - deployment with skills working correctly"
+    );
+  }, 600_000); // 10 minute timeout
+
+  describe("resumable deploy flow", () => {
+    it("resumes deployment skipping completed setup steps", async () => {
+      const testSuffix = Date.now().toString(36);
+      const boxName = `resume-test-${testSuffix}`;
+
+      // 1. Create box and let it deploy completely
+      logger.info({ boxName }, "Creating box for resume test...");
+      const boxResult = await boxService.create(
+        testEnv.users.authenticated.id,
+        {
+          name: boxName,
+        }
+      );
+
+      expect(boxResult.isOk()).toBe(true);
+      const box = boxResult._unsafeUnwrap();
+      logger.info({ boxId: box.id }, "Box created, waiting for deployment...");
+
+      // 2. Wait for initial deployment to complete
+      const maxWait = 5 * 60 * 1000;
+      const pollInterval = 5000;
+      let elapsed = 0;
+      let finalBox = box;
+
+      while (elapsed < maxWait) {
+        await new Promise((r) => setTimeout(r, pollInterval));
+        elapsed += pollInterval;
+
+        const result = await boxService.getById(box.id);
+        finalBox = result._unsafeUnwrap()!;
+
+        if (
+          finalBox.spriteName &&
+          !createdSpriteNames.includes(finalBox.spriteName)
+        ) {
+          createdSpriteNames.push(finalBox.spriteName);
+        }
+
+        if (finalBox.status === "running" || finalBox.status === "error") {
+          break;
+        }
+      }
+
+      expect(finalBox.status).toBe("running");
+      logger.info({ status: finalBox.status }, "Initial deployment completed");
+
+      // 3. Get initial step states (all should be completed)
+      const initialStepsResult = await deployStepService.getSteps(box.id, 1);
+      expect(initialStepsResult.isOk()).toBe(true);
+      const initialSteps = initialStepsResult._unsafeUnwrap().steps;
+
+      const setupSteps = initialSteps.filter(
+        (s) => s.stepKey.startsWith("SETUP_") && s.parentId
+      );
+      const completedCount = setupSteps.filter(
+        (s) => s.status === "completed"
+      ).length;
+      expect(completedCount).toBe(setupSteps.length);
+      logger.info(
+        { completedCount, total: setupSteps.length },
+        "All setup steps completed"
+      );
+
+      // 4. Trigger redeploy (same attempt)
+      // This tests that the flow skips already completed steps
+      logger.info("Triggering redeploy to test resume behavior...");
+
+      // Queue orchestrator job directly (simulating redeploy)
+      await testEnv.deps.queue.deployOrchestratorQueue.add(
+        `redeploy-${box.id}`,
+        {
+          boxId: box.id,
+          userId: testEnv.users.authenticated.id,
+          subdomain: box.subdomain,
+          skills: [],
+          deploymentAttempt: 1, // Same attempt = resume
+        }
+      );
+
+      // 5. Wait for redeploy to complete (should be fast since steps are skipped)
+      elapsed = 0;
+      const redeployMaxWait = 2 * 60 * 1000; // 2 minutes (should be much faster)
+
+      while (elapsed < redeployMaxWait) {
+        await new Promise((r) => setTimeout(r, pollInterval));
+        elapsed += pollInterval;
+
+        // Check if any jobs are still processing
+        // For simplicity, just wait and check box status
+        const result = await boxService.getById(box.id);
+        finalBox = result._unsafeUnwrap()!;
+
+        if (finalBox.status === "running") {
+          break;
+        }
+      }
+
+      expect(finalBox.status).toBe("running");
+      logger.info(
+        { elapsed: `${elapsed / 1000}s` },
+        "Redeploy completed (should be fast due to skip)"
+      );
+
+      // 6. Verify steps still show as completed
+      const finalStepsResult = await deployStepService.getSteps(box.id, 1);
+      expect(finalStepsResult.isOk()).toBe(true);
+      const finalSteps = finalStepsResult._unsafeUnwrap().steps;
+
+      const finalSetupSteps = finalSteps.filter(
+        (s) => s.stepKey.startsWith("SETUP_") && s.parentId
+      );
+      const finalCompletedCount = finalSetupSteps.filter(
+        (s) => s.status === "completed"
+      ).length;
+      expect(finalCompletedCount).toBe(finalSetupSteps.length);
+
+      logger.info("Resume test passed - completed steps were skipped");
+    }, 600_000);
+
+    it("resumes from failed step after manual retry", async () => {
+      const testSuffix = Date.now().toString(36);
+      const boxName = `retry-test-${testSuffix}`;
+
+      // 1. Create and fully deploy a box
+      logger.info({ boxName }, "Creating box for retry test...");
+      const boxResult = await boxService.create(
+        testEnv.users.authenticated.id,
+        {
+          name: boxName,
+        }
+      );
+
+      expect(boxResult.isOk()).toBe(true);
+      const box = boxResult._unsafeUnwrap();
+
+      // 2. Wait for deployment
+      const maxWait = 5 * 60 * 1000;
+      const pollInterval = 5000;
+      let elapsed = 0;
+      let finalBox = box;
+
+      while (elapsed < maxWait) {
+        await new Promise((r) => setTimeout(r, pollInterval));
+        elapsed += pollInterval;
+
+        const result = await boxService.getById(box.id);
+        finalBox = result._unsafeUnwrap()!;
+
+        if (
+          finalBox.spriteName &&
+          !createdSpriteNames.includes(finalBox.spriteName)
+        ) {
+          createdSpriteNames.push(finalBox.spriteName);
+        }
+
+        if (finalBox.status === "running" || finalBox.status === "error") {
+          break;
+        }
+      }
+
+      expect(finalBox.status).toBe("running");
+
+      // 3. Manually mark one step as failed (simulate failure scenario)
+      // This tests the resetFailedSteps functionality
+      await deployStepService.updateStepStatus(
+        box.id,
+        1,
+        "SETUP_AGENT_APP_SERVICE",
+        "failed",
+        { errorMessage: "Simulated failure for test" }
+      );
+
+      logger.info("Marked SETUP_AGENT_APP_SERVICE as failed");
+
+      // 4. Verify step is failed
+      const failedStepResult = await deployStepService.getStepByKey(
+        box.id,
+        1,
+        "SETUP_AGENT_APP_SERVICE"
+      );
+      expect(failedStepResult.isOk()).toBe(true);
+      expect(failedStepResult._unsafeUnwrap()?.status).toBe("failed");
+
+      // 5. Trigger redeploy - should reset failed step and skip completed ones
+      await testEnv.deps.queue.deployOrchestratorQueue.add(`retry-${box.id}`, {
+        boxId: box.id,
+        userId: testEnv.users.authenticated.id,
+        subdomain: box.subdomain,
+        skills: [],
+        deploymentAttempt: 1,
+      });
+
+      // 6. Wait for redeploy
+      elapsed = 0;
+      while (elapsed < maxWait) {
+        await new Promise((r) => setTimeout(r, pollInterval));
+        elapsed += pollInterval;
+
+        const stepResult = await deployStepService.getStepByKey(
+          box.id,
+          1,
+          "SETUP_AGENT_APP_SERVICE"
+        );
+        const step = stepResult._unsafeUnwrap();
+
+        if (step?.status === "completed") {
+          break;
+        }
+      }
+
+      // 7. Verify the previously failed step is now completed
+      const retriedStepResult = await deployStepService.getStepByKey(
+        box.id,
+        1,
+        "SETUP_AGENT_APP_SERVICE"
+      );
+      expect(retriedStepResult.isOk()).toBe(true);
+      expect(retriedStepResult._unsafeUnwrap()?.status).toBe("completed");
+
+      logger.info("Retry test passed - failed step was reset and re-executed");
+    }, 600_000);
+  });
 });

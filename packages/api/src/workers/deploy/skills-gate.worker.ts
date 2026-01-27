@@ -40,13 +40,18 @@ export function createSkillsGateWorker({
       const { boxId, deploymentAttempt } = job.data;
 
       logger.info(
-        { boxId, attempt: deploymentAttempt },
-        "SKILLS_GATE: Checking skill installation results"
+        { boxId, attempt: deploymentAttempt, jobId: job.id },
+        "SKILLS_GATE: Starting - checking skill installation results"
       );
 
       try {
         // Get child job results (skill installations)
+        logger.info({ boxId }, "SKILLS_GATE: Getting children values...");
         const childResults = await job.getChildrenValues<DeployJobResult>();
+        logger.info(
+          { boxId, childCount: Object.keys(childResults).length, childResults },
+          "SKILLS_GATE: Got children values"
+        );
 
         // Count successes and failures
         const results = Object.entries(childResults);

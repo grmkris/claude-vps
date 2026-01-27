@@ -4,7 +4,7 @@ import { z } from "zod";
 /**
  * Queue names for the deploy flow DAG
  */
-export const DEPLOY_QUEUES = {
+export const bDEPLOY_QUEUES = {
   orchestrator: "deploy-orchestrator",
   createSprite: "deploy-create-sprite",
   setupStep: "deploy-setup-step",

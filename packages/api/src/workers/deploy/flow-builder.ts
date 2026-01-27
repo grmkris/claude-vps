@@ -4,6 +4,11 @@ import { DEPLOY_QUEUES } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 import { SETUP_STEP_KEYS } from "@vps-claude/sprites";
 
+export interface SkillWithSource {
+  skillId: string;
+  topSource?: string;
+}
+
 export interface DeployFlowParams {
   boxId: string;
   deploymentAttempt: number;
@@ -11,7 +16,11 @@ export interface DeployFlowParams {
   spriteUrl: string;
   envVars: Record<string, string>;
   boxAgentBinaryUrl: string;
-  skills: string[];
+  skillsWithSources: SkillWithSource[];
+  completedStepKeys?: string[];
+  completedSkillIds?: string[];
+  /** Unique suffix for job IDs to prevent deduplication on retry */
+  jobIdSuffix?: string;
 }
 
 interface BaseJobData {
@@ -53,8 +62,15 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
     spriteUrl,
     envVars,
     boxAgentBinaryUrl,
-    skills,
+    skillsWithSources,
+    completedStepKeys = [],
+    completedSkillIds = [],
+    jobIdSuffix = "",
   } = params;
+
+  // Helper to create unique job IDs (suffix prevents deduplication on retry)
+  const makeJobId = (step: string) =>
+    `${boxId}-${deploymentAttempt}-${step}${jobIdSuffix}`;
 
   const baseData: BaseJobData = {
     boxId,
@@ -64,20 +80,35 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
   };
 
   // Build setup step chain (sequential execution via nested children)
+  // Skip already completed steps for resumable deployments
   const setupChain = buildSetupStepChain({
     baseData,
     envVars,
     boxAgentBinaryUrl,
+    completedStepKeys,
+    makeJobId,
   });
 
-  // Enable access children: setup chain is always required
-  // Enable access must run BEFORE health check (sets URL auth to public)
-  const enableAccessChildren: FlowJob[] = [setupChain];
+  // Enable access children: only include if there are steps to run
+  const enableAccessChildren: FlowJob[] = [];
 
-  // Add skills gate if there are skills to install
-  if (skills.length > 0) {
-    const skillsGate = buildSkillsGate({ baseData, skills });
-    enableAccessChildren.push(skillsGate);
+  if (setupChain) {
+    enableAccessChildren.push(setupChain);
+  }
+
+  // Add skills gate if there are skills to install (excluding completed ones)
+  const skillsToInstall = skillsWithSources.filter(
+    (s) => !completedSkillIds.includes(s.skillId)
+  );
+  if (skillsToInstall.length > 0) {
+    const skillsGate = buildSkillsGate({
+      baseData,
+      skillsWithSources: skillsToInstall,
+      makeJobId,
+    });
+    if (skillsGate) {
+      enableAccessChildren.push(skillsGate);
+    }
   }
 
   // Build the full flow DAG
@@ -87,7 +118,7 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
     queueName: DEPLOY_QUEUES.finalize,
     data: baseData,
     opts: {
-      jobId: `${boxId}-${deploymentAttempt}-finalize`,
+      jobId: makeJobId("finalize"),
     },
     children: [
       {
@@ -97,7 +128,7 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
         opts: {
           attempts: WORKER_CONFIG.healthCheck.attempts,
           backoff: WORKER_CONFIG.healthCheck.backoff,
-          jobId: `${boxId}-${deploymentAttempt}-health-check`,
+          jobId: makeJobId("health-check"),
         },
         children: [
           {
@@ -107,7 +138,7 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
             opts: {
               attempts: WORKER_CONFIG.enableAccess.attempts,
               backoff: WORKER_CONFIG.enableAccess.backoff,
-              jobId: `${boxId}-${deploymentAttempt}-enable-access`,
+              jobId: makeJobId("enable-access"),
             },
             children: enableAccessChildren,
           },
@@ -121,28 +152,41 @@ interface SetupChainParams {
   baseData: BaseJobData;
   envVars: Record<string, string>;
   boxAgentBinaryUrl: string;
+  completedStepKeys: string[];
+  makeJobId: (step: string) => string;
 }
 
 /**
  * Build sequential setup step chain
  *
  * Creates nested children where:
- * - SETUP_STEP_1 is the deepest leaf (executes FIRST)
- * - SETUP_STEP_10 is the root (executes LAST)
+ * - First incomplete step is the deepest leaf (executes FIRST)
+ * - Last step is the root (executes LAST)
  *
  * This ensures sequential execution in BullMQ flow order.
+ * Skips already completed steps for resumable deployments.
  */
-function buildSetupStepChain(params: SetupChainParams): FlowJob {
-  const { baseData, envVars, boxAgentBinaryUrl } = params;
+function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
+  const { baseData, envVars, boxAgentBinaryUrl, completedStepKeys, makeJobId } =
+    params;
   const { boxId, deploymentAttempt, spriteName, spriteUrl } = baseData;
+
+  // Filter out completed steps
+  const stepsToRun = SETUP_STEP_KEYS.filter(
+    (key) => !completedStepKeys.includes(key)
+  );
+
+  // All steps completed - nothing to do
+  if (stepsToRun.length === 0) {
+    return undefined;
+  }
 
   let chain: FlowJob | undefined;
 
-  // Iterate through steps in order
+  // Iterate through remaining steps in order
   // Each step becomes a child of the previous (deeper = runs first)
-  for (let i = 0; i < SETUP_STEP_KEYS.length; i++) {
-    const stepKey = SETUP_STEP_KEYS[i];
-    const stepOrder = i + 1;
+  for (const stepKey of stepsToRun) {
+    const stepOrder = SETUP_STEP_KEYS.indexOf(stepKey) + 1;
 
     const job: FlowJob = {
       name: `${stepKey}-${boxId}`,
@@ -160,13 +204,13 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob {
       opts: {
         attempts: WORKER_CONFIG.setupStep.attempts,
         backoff: WORKER_CONFIG.setupStep.backoff,
-        jobId: `${boxId}-${deploymentAttempt}-${stepKey}`,
+        jobId: makeJobId(stepKey),
       },
     };
 
     // Previous chain becomes child of current job
-    // This creates: STEP_10 → STEP_9 → ... → STEP_1
-    // But executes: STEP_1 first (deepest child)
+    // This creates: STEP_10 → STEP_9 → ... → STEP_5 (if 1-4 completed)
+    // But executes: STEP_5 first (deepest child)
     if (chain) {
       job.children = [chain];
     }
@@ -174,13 +218,13 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob {
     chain = job;
   }
 
-  // Return STEP_10 as root (runs last), STEP_1 is deepest leaf (runs first)
-  return chain!;
+  return chain;
 }
 
 interface SkillsGateParams {
   baseData: BaseJobData;
-  skills: string[];
+  skillsWithSources: SkillWithSource[];
+  makeJobId: (step: string) => string;
 }
 
 /**
@@ -188,34 +232,42 @@ interface SkillsGateParams {
  *
  * Skills run in parallel (siblings), then skills-gate aggregates results.
  * Uses failParentOnFailure: false so partial failures don't block deployment.
+ * Returns undefined if no skills to install.
  */
-function buildSkillsGate(params: SkillsGateParams): FlowJob {
-  const { baseData, skills } = params;
+function buildSkillsGate(params: SkillsGateParams): FlowJob | undefined {
+  const { baseData, skillsWithSources, makeJobId } = params;
   const { boxId, deploymentAttempt, spriteName, spriteUrl } = baseData;
 
-  const skillJobs: FlowJob[] = skills.map((skillId) => ({
-    name: `skill-${skillId}-${boxId}`,
-    queueName: DEPLOY_QUEUES.installSkill,
-    data: {
-      boxId,
-      deploymentAttempt,
-      spriteName,
-      skillId,
-    },
-    opts: {
-      attempts: WORKER_CONFIG.installSkill.attempts,
-      backoff: WORKER_CONFIG.installSkill.backoff,
-      jobId: `${boxId}-${deploymentAttempt}-skill-${skillId}`,
-      failParentOnFailure: false, // Allow partial skill failures
-    },
-  }));
+  if (skillsWithSources.length === 0) {
+    return undefined;
+  }
+
+  const skillJobs: FlowJob[] = skillsWithSources.map(
+    ({ skillId, topSource }) => ({
+      name: `skill-${skillId}-${boxId}`,
+      queueName: DEPLOY_QUEUES.installSkill,
+      data: {
+        boxId,
+        deploymentAttempt,
+        spriteName,
+        skillId,
+        topSource, // Pre-resolved from skills.sh API
+      },
+      opts: {
+        attempts: WORKER_CONFIG.installSkill.attempts,
+        backoff: WORKER_CONFIG.installSkill.backoff,
+        jobId: makeJobId(`skill-${skillId}`),
+        failParentOnFailure: false, // Allow partial skill failures
+      },
+    })
+  );
 
   return {
     name: `skills-gate-${boxId}`,
     queueName: DEPLOY_QUEUES.skillsGate,
     data: { boxId, deploymentAttempt, spriteName, spriteUrl },
     opts: {
-      jobId: `${boxId}-${deploymentAttempt}-skills-gate`,
+      jobId: makeJobId("skills-gate"),
     },
     children: skillJobs,
   };

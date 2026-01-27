@@ -11,6 +11,7 @@ import {
   type Job,
 } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
+import { SETUP_STEP_KEYS } from "@vps-claude/sprites";
 
 import type { BoxService } from "../../services/box.service";
 import type { DeployStepService } from "../../services/deploy-step.service";
@@ -86,11 +87,22 @@ export function createOrchestratorWorker({
           throw new Error("Box not found");
         }
 
-        // 2. Initialize step tracking in DB
-        await deployStepService.initializeSteps(boxId, attempt, {
-          hasSkills,
-          skills,
-        });
+        // 2. Initialize step tracking in DB (skip if steps already exist for resume)
+        const existingSteps = await deployStepService.getStepsByBox(
+          boxId,
+          attempt
+        );
+        if (existingSteps.isErr() || existingSteps.value.length === 0) {
+          await deployStepService.initializeSteps(boxId, attempt, {
+            hasSkills,
+            skills,
+          });
+        } else {
+          logger.info(
+            { boxId, existingCount: existingSteps.value.length },
+            "ORCHESTRATOR: Steps already exist, skipping initialization"
+          );
+        }
 
         // 3. Prepare environment variables
         const envVars = await prepareEnvVars({
@@ -179,7 +191,13 @@ export function createOrchestratorWorker({
           "running"
         );
 
-        // 6. Mark INSTALL_SKILLS as running if we have skills
+        // 6. Resolve skill sources from skills.sh API (batch fetch)
+        const skillsWithSources = await resolveSkillSources(
+          skills ?? [],
+          logger
+        );
+
+        // 7. Mark INSTALL_SKILLS as running if we have skills
         if (hasSkills) {
           await deployStepService.updateStepStatus(
             boxId,
@@ -189,7 +207,29 @@ export function createOrchestratorWorker({
           );
         }
 
-        // 7. Add the deployment flow DAG
+        // 8. Get completed steps for resumable deployments
+        const { completedStepKeys, completedSkillIds } =
+          await getCompletedSteps(deployStepService, boxId, attempt);
+
+        // 9. Reset any failed steps to pending for retry
+        const resetCount = await deployStepService.resetFailedSteps(
+          boxId,
+          attempt
+        );
+        if (resetCount.isOk() && resetCount.value > 0) {
+          logger.info(
+            { boxId, resetCount: resetCount.value },
+            "ORCHESTRATOR: Reset failed steps to pending"
+          );
+        }
+
+        // 10. Add the deployment flow DAG (skipping completed steps)
+        // Use unique suffix for job IDs when resuming/retrying to prevent BullMQ deduplication
+        const isResume =
+          completedStepKeys.length > 0 ||
+          (resetCount.isOk() && resetCount.value > 0);
+        const jobIdSuffix = isResume ? `-r${Date.now().toString(36)}` : "";
+
         const flow = buildDeployFlow({
           boxId,
           deploymentAttempt: attempt,
@@ -197,8 +237,24 @@ export function createOrchestratorWorker({
           spriteUrl,
           envVars,
           boxAgentBinaryUrl,
-          skills: skills ?? [],
+          skillsWithSources,
+          completedStepKeys,
+          completedSkillIds,
+          jobIdSuffix,
         });
+
+        logger.info(
+          {
+            boxId,
+            completedSetupSteps: completedStepKeys.length,
+            completedSkills: completedSkillIds.length,
+            totalSetupSteps: SETUP_STEP_KEYS.length,
+            totalSkills: skillsWithSources.length,
+            isResume,
+            jobIdSuffix: jobIdSuffix || "(none)",
+          },
+          "ORCHESTRATOR: Building flow with resume support"
+        );
 
         await flowProducer.add(flow);
 
@@ -277,4 +333,85 @@ async function prepareEnvVars({
     BOX_API_URL: `${serverUrl}/box`,
     BOX_SUBDOMAIN: subdomain,
   };
+}
+
+/**
+ * Resolve skill sources from skills.sh API
+ * Batch-fetches all skill metadata in one request
+ */
+async function resolveSkillSources(
+  skills: string[],
+  logger: Logger
+): Promise<Array<{ skillId: string; topSource?: string }>> {
+  if (skills.length === 0) return [];
+
+  try {
+    logger.info(
+      { skillCount: skills.length },
+      "ORCHESTRATOR: Resolving skill sources"
+    );
+    const res = await fetch("https://skills.sh/api/skills?limit=100");
+    if (!res.ok) {
+      logger.warn(
+        "ORCHESTRATOR: Failed to fetch skills.sh API, skills will be skipped"
+      );
+      return skills.map((skillId) => ({ skillId, topSource: undefined }));
+    }
+
+    const data = (await res.json()) as {
+      skills: Array<{ id: string; topSource: string }>;
+    };
+
+    const result = skills.map((skillId) => {
+      const skill = data.skills.find((s) => s.id === skillId);
+      if (!skill) {
+        logger.warn({ skillId }, "ORCHESTRATOR: Skill not found in skills.sh");
+      }
+      return { skillId, topSource: skill?.topSource };
+    });
+
+    logger.info(
+      {
+        resolved: result.filter((s) => s.topSource).length,
+        total: skills.length,
+      },
+      "ORCHESTRATOR: Skill sources resolved"
+    );
+    return result;
+  } catch (error) {
+    logger.warn({ error }, "ORCHESTRATOR: Error fetching skill sources");
+    return skills.map((skillId) => ({ skillId, topSource: undefined }));
+  }
+}
+
+/**
+ * Get completed step keys for resumable deployments
+ */
+async function getCompletedSteps(
+  deployStepService: DeployStepService,
+  boxId: `box_${string}`,
+  attempt: number
+): Promise<{ completedStepKeys: string[]; completedSkillIds: string[] }> {
+  const stepsResult = await deployStepService.getStepsByBox(boxId, attempt);
+
+  if (stepsResult.isErr()) {
+    return { completedStepKeys: [], completedSkillIds: [] };
+  }
+
+  const steps = stepsResult.value;
+
+  // Get completed setup step keys
+  const completedStepKeys = steps
+    .filter(
+      (s) =>
+        s.status === "completed" && SETUP_STEP_KEYS.includes(s.stepKey as any)
+    )
+    .map((s) => s.stepKey);
+
+  // Get completed skill IDs (step key format: SKILL_{skillId})
+  const completedSkillIds = steps
+    .filter((s) => s.status === "completed" && s.stepKey.startsWith("SKILL_"))
+    .map((s) => s.stepKey.replace("SKILL_", ""));
+
+  return { completedStepKeys, completedSkillIds };
 }

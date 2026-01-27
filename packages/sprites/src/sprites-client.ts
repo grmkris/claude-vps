@@ -437,7 +437,7 @@ NGINXEOF
           --no-stream
       `,
       SETUP_CLONE_AGENT_APP: `
-        git clone https://github.com/grmkris/agent-next-app /home/sprite/agent-app
+        [ -d /home/sprite/agent-app ] || git clone https://github.com/grmkris/agent-next-app /home/sprite/agent-app
       `,
       SETUP_INSTALL_AGENT_APP: `
         cd /home/sprite/agent-app && /.sprite/bin/bun install
@@ -455,6 +455,8 @@ exec /.sprite/bin/bun dev --port 3000
 STARTEOF
         chmod +x /home/sprite/start-agent-app.sh
 
+        # Remove existing service if present (idempotent)
+        sprite-env services remove agent-app 2>/dev/null || true
         sprite-env services create agent-app \\
           --cmd /home/sprite/start-agent-app.sh \\
           --needs box-agent \\

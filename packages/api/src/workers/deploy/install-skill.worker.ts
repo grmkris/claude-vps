@@ -20,27 +20,6 @@ interface InstallSkillWorkerDeps {
   logger: Logger;
 }
 
-/**
- * Fetch skill metadata from skills.sh API
- */
-async function fetchSkillMetadata(
-  skillId: string
-): Promise<{ topSource: string } | null> {
-  try {
-    const res = await fetch(
-      `https://skills.sh/api/skills?search=${encodeURIComponent(skillId)}&limit=1`
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      skills: Array<{ id: string; topSource: string }>;
-    };
-    const skill = data.skills.find((s) => s.id === skillId);
-    return skill ? { topSource: skill.topSource } : null;
-  } catch {
-    return null;
-  }
-}
-
 export function createInstallSkillWorker({
   deps,
 }: {
@@ -79,33 +58,45 @@ export function createInstallSkillWorker({
           { parentId }
         );
 
-        // Get topSource if not provided
-        let source = topSource;
-        if (!source) {
-          const metadata = await fetchSkillMetadata(skillId);
-          if (!metadata) {
-            logger.warn({ skillId }, "Could not find skill metadata, skipping");
-            await deployStepService.updateStepStatus(
-              boxId,
-              deploymentAttempt,
-              stepKey,
-              "skipped",
-              { parentId }
-            );
-            return { success: true };
-          }
-          source = metadata.topSource;
+        // topSource is pre-resolved by orchestrator from skills.sh API
+        if (!topSource) {
+          logger.warn(
+            { skillId },
+            "INSTALL_SKILL: No topSource provided, skipping"
+          );
+          await deployStepService.updateStepStatus(
+            boxId,
+            deploymentAttempt,
+            stepKey,
+            "skipped",
+            { parentId }
+          );
+          return { success: true };
         }
 
         // Install skill via CLI
-        const result = await spritesClient.execShell(
-          spriteName,
-          `cd /home/sprite && /.sprite/bin/npx --yes skills add https://github.com/${source} --skill ${skillId}`
+        // topSource is the GitHub repo path, e.g. "remotion-dev/skills"
+        // echo "" | handles interactive prompts
+        const skillsRepoUrl = `https://github.com/${topSource}`;
+        const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId}`;
+        logger.info(
+          { skillId, topSource, cmd },
+          "INSTALL_SKILL: Running install command"
+        );
+        const result = await spritesClient.execShell(spriteName, cmd);
+        logger.info(
+          {
+            skillId,
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          },
+          "INSTALL_SKILL: Command result"
         );
 
         if (result.exitCode !== 0) {
           throw new Error(
-            `skills add ${source} failed: exit ${result.exitCode}\nstdout: ${result.stdout}\nstderr: ${result.stderr}`
+            `skills add ${topSource} failed: exit ${result.exitCode}\nstdout: ${result.stdout}\nstderr: ${result.stderr}`
           );
         }
 
@@ -119,7 +110,7 @@ export function createInstallSkillWorker({
         );
 
         logger.info(
-          { boxId, skillId, topSource: source },
+          { boxId, skillId, topSource },
           `INSTALL_SKILL: Completed ${skillId}`
         );
 
