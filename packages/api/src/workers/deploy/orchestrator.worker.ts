@@ -13,18 +13,18 @@ import {
 import { WORKER_CONFIG } from "@vps-claude/shared";
 import { SETUP_STEP_KEYS } from "@vps-claude/sprites";
 
+import type { BoxEnvVarService } from "../../services/box-env-var.service";
 import type { BoxService } from "../../services/box.service";
 import type { DeployStepService } from "../../services/deploy-step.service";
 import type { EmailService } from "../../services/email.service";
-import type { SecretService } from "../../services/secret.service";
 
 import { buildDeployFlow } from "./flow-builder";
 
 interface OrchestratorWorkerDeps {
   boxService: BoxService;
+  boxEnvVarService: BoxEnvVarService;
   deployStepService: DeployStepService;
   emailService: EmailService;
-  secretService: SecretService;
   spritesClient: SpritesClient;
   redis: Redis;
   logger: Logger;
@@ -52,9 +52,9 @@ export function createOrchestratorWorker({
 }) {
   const {
     boxService,
+    boxEnvVarService,
     deployStepService,
     emailService,
-    secretService,
     spritesClient,
     redis,
     logger,
@@ -109,7 +109,7 @@ export function createOrchestratorWorker({
           userId,
           boxId,
           subdomain,
-          secretService,
+          boxEnvVarService,
           emailService,
           serverUrl,
         });
@@ -301,23 +301,23 @@ async function prepareEnvVars({
   userId,
   boxId,
   subdomain,
-  secretService,
+  boxEnvVarService,
   emailService,
   serverUrl,
 }: {
   userId: `usr_${string}`;
   boxId: `box_${string}`;
   subdomain: string;
-  secretService: SecretService;
+  boxEnvVarService: BoxEnvVarService;
   emailService: EmailService;
   serverUrl: string;
 }): Promise<Record<string, string>> {
-  // Get user secrets
-  const userSecretsResult = await secretService.getAll(userId);
-  if (userSecretsResult.isErr()) {
-    throw new Error(userSecretsResult.error.message);
+  // Resolve box env vars (literals + credential references)
+  const boxEnvVarsResult = await boxEnvVarService.resolveAll(boxId, userId);
+  if (boxEnvVarsResult.isErr()) {
+    throw new Error(boxEnvVarsResult.error.message);
   }
-  const userSecrets = userSecretsResult.value;
+  const boxEnvVars = boxEnvVarsResult.value;
 
   // Get or create email settings (generates BOX_AGENT_SECRET)
   const emailSettingsResult = await emailService.getOrCreateSettings(boxId);
@@ -327,7 +327,7 @@ async function prepareEnvVars({
   const emailSettings = emailSettingsResult.value;
 
   return {
-    ...userSecrets,
+    ...boxEnvVars,
     BOX_AGENT_SECRET: emailSettings.agentSecret,
     BOX_API_TOKEN: emailSettings.agentSecret,
     BOX_API_URL: `${serverUrl}/box`,

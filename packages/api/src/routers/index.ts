@@ -5,6 +5,7 @@ import { apiKeyRouter } from "./api-key.router";
 import { boxAiRouter } from "./box-ai.router";
 import { boxApiRouter } from "./box-api.router";
 import { boxDetailsRouter } from "./box-details.router";
+import { boxEnvVarRouter } from "./box-env-var.router";
 import { boxFsRouter } from "./box-fs.router";
 import { boxRouter } from "./box.router";
 import { cronjobRouter } from "./cronjob.router";
@@ -34,6 +35,7 @@ export {
   boxApiRouter,
   boxAiRouter,
   boxDetailsRouter,
+  boxEnvVarRouter,
   apiKeyRouter,
   skillRouter,
   boxFsRouter,
@@ -44,6 +46,7 @@ export {
 export type AppRouter = typeof appRouter;
 export type BoxRouterType = typeof boxRouter;
 export type SecretRouterType = typeof secretRouter;
+export type BoxEnvVarRouterType = typeof boxEnvVarRouter;
 export type ApiKeyRouterType = typeof apiKeyRouter;
 export type SkillRouterType = typeof skillRouter;
 export type BoxFsRouterType = typeof boxFsRouter;
@@ -54,6 +57,7 @@ export type CronjobRouterType = typeof cronjobRouter;
 export type AppRouterClient = RouterClient<AppRouter> & {
   box: RouterClient<BoxRouterType>;
   secret: RouterClient<SecretRouterType>;
+  boxEnvVar: RouterClient<BoxEnvVarRouterType>;
   apiKey: RouterClient<ApiKeyRouterType>;
   skill: RouterClient<SkillRouterType>;
   boxFs: RouterClient<BoxFsRouterType>;

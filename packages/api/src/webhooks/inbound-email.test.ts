@@ -38,6 +38,7 @@ describe("inbound-email webhook", () => {
       logger,
       services: {
         boxService,
+        boxEnvVarService: {} as never,
         cronjobService: {} as never,
         deployStepService,
         emailService,

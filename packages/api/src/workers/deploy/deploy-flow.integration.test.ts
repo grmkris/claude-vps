@@ -3,6 +3,10 @@ import { createSpritesClient, type SpritesClient } from "@vps-claude/sprites";
 import { createTestSetup, type TestSetup } from "@vps-claude/test-utils";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
+import {
+  createBoxEnvVarService,
+  type BoxEnvVarService,
+} from "../../services/box-env-var.service";
 import { createBoxService, type BoxService } from "../../services/box.service";
 import {
   createDeployStepService,
@@ -12,10 +16,6 @@ import {
   createEmailService,
   type EmailService,
 } from "../../services/email.service";
-import {
-  createSecretService,
-  type SecretService,
-} from "../../services/secret.service";
 import {
   createOrchestratorWorker,
   createSetupStepWorker,
@@ -40,8 +40,8 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
 
   // Services
   let boxService: BoxService;
+  let boxEnvVarService: BoxEnvVarService;
   let deployStepService: DeployStepService;
-  let secretService: SecretService;
   let emailService: EmailService;
 
   // Workers
@@ -81,8 +81,8 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
       deps: { db: testEnv.db },
     });
 
-    secretService = createSecretService({
-      deps: { db: testEnv.db, spritesClient },
+    boxEnvVarService = createBoxEnvVarService({
+      deps: { db: testEnv.db },
     });
 
     emailService = createEmailService({
@@ -102,8 +102,8 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     const orchestratorResult = createOrchestratorWorker({
       deps: {
         ...baseDeps,
+        boxEnvVarService,
         emailService,
-        secretService,
         serverUrl: "http://localhost:33000",
         boxAgentBinaryUrl: BOX_AGENT_BINARY_URL,
       },

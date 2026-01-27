@@ -4,6 +4,7 @@ import {
   SelectBoxCronjobSchema,
   SelectBoxDeployStepSchema,
   SelectBoxEmailSchema,
+  SelectBoxEnvVarSchema,
   SelectBoxSchema,
   SelectUserSecretSchema,
 } from "@vps-claude/db";
@@ -65,6 +66,11 @@ export const AgentConfigOutput = z.object({
 // === Secret Router ===
 export const SecretListOutput = z.object({
   secrets: z.array(SelectUserSecretSchema),
+});
+
+// === Box Env Var Router ===
+export const BoxEnvVarListOutput = z.object({
+  envVars: z.array(SelectBoxEnvVarSchema),
 });
 
 // === API Key Router ===

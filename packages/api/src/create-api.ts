@@ -14,6 +14,7 @@ import { createContext, type Services } from "./context";
 import {
   appRouter,
   boxRouter,
+  boxEnvVarRouter,
   secretRouter,
   boxAiRouter,
   boxApiRouter,
@@ -29,6 +30,7 @@ import {
 const fullAppRouter = {
   ...appRouter,
   box: boxRouter,
+  boxEnvVar: boxEnvVarRouter,
   secret: secretRouter,
   apiKey: apiKeyRouter,
   skill: skillRouter,

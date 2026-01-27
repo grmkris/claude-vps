@@ -1,6 +1,7 @@
 import { createApi } from "@vps-claude/api/create-api";
 import { createAiService } from "@vps-claude/api/services/ai.service";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
+import { createBoxEnvVarService } from "@vps-claude/api/services/box-env-var.service";
 import { createBoxService } from "@vps-claude/api/services/box.service";
 import { createCronjobService } from "@vps-claude/api/services/cronjob.service";
 import { createDeployStepService } from "@vps-claude/api/services/deploy-step.service";
@@ -97,11 +98,13 @@ const boxService = createBoxService({
 const cronjobService = createCronjobService({ deps: { db, queueClient } });
 const deployStepService = createDeployStepService({ deps: { db } });
 const emailService = createEmailService({ deps: { db, queueClient } });
-const secretService = createSecretService({ deps: { db, spritesClient } });
+const secretService = createSecretService({ deps: { db } });
+const boxEnvVarService = createBoxEnvVarService({ deps: { db } });
 
 const services = {
   aiService,
   apiKeyService,
+  boxEnvVarService,
   boxService,
   cronjobService,
   deployStepService,
@@ -114,9 +117,9 @@ const services = {
 const { worker: orchestratorWorker, flowProducer } = createOrchestratorWorker({
   deps: {
     boxService,
+    boxEnvVarService,
     deployStepService,
     emailService,
-    secretService,
     spritesClient,
     redis,
     logger,

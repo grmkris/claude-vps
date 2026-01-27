@@ -37,13 +37,7 @@ export const secretRouter = {
         input.value
       );
       return result.match(
-        async () => {
-          // Sync to running boxes (fire and forget)
-          void context.secretService.syncToRunningBoxes(
-            context.session.user.id
-          );
-          return { success: true as const };
-        },
+        () => ({ success: true as const }),
         (error) => {
           throw new ORPCError("BAD_REQUEST", { message: error.message });
         }
@@ -59,13 +53,7 @@ export const secretRouter = {
         input.key
       );
       return result.match(
-        async () => {
-          // Sync to running boxes (fire and forget)
-          void context.secretService.syncToRunningBoxes(
-            context.session.user.id
-          );
-          return { success: true as const };
-        },
+        () => ({ success: true as const }),
         (error) => {
           if (error.type === "NOT_FOUND") {
             throw new ORPCError("NOT_FOUND", { message: error.message });
