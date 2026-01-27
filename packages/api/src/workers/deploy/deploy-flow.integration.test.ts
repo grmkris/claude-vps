@@ -364,7 +364,32 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
       "Skill substep remotion-best-practices verified"
     );
 
-    // 7. Verify all top-level steps completed
+    // 7. Verify skill files are actually installed on the sprite filesystem
+    if (skillSubstep!.status === "completed") {
+      const skillDirCheck = await spritesClient.execShell(
+        finalBox.spriteName!,
+        "ls -la ~/.claude/skills/"
+      );
+      logger.info(
+        { stdout: skillDirCheck.stdout, stderr: skillDirCheck.stderr },
+        "Skills directory listing"
+      );
+      expect(skillDirCheck.exitCode).toBe(0);
+
+      // Check for the specific skill directory
+      const skillFileCheck = await spritesClient.execShell(
+        finalBox.spriteName!,
+        "ls ~/.claude/skills/remotion-best-practices/SKILL.md 2>/dev/null && echo 'SKILL_FILE_EXISTS'"
+      );
+      logger.info(
+        { stdout: skillFileCheck.stdout, exitCode: skillFileCheck.exitCode },
+        "Skill file check"
+      );
+      expect(skillFileCheck.stdout).toContain("SKILL_FILE_EXISTS");
+      logger.info("Skill files verified on sprite filesystem");
+    }
+
+    // 8. Verify all top-level steps completed
     for (const step of topLevel) {
       logger.info(
         { stepKey: step.stepKey, status: step.status },
