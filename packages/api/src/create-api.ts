@@ -19,6 +19,8 @@ import {
   boxFsRouter,
   apiKeyRouter,
   skillRouter,
+  cronjobRouter,
+  credentialRouter,
 } from "./routers/index";
 
 // Combined router for handlers - includes all routes
@@ -29,6 +31,8 @@ const fullAppRouter = {
   skill: skillRouter,
   boxFs: boxFsRouter,
   boxDetails: boxDetailsRouter,
+  cronjob: cronjobRouter,
+  credential: credentialRouter,
 };
 
 type HonoVariables = {

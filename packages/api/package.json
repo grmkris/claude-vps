@@ -7,6 +7,9 @@
     },
     "./*": {
       "default": "./src/*.ts"
+    },
+    "./workers": {
+      "default": "./src/workers/index.ts"
     }
   },
   "scripts": {
@@ -26,6 +29,7 @@
     "@vps-claude/redis": "workspace:*",
     "@vps-claude/shared": "workspace:*",
     "@vps-claude/sprites": "workspace:*",
+    "cron-parser": "^5.5.0",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "elevenlabs": "^1.53.0",

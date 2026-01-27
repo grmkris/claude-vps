@@ -14,8 +14,11 @@ export const idTypesMapNameToPrefix = {
   boxEmailSettings: "bes",
   boxAgentConfig: "bac",
   boxDeployStep: "bds",
+  boxCronjob: "bcj",
+  boxCronjobExecution: "bce",
   apiKey: "apk",
   aiUsage: "aiu",
+  userCredential: "ucr",
 } as const;
 
 type IdTypesMapNameToPrefix = typeof idTypesMapNameToPrefix;
@@ -121,3 +124,12 @@ export type AiUsageId = z.infer<typeof AiUsageId>;
 
 export const BoxDeployStepId = typeIdValidator("boxDeployStep");
 export type BoxDeployStepId = z.infer<typeof BoxDeployStepId>;
+
+export const BoxCronjobId = typeIdValidator("boxCronjob");
+export type BoxCronjobId = z.infer<typeof BoxCronjobId>;
+
+export const BoxCronjobExecutionId = typeIdValidator("boxCronjobExecution");
+export type BoxCronjobExecutionId = z.infer<typeof BoxCronjobExecutionId>;
+
+export const UserCredentialId = typeIdValidator("userCredential");
+export type UserCredentialId = z.infer<typeof UserCredentialId>;

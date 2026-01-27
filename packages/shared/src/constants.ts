@@ -9,6 +9,7 @@ export const BOX_STATUSES = [
 export type BoxStatus = (typeof BOX_STATUSES)[number];
 
 export const WORKER_CONFIG = {
+  // Legacy monolithic deploy worker (being replaced by modular workers)
   deployBox: {
     name: "deploy-box",
     pollInterval: 5000,
@@ -28,6 +29,72 @@ export const WORKER_CONFIG = {
   sendEmail: {
     name: "send-email",
     timeout: 30000, // 30 sec
+  },
+
+  // Modular deploy workers with retry/backoff
+  deployOrchestrator: {
+    name: "deploy-orchestrator",
+    timeout: 900000, // 15 min - overall orchestration
+    attempts: 1, // Orchestrator doesn't retry - children retry independently
+    concurrency: 5,
+  },
+  createSprite: {
+    name: "deploy-create-sprite",
+    timeout: 120000, // 2 min
+    attempts: 3,
+    backoff: {
+      type: "exponential" as const,
+      delay: 30000, // 30s, 60s, 120s
+    },
+    concurrency: 5,
+  },
+  setupStep: {
+    name: "deploy-setup-step",
+    timeout: 180000, // 3 min per step
+    attempts: 3,
+    backoff: {
+      type: "exponential" as const,
+      delay: 10000, // 10s, 20s, 40s
+    },
+    concurrency: 10,
+  },
+  healthCheck: {
+    name: "deploy-health-check",
+    timeout: 120000, // 2 min
+    attempts: 5,
+    backoff: {
+      type: "exponential" as const,
+      delay: 10000, // 10s, 20s, 40s, 80s, 160s
+    },
+    concurrency: 10,
+  },
+  installSkill: {
+    name: "deploy-install-skill",
+    timeout: 180000, // 3 min per skill
+    attempts: 2,
+    backoff: {
+      type: "exponential" as const,
+      delay: 5000, // 5s, 10s
+    },
+    concurrency: 5,
+  },
+  enableAccess: {
+    name: "deploy-enable-access",
+    timeout: 30000, // 30 sec
+    attempts: 3,
+    backoff: {
+      type: "exponential" as const,
+      delay: 10000, // 10s, 20s, 40s
+    },
+    concurrency: 10,
+  },
+
+  // Cronjob worker
+  triggerCronjob: {
+    name: "trigger-cronjob",
+    timeout: 300000, // 5 min execution
+    wakeTimeout: 120000, // 2 min to wake sprite
+    concurrency: 10,
   },
 } as const;
 

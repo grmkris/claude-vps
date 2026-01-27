@@ -85,37 +85,135 @@ const AI_TOOLS = [
   },
 ];
 
-async function callAiEndpoint(
+const CRONJOB_TOOLS = [
+  {
+    name: "cronjob_list",
+    description: "List all scheduled cronjobs for this box",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "cronjob_create",
+    description: "Create a scheduled task that runs Claude with a prompt",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        name: {
+          type: "string",
+          description: "Name of the cronjob (e.g., 'Daily backup')",
+        },
+        schedule: {
+          type: "string",
+          description:
+            "Cron expression (e.g., '0 9 * * *' for 9am daily, '*/5 * * * *' for every 5 min)",
+        },
+        prompt: {
+          type: "string",
+          description: "What Claude should do when the cronjob triggers",
+        },
+        description: {
+          type: "string",
+          description: "Optional description of what this cronjob does",
+        },
+        timezone: {
+          type: "string",
+          description: "Timezone for the schedule (default: UTC)",
+        },
+      },
+      required: ["name", "schedule", "prompt"],
+    },
+  },
+  {
+    name: "cronjob_update",
+    description: "Update a cronjob's schedule, prompt, or enabled status",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: {
+          type: "string",
+          description: "The cronjob ID to update",
+        },
+        name: {
+          type: "string",
+          description: "New name for the cronjob",
+        },
+        schedule: {
+          type: "string",
+          description: "New cron expression",
+        },
+        prompt: {
+          type: "string",
+          description: "New prompt for Claude to execute",
+        },
+        enabled: {
+          type: "boolean",
+          description: "Enable or disable the cronjob",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "cronjob_delete",
+    description: "Delete a cronjob",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: {
+          type: "string",
+          description: "The cronjob ID to delete",
+        },
+      },
+      required: ["id"],
+    },
+  },
+];
+
+interface EndpointConfig {
+  path: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+}
+
+async function callApiEndpoint(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<unknown> {
-  // Map tool name to endpoint path
+  // Map tool name to endpoint path and method
   // BOX_API_URL already includes /box (e.g., http://server:33000/box)
-  const endpointMap: Record<string, string> = {
-    generate_image: "/ai/generate-image",
-    text_to_speech: "/ai/text-to-speech",
-    speech_to_text: "/ai/speech-to-text",
+  const endpointMap: Record<string, EndpointConfig> = {
+    // AI tools
+    generate_image: { path: "/ai/generate-image", method: "POST" },
+    text_to_speech: { path: "/ai/text-to-speech", method: "POST" },
+    speech_to_text: { path: "/ai/speech-to-text", method: "POST" },
+    // Cronjob tools
+    cronjob_list: { path: "/cronjobs", method: "GET" },
+    cronjob_create: { path: "/cronjobs", method: "POST" },
+    cronjob_update: { path: `/cronjobs/${String(args.id)}`, method: "PUT" },
+    cronjob_delete: { path: `/cronjobs/${String(args.id)}`, method: "DELETE" },
   };
 
-  const endpoint = endpointMap[toolName];
-  if (!endpoint) {
+  const config = endpointMap[toolName];
+  if (!config) {
     throw new Error(`Unknown tool: ${toolName}`);
   }
 
-  const url = `${env.BOX_API_URL}${endpoint}`;
+  const url = `${env.BOX_API_URL}${config.path}`;
   const response = await fetch(url, {
-    method: "POST",
+    method: config.method,
     headers: {
       "Content-Type": "application/json",
       "X-Box-Secret": env.BOX_API_TOKEN,
       "ngrok-skip-browser-warning": "true", // Skip ngrok interstitial page
     },
-    body: JSON.stringify(args),
+    body: config.method !== "GET" ? JSON.stringify(args) : undefined,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`AI API error (${response.status}): ${errorText}`);
+    throw new Error(`API error (${response.status}): ${errorText}`);
   }
 
   return response.json();
@@ -134,15 +232,17 @@ export async function startMcpServer() {
     }
   );
 
+  const allTools = [...AI_TOOLS, ...CRONJOB_TOOLS];
+
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: AI_TOOLS,
+    tools: allTools,
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
     try {
-      const result = await callAiEndpoint(name, args ?? {});
+      const result = await callApiEndpoint(name, args ?? {});
       return {
         content: [
           {

@@ -7,11 +7,14 @@ import { boxApiRouter } from "./box-api.router";
 import { boxDetailsRouter } from "./box-details.router";
 import { boxFsRouter } from "./box-fs.router";
 import { boxRouter } from "./box.router";
+import { credentialRouter } from "./credential.router";
+import { cronjobRouter } from "./cronjob.router";
 import { HealthCheckOutput, PrivateDataOutput } from "./schemas";
 import { secretRouter } from "./secret.router";
 import { skillRouter } from "./skill.router";
 
 // Main app router for /rpc/* endpoints (user session auth)
+// @ts-expect-error TS7056: Type serialization limit exceeded, but types work correctly at runtime
 export const appRouter = {
   healthCheck: publicProcedure.output(HealthCheckOutput).handler(() => {
     return "OK";
@@ -25,8 +28,6 @@ export const appRouter = {
       };
     }),
   secret: secretRouter,
-  // skill: skillRouter,  // Moved to fullAppRouter
-  // apiKey: apiKeyRouter, // Moved to fullAppRouter
   box: boxRouter,
 };
 
@@ -38,12 +39,16 @@ export {
   apiKeyRouter,
   skillRouter,
   boxFsRouter,
+  cronjobRouter,
+  credentialRouter,
 };
 export type AppRouter = typeof appRouter;
 export type ApiKeyRouterType = typeof apiKeyRouter;
 export type SkillRouterType = typeof skillRouter;
 export type BoxFsRouterType = typeof boxFsRouter;
 export type BoxDetailsRouterType = typeof boxDetailsRouter;
+export type CronjobRouterType = typeof cronjobRouter;
+export type CredentialRouterType = typeof credentialRouter;
 
 // Combined client type for SDK - includes all routers
 export type AppRouterClient = RouterClient<AppRouter> & {
@@ -51,4 +56,6 @@ export type AppRouterClient = RouterClient<AppRouter> & {
   skill: RouterClient<SkillRouterType>;
   boxFs: RouterClient<BoxFsRouterType>;
   boxDetails: RouterClient<BoxDetailsRouterType>;
+  cronjob: RouterClient<CronjobRouterType>;
+  credential: RouterClient<CredentialRouterType>;
 };

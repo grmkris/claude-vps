@@ -1,4 +1,4 @@
-import { BoxEmailId, BoxId, UserId } from "@vps-claude/shared";
+import { BoxCronjobId, BoxEmailId, BoxId, UserId } from "@vps-claude/shared";
 import { z } from "zod";
 
 export const DeployBoxJobData = z.object({
@@ -7,8 +7,6 @@ export const DeployBoxJobData = z.object({
   subdomain: z.string(),
   /** Skills.sh skill IDs (e.g. "vercel-react-best-practices") */
   skills: z.array(z.string()).default([]),
-  /** Password for code-server authentication */
-  password: z.string().optional(),
   /** Deployment attempt number (for retry tracking) */
   deploymentAttempt: z.number().int().min(1).default(1),
 });
@@ -61,3 +59,10 @@ export const SendEmailJobData = z.object({
 });
 
 export type SendEmailJobData = z.infer<typeof SendEmailJobData>;
+
+export const TriggerCronjobJobData = z.object({
+  cronjobId: BoxCronjobId,
+  boxId: BoxId,
+});
+
+export type TriggerCronjobJobData = z.infer<typeof TriggerCronjobJobData>;

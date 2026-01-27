@@ -6,6 +6,7 @@ import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import {
   ArrowLeft,
   Bot,
+  CalendarClock,
   Check,
   Copy,
   ExternalLink,
@@ -27,9 +28,10 @@ import { useBox } from "@/hooks/use-boxes";
 import { useBoxEmails } from "@/hooks/use-emails";
 import { useBoxSessions, useSendMessage } from "@/hooks/use-sessions";
 
+import { CronjobList } from "./components/cronjob-list";
 import { FileBrowser } from "./components/file-browser";
 
-type TabType = "inbox" | "console" | "files" | "agent";
+type TabType = "inbox" | "console" | "files" | "agent" | "cronjobs";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -238,6 +240,18 @@ export default function BoxDetailPage() {
                 <Bot className="h-4 w-4 inline-block mr-2" />
                 Agent
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("cronjobs")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "cronjobs"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <CalendarClock className="h-4 w-4 inline-block mr-2" />
+                Schedules
+              </button>
             </>
           )}
         </div>
@@ -359,6 +373,10 @@ export default function BoxDetailPage() {
 
         {activeTab === "agent" && box.status === "running" && (
           <SessionsPanel boxId={id} />
+        )}
+
+        {activeTab === "cronjobs" && box.status === "running" && (
+          <CronjobList boxId={id} />
         )}
       </div>
     </div>
