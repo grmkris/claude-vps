@@ -76,9 +76,9 @@ export function createInstallSkillWorker({
 
         // Install skill via CLI
         // topSource is the GitHub repo path, e.g. "remotion-dev/skills"
-        // echo "" | handles interactive prompts
+        // --yes --global skips interactive prompts, echo "" | handles any remaining prompts
         const skillsRepoUrl = `https://github.com/${topSource}`;
-        const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId}`;
+        const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId} --yes --global`;
         logger.info(
           { skillId, topSource, cmd },
           "INSTALL_SKILL: Running install command"
