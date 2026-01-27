@@ -5,7 +5,6 @@
 # - nginx as reverse proxy (port 8080)
 # - box-agent HTTP server (port 9999)
 # - agent-app Next.js server (port 3000)
-# - code-server VS Code IDE (port 8443)
 # - mcp-agent-app MCP server (stdio, for Claude)
 
 set -e
@@ -78,11 +77,9 @@ echo "Services:"
 echo "  - nginx: port 8080 (reverse proxy)"
 echo "  - box-agent: port 9999 (agent HTTP API)"
 echo "  - agent-app: port 3000 (Next.js app)"
-echo "  - code-server: port 8443 (VS Code IDE)"
 echo ""
 echo "URL routes:"
 echo "  /          → agent-app (Next.js)"
-echo "  /code/     → code-server (VS Code)"
 echo "  /email/*   → box-agent (webhooks)"
 echo "  /agent/*   → box-agent (API)"
 echo "  /health    → box-agent (health check)"

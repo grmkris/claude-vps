@@ -276,7 +276,7 @@ box-agent → POST /box/email/send
 
 | Variable         | Source                    | Purpose                          |
 | ---------------- | ------------------------- | -------------------------------- |
-| PASSWORD         | User input (box creation) | SSH & code-server password       |
+| PASSWORD         | User input (box creation) | SSH password                     |
 | BOX_AGENT_SECRET | Generated (64-char hex)   | Validates inbound API calls      |
 | BOX_API_TOKEN    | Same as BOX_AGENT_SECRET  | Authenticates outbound API calls |
 | BOX_API_URL      | Config (`SERVER_URL/box`) | Main API endpoint                |

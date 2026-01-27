@@ -18,13 +18,14 @@ export type DeployStepServiceError =
 export const BASE_DEPLOY_STEPS = [
   { key: "CREATE_SPRITE", order: 1, name: "Creating sprite" },
   { key: "SETUP_SERVICES", order: 2, name: "Setting up services" },
-  { key: "ENABLE_PUBLIC_ACCESS", order: 3, name: "Enabling public access" },
   {
     key: "INSTALL_SKILLS",
-    order: 4,
+    order: 3,
     name: "Installing skills",
     optional: true,
   },
+  { key: "ENABLE_PUBLIC_ACCESS", order: 4, name: "Enabling public access" },
+  { key: "HEALTH_CHECK", order: 5, name: "Verifying services" },
 ] as const;
 
 export const SETUP_SUBSTEPS = [
@@ -45,16 +46,6 @@ export const SETUP_SUBSTEPS = [
     key: "SETUP_AGENT_APP_SERVICE",
     order: 10,
     name: "Creating agent-app service",
-  },
-  {
-    key: "SETUP_INSTALL_CODE_SERVER",
-    order: 11,
-    name: "Installing code-server",
-  },
-  {
-    key: "SETUP_CODE_SERVER_SERVICE",
-    order: 12,
-    name: "Creating code-server service",
   },
 ] as const;
 

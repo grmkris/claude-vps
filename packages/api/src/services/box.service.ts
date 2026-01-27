@@ -67,7 +67,6 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       input: {
         name: string;
         skills?: string[];
-        password?: string;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
@@ -109,14 +108,14 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: "Default",
       });
 
-      await queueClient.deployQueue.add(
+      // Use new orchestrator queue for modular deployment
+      await queueClient.deployOrchestratorQueue.add(
         "deploy",
         {
           boxId: created.id,
           userId,
           subdomain: created.subdomain,
           skills,
-          password: input.password,
           deploymentAttempt: 1,
         },
         { jobId: created.id }
@@ -186,8 +185,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
     async deploy(
       id: BoxId,
-      userId: UserId,
-      password?: string
+      userId: UserId
     ): Promise<Result<void, BoxServiceError>> {
       const boxResult = await getById(id);
       if (boxResult.isErr()) return err(boxResult.error);
@@ -216,14 +214,14 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         .set({ status: "deploying", deploymentAttempt: newAttempt })
         .where(eq(box.id, id));
 
-      await queueClient.deployQueue.add(
+      // Use new orchestrator queue for modular deployment
+      await queueClient.deployOrchestratorQueue.add(
         "deploy",
         {
           boxId: id,
           userId,
           subdomain: boxRecord.subdomain,
           skills: boxRecord.skills,
-          password,
           deploymentAttempt: newAttempt,
         },
         { jobId: `${id}-${newAttempt}` }

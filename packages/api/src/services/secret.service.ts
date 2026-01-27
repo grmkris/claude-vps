@@ -1,6 +1,6 @@
 import type { Database, SelectUserSecretSchema } from "@vps-claude/db";
-import type { SpritesClient } from "@vps-claude/sprites";
 import type { UserId } from "@vps-claude/shared";
+import type { SpritesClient } from "@vps-claude/sprites";
 
 import { box, userSecret } from "@vps-claude/db";
 import { and, eq } from "drizzle-orm";

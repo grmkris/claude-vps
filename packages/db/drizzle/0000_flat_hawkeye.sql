@@ -1,5 +1,7 @@
 CREATE TYPE "public"."box_status" AS ENUM('pending', 'deploying', 'running', 'stopped', 'error', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."trigger_type" AS ENUM('email', 'cron', 'webhook', 'manual', 'default');--> statement-breakpoint
+CREATE TYPE "public"."box_cronjob_execution_status" AS ENUM('pending', 'waking_box', 'running', 'completed', 'failed');--> statement-breakpoint
+CREATE TYPE "public"."box_deploy_step_status" AS ENUM('pending', 'running', 'completed', 'failed', 'skipped');--> statement-breakpoint
 CREATE TYPE "public"."box_email_status" AS ENUM('received', 'delivered', 'failed');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY NOT NULL,
@@ -84,8 +86,8 @@ CREATE TABLE "box" (
 	"password_hash" text,
 	"error_message" text,
 	"last_health_check" timestamp,
-	"telegram_bot_token" text,
-	"telegram_chat_id" text,
+	"skills" text[] DEFAULT '{}' NOT NULL,
+	"deployment_attempt" integer DEFAULT 1 NOT NULL,
 	"user_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -109,6 +111,52 @@ CREATE TABLE "box_agent_config" (
 	"persist_session" boolean DEFAULT true,
 	"mcp_servers" jsonb,
 	"agents" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "box_cronjob" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"box_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"description" text,
+	"schedule" text NOT NULL,
+	"prompt" text NOT NULL,
+	"timezone" text DEFAULT 'UTC' NOT NULL,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"bullmq_job_key" text,
+	"last_run_at" timestamp with time zone,
+	"next_run_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "box_cronjob_execution" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"cronjob_id" uuid NOT NULL,
+	"status" "box_cronjob_execution_status" DEFAULT 'pending' NOT NULL,
+	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"completed_at" timestamp with time zone,
+	"duration_ms" integer,
+	"error_message" text,
+	"result" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "box_deploy_step" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"box_id" uuid NOT NULL,
+	"deployment_attempt" integer DEFAULT 1 NOT NULL,
+	"parent_id" uuid,
+	"step_key" text NOT NULL,
+	"step_order" integer NOT NULL,
+	"name" text NOT NULL,
+	"status" "box_deploy_step_status" DEFAULT 'pending' NOT NULL,
+	"started_at" timestamp with time zone,
+	"completed_at" timestamp with time zone,
+	"error_message" text,
+	"metadata" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -142,14 +190,6 @@ CREATE TABLE "box_email_settings" (
 	CONSTRAINT "box_email_settings_box_id_unique" UNIQUE("box_id")
 );
 --> statement-breakpoint
-CREATE TABLE "box_skill" (
-	"id" uuid PRIMARY KEY NOT NULL,
-	"box_id" uuid NOT NULL,
-	"skill_id" uuid NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "user_secret" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -159,16 +199,20 @@ CREATE TABLE "user_secret" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "skill" (
+CREATE TABLE "ai_usage" (
 	"id" uuid PRIMARY KEY NOT NULL,
-	"user_id" uuid,
-	"slug" text NOT NULL,
-	"name" text NOT NULL,
-	"description" text NOT NULL,
-	"apt_packages" text[] DEFAULT '{}' NOT NULL,
-	"npm_packages" text[] DEFAULT '{}' NOT NULL,
-	"pip_packages" text[] DEFAULT '{}' NOT NULL,
-	"skill_md_content" text,
+	"user_id" uuid NOT NULL,
+	"box_id" uuid,
+	"provider" text NOT NULL,
+	"capability" text NOT NULL,
+	"model_id" text,
+	"input_units" integer,
+	"output_units" integer,
+	"unit_type" text,
+	"cost_usd" numeric(10, 6),
+	"duration_ms" integer,
+	"success" boolean DEFAULT true,
+	"error_message" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -178,12 +222,14 @@ ALTER TABLE "apikey" ADD CONSTRAINT "apikey_user_id_user_id_fk" FOREIGN KEY ("us
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box" ADD CONSTRAINT "box_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_agent_config" ADD CONSTRAINT "box_agent_config_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "box_cronjob" ADD CONSTRAINT "box_cronjob_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "box_cronjob_execution" ADD CONSTRAINT "box_cronjob_execution_cronjob_id_box_cronjob_id_fk" FOREIGN KEY ("cronjob_id") REFERENCES "public"."box_cronjob"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "box_deploy_step" ADD CONSTRAINT "box_deploy_step_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_email" ADD CONSTRAINT "box_email_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_email_settings" ADD CONSTRAINT "box_email_settings_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "box_skill" ADD CONSTRAINT "box_skill_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "box_skill" ADD CONSTRAINT "box_skill_skill_id_skill_id_fk" FOREIGN KEY ("skill_id") REFERENCES "public"."skill"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_secret" ADD CONSTRAINT "user_secret_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "skill" ADD CONSTRAINT "skill_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "apikey_key_idx" ON "apikey" USING btree ("key");--> statement-breakpoint
 CREATE INDEX "apikey_userId_idx" ON "apikey" USING btree ("user_id");--> statement-breakpoint
@@ -194,13 +240,23 @@ CREATE INDEX "box_subdomain_idx" ON "box" USING btree ("subdomain");--> statemen
 CREATE INDEX "box_status_idx" ON "box" USING btree ("status");--> statement-breakpoint
 CREATE UNIQUE INDEX "box_agent_config_box_trigger_idx" ON "box_agent_config" USING btree ("box_id","trigger_type");--> statement-breakpoint
 CREATE INDEX "box_agent_config_box_id_idx" ON "box_agent_config" USING btree ("box_id");--> statement-breakpoint
+CREATE INDEX "box_cronjob_box_id_idx" ON "box_cronjob" USING btree ("box_id");--> statement-breakpoint
+CREATE INDEX "box_cronjob_enabled_idx" ON "box_cronjob" USING btree ("enabled");--> statement-breakpoint
+CREATE INDEX "box_cronjob_next_run_at_idx" ON "box_cronjob" USING btree ("next_run_at");--> statement-breakpoint
+CREATE INDEX "box_cronjob_execution_cronjob_id_idx" ON "box_cronjob_execution" USING btree ("cronjob_id");--> statement-breakpoint
+CREATE INDEX "box_cronjob_execution_status_idx" ON "box_cronjob_execution" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "box_cronjob_execution_started_at_idx" ON "box_cronjob_execution" USING btree ("started_at");--> statement-breakpoint
+CREATE INDEX "box_deploy_step_box_id_idx" ON "box_deploy_step" USING btree ("box_id");--> statement-breakpoint
+CREATE INDEX "box_deploy_step_box_attempt_idx" ON "box_deploy_step" USING btree ("box_id","deployment_attempt");--> statement-breakpoint
+CREATE INDEX "box_deploy_step_status_idx" ON "box_deploy_step" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "box_deploy_step_parent_id_idx" ON "box_deploy_step" USING btree ("parent_id");--> statement-breakpoint
 CREATE INDEX "box_email_box_id_idx" ON "box_email" USING btree ("box_id");--> statement-breakpoint
 CREATE INDEX "box_email_status_idx" ON "box_email" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "box_email_received_at_idx" ON "box_email" USING btree ("received_at");--> statement-breakpoint
 CREATE INDEX "box_email_settings_boxId_idx" ON "box_email_settings" USING btree ("box_id");--> statement-breakpoint
-CREATE INDEX "box_skill_boxId_idx" ON "box_skill" USING btree ("box_id");--> statement-breakpoint
-CREATE INDEX "box_skill_skillId_idx" ON "box_skill" USING btree ("skill_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "box_skill_unique_idx" ON "box_skill" USING btree ("box_id","skill_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "user_secret_unique_idx" ON "user_secret" USING btree ("user_id","key");--> statement-breakpoint
-CREATE UNIQUE INDEX "skill_user_slug_unique_idx" ON "skill" USING btree ("user_id","slug");--> statement-breakpoint
-CREATE INDEX "skill_userId_idx" ON "skill" USING btree ("user_id");
+CREATE INDEX "ai_usage_user_id_idx" ON "ai_usage" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "ai_usage_box_id_idx" ON "ai_usage" USING btree ("box_id");--> statement-breakpoint
+CREATE INDEX "ai_usage_provider_idx" ON "ai_usage" USING btree ("provider");--> statement-breakpoint
+CREATE INDEX "ai_usage_capability_idx" ON "ai_usage" USING btree ("capability");--> statement-breakpoint
+CREATE INDEX "ai_usage_created_at_idx" ON "ai_usage" USING btree ("created_at");

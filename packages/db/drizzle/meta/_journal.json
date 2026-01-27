@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1769268487751,
-      "tag": "0000_reflective_sinister_six",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1769367034443,
-      "tag": "0001_thick_expediter",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1769370268224,
-      "tag": "0002_flippant_forgotten_one",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1769429894643,
-      "tag": "0003_stiff_ben_grimm",
+      "when": 1769518828190,
+      "tag": "0000_flat_hawkeye",
       "breakpoints": true
     }
   ]

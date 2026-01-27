@@ -1,5 +1,7 @@
 import {
   SelectBoxAgentConfigSchema,
+  SelectBoxCronjobExecutionSchema,
+  SelectBoxCronjobSchema,
   SelectBoxDeployStepSchema,
   SelectBoxEmailSchema,
   SelectBoxSchema,
@@ -133,4 +135,17 @@ export const BoxSessionListOutput = z.object({
 export const BoxSessionSendOutput = z.object({
   success: z.boolean(),
   contextId: z.string(),
+});
+
+// === Cronjobs ===
+export const CronjobListOutput = z.object({
+  cronjobs: z.array(SelectBoxCronjobSchema),
+});
+
+export const CronjobOutput = z.object({
+  cronjob: SelectBoxCronjobSchema,
+});
+
+export const CronjobExecutionListOutput = z.object({
+  executions: z.array(SelectBoxCronjobExecutionSchema),
 });

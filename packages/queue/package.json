@@ -7,6 +7,12 @@
     },
     "./jobs": {
       "default": "./src/jobs.ts"
+    },
+    "./deploy-flow-jobs": {
+      "default": "./src/deploy-flow-jobs.ts"
+    },
+    "./flow-producer": {
+      "default": "./src/flow-producer.ts"
     }
   },
   "scripts": {

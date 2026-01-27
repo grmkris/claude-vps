@@ -14,6 +14,7 @@ import Link from "next/link";
 
 import type { Box as BoxType } from "@/lib/orpc-types";
 
+import { DeployProgress } from "@/components/deploy-progress";
 import { StatusDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,33 +29,11 @@ import {
   useBoxes,
   useDeployBox,
   useDeleteBox,
-  useDeployProgress,
   useCreateDevBox,
 } from "@/hooks/use-boxes";
 
 function isDevBox(box: BoxType): boolean {
   return box.spriteUrl?.startsWith("http://localhost") ?? false;
-}
-
-function DeployProgressMessage({ boxId }: { boxId: string }) {
-  const { data } = useDeployProgress(boxId as BoxType["id"]);
-  const steps = data?.steps;
-  if (!steps) {
-    return (
-      <span className="text-muted-foreground">Deployment in progress...</span>
-    );
-  }
-  return (
-    <span className="text-muted-foreground">
-      <ul>
-        {steps.map((step) => (
-          <li key={step.id}>
-            {step.stepOrder}: {step.name} {step.status}
-          </li>
-        ))}
-      </ul>
-    </span>
-  );
 }
 
 function BoxCard({ box }: { box: BoxType }) {
@@ -160,8 +139,8 @@ function BoxCard({ box }: { box: BoxType }) {
           </Button>
         )}
         {box.status === "deploying" && (
-          <div className="flex-1 text-center text-sm">
-            <DeployProgressMessage boxId={box.id} />
+          <div className="flex-1">
+            <DeployProgress boxId={box.id} />
           </div>
         )}
       </div>

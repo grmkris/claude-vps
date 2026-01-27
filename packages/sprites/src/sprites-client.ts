@@ -5,7 +5,6 @@ import { SpritesClient as FlySpritesClient } from "@fly/sprites";
 /**
  * Embedded nginx config for sprite reverse proxy.
  * Routes:
- *   /code/*   → code-server :8443 (VS Code IDE)
  *   /email/*  → box-agent :9999 (email webhooks)
  *   /agent/*  → box-agent :9999 (agent API)
  *   /health   → box-agent :9999 (health check)
@@ -31,11 +30,6 @@ http {
 
     upstream agent_app {
         server 127.0.0.1:3000;
-        keepalive 8;
-    }
-
-    upstream code_server {
-        server 127.0.0.1:8443;
         keepalive 8;
     }
 
@@ -77,20 +71,6 @@ http {
             proxy_read_timeout 5s;
         }
 
-        location /code/ {
-            proxy_pass http://code_server/;
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_cache_bypass $http_upgrade;
-            proxy_read_timeout 86400s;
-            proxy_connect_timeout 10s;
-        }
-
         location / {
             proxy_pass http://agent_app;
             proxy_http_version 1.1;
@@ -121,17 +101,19 @@ http {
     }
 }`;
 
-import type {
-  Checkpoint,
-  CreateSpriteConfig,
-  ExecResult,
-  FileInfo,
-  FsListOptions,
-  FsReadOptions,
-  FsWriteOptions,
-  SpriteInfo,
-  SpriteSetupConfig,
-  SpritesClient,
+import {
+  SETUP_STEP_KEYS,
+  type Checkpoint,
+  type CreateSpriteConfig,
+  type ExecResult,
+  type FileInfo,
+  type FsListOptions,
+  type FsReadOptions,
+  type FsWriteOptions,
+  type SpriteInfo,
+  type SpriteSetupConfig,
+  type SpritesClient,
+  type SetupStepConfig,
 } from "./types";
 
 export interface SpritesClientOptions {
@@ -264,19 +246,44 @@ ENVEOF`
     command: string
   ): Promise<ExecResult> {
     const sprite = flySpritesClient.sprite(spriteName);
-    const result = await sprite.exec(command);
-
-    return {
-      stdout:
-        typeof result.stdout === "string"
-          ? result.stdout
-          : result.stdout.toString("utf8"),
-      stderr:
-        typeof result.stderr === "string"
-          ? result.stderr
-          : result.stderr.toString("utf8"),
-      exitCode: result.exitCode,
-    };
+    try {
+      const result = await sprite.exec(command);
+      return {
+        stdout:
+          typeof result.stdout === "string"
+            ? result.stdout
+            : result.stdout.toString("utf8"),
+        stderr:
+          typeof result.stderr === "string"
+            ? result.stderr
+            : result.stderr.toString("utf8"),
+        exitCode: result.exitCode,
+      };
+    } catch (error) {
+      // ExecError is thrown by @fly/sprites on non-zero exit codes
+      // Extract stdout/stderr from the error result instead of losing context
+      if (error && typeof error === "object" && "result" in error) {
+        const execError = error as {
+          result: {
+            stdout: Buffer | string;
+            stderr: Buffer | string;
+            exitCode: number;
+          };
+        };
+        return {
+          stdout:
+            typeof execError.result.stdout === "string"
+              ? execError.result.stdout
+              : execError.result.stdout.toString("utf8"),
+          stderr:
+            typeof execError.result.stderr === "string"
+              ? execError.result.stderr
+              : execError.result.stderr.toString("utf8"),
+          exitCode: execError.result.exitCode,
+        };
+      }
+      throw error;
+    }
   }
 
   /**
@@ -360,35 +367,203 @@ ENVEOF`
     await response.text();
   }
 
-  const SETUP_STEP_KEYS = [
-    "SETUP_DOWNLOAD_AGENT",
-    "SETUP_CREATE_DIRS",
-    "SETUP_ENV_VARS",
-    "SETUP_CREATE_ENV_FILE",
-    "SETUP_BOX_AGENT_SERVICE",
-    "SETUP_INSTALL_NGINX",
-    "SETUP_NGINX_SERVICE",
-    "SETUP_CLONE_AGENT_APP",
-    "SETUP_INSTALL_AGENT_APP",
-    "SETUP_AGENT_APP_SERVICE",
-    "SETUP_INSTALL_CODE_SERVER",
-    "SETUP_CODE_SERVER_SERVICE",
-  ] as const;
+  /**
+   * Get the shell command for a specific setup step
+   */
+  function getStepCommand(
+    stepKey: string,
+    config: {
+      boxAgentBinaryUrl: string;
+      envVars: Record<string, string>;
+      spriteUrl: string;
+    }
+  ): string {
+    const envExports = Object.entries(config.envVars)
+      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
+      .join("\n");
+
+    const envFileContent = Object.entries(config.envVars)
+      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
+      .join("\n");
+
+    const commands: Record<string, string> = {
+      SETUP_DOWNLOAD_AGENT: `
+        curl -fsSL "${config.boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
+        chmod +x /usr/local/bin/box-agent
+      `,
+      SETUP_CREATE_DIRS: `
+        mkdir -p /home/sprite/.inbox /home/sprite/.box-agent
+      `,
+      SETUP_ENV_VARS: `
+        tee -a /home/sprite/.bashrc > /dev/null << 'ENVEOF'
+# Box environment variables
+${envExports}
+ENVEOF
+      `,
+      SETUP_CREATE_ENV_FILE: `
+        tee /home/sprite/.bashrc.env > /dev/null << 'ENVEOF'
+${envFileContent}
+ENVEOF
+      `,
+      SETUP_BOX_AGENT_SERVICE: `
+        cat > /home/sprite/start-box-agent.sh << 'STARTEOF'
+#!/bin/bash
+source /home/sprite/.bashrc.env
+exec /usr/local/bin/box-agent
+STARTEOF
+        chmod +x /home/sprite/start-box-agent.sh
+
+        sprite-env services create box-agent \\
+          --cmd /home/sprite/start-box-agent.sh \\
+          --dir /home/sprite \\
+          --no-stream
+      `,
+      SETUP_INSTALL_NGINX: `
+        sudo apt-get update && sudo apt-get install -y nginx
+      `,
+      SETUP_NGINX_SERVICE: `
+        sudo nginx -t
+
+        # Wrapper script to run nginx in foreground
+        cat > /usr/local/bin/start-nginx.sh << 'NGINXEOF'
+#!/bin/bash
+exec /usr/sbin/nginx -g "daemon off;"
+NGINXEOF
+        chmod +x /usr/local/bin/start-nginx.sh
+
+        sprite-env services create nginx \\
+          --cmd /usr/local/bin/start-nginx.sh \\
+          --http-port 8080 \\
+          --no-stream
+      `,
+      SETUP_CLONE_AGENT_APP: `
+        git clone https://github.com/grmkris/agent-next-app /home/sprite/agent-app
+      `,
+      SETUP_INSTALL_AGENT_APP: `
+        cd /home/sprite/agent-app && /.sprite/bin/bun install
+      `,
+      SETUP_AGENT_APP_SERVICE: `
+        cat > /home/sprite/start-agent-app.sh << 'STARTEOF'
+#!/bin/bash
+source /home/sprite/.bashrc.env 2>/dev/null || true
+cd /home/sprite/agent-app
+export DATABASE_URL="file:/home/sprite/agent-app/local.db"
+export BETTER_AUTH_SECRET="${config.envVars.BOX_AGENT_SECRET}"
+export BETTER_AUTH_URL="${config.spriteUrl}"
+export CORS_ORIGIN="${config.spriteUrl}"
+exec /.sprite/bin/bun dev --port 3000
+STARTEOF
+        chmod +x /home/sprite/start-agent-app.sh
+
+        sprite-env services create agent-app \\
+          --cmd /home/sprite/start-agent-app.sh \\
+          --needs box-agent \\
+          --no-stream
+      `,
+    };
+
+    return commands[stepKey] ?? "";
+  }
+
+  /**
+   * Run a single setup step by key
+   * Used by modular deploy workers for fine-grained control
+   */
+  async function runSetupStep(config: SetupStepConfig): Promise<ExecResult> {
+    const { spriteName, stepKey, boxAgentBinaryUrl, envVars, spriteUrl } =
+      config;
+
+    // Special case: SETUP_NGINX_SERVICE needs nginx config written first
+    if (stepKey === "SETUP_NGINX_SERVICE") {
+      await writeFile(spriteName, "/etc/nginx/nginx.conf", NGINX_CONFIG);
+    }
+
+    const cmd = getStepCommand(stepKey, {
+      boxAgentBinaryUrl,
+      envVars,
+      spriteUrl,
+    });
+
+    if (!cmd) {
+      throw new Error(`Unknown setup step: ${stepKey}`);
+    }
+
+    logger.info({ spriteName, stepKey }, `Running setup step: ${stepKey}`);
+    const result = await execShell(spriteName, cmd);
+
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `Setup step ${stepKey} failed with exit code ${result.exitCode}:\n` +
+          `stdout: ${result.stdout}\n` +
+          `stderr: ${result.stderr}`
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Check if services are healthy on the sprite
+   * Verifies box-agent and nginx are responding
+   */
+  async function checkHealth(
+    spriteName: string,
+    spriteUrl: string
+  ): Promise<boolean> {
+    // Check 1: box-agent health endpoint via nginx proxy
+    try {
+      const res = await fetch(`${spriteUrl}/health`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        logger.warn(
+          { spriteName, status: res.status },
+          "Health check failed: box-agent unhealthy"
+        );
+        return false;
+      }
+    } catch (error) {
+      logger.warn(
+        { spriteName, error: String(error) },
+        "Health check failed: could not reach box-agent"
+      );
+      return false;
+    }
+
+    // Check 2: agent-app via nginx proxy (check root returns something)
+    try {
+      const res = await fetch(`${spriteUrl}/`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      // Agent app might return 200 or redirect, either is fine
+      if (res.status >= 500) {
+        logger.warn(
+          { spriteName, status: res.status },
+          "Health check failed: agent-app error"
+        );
+        return false;
+      }
+    } catch (error) {
+      logger.warn(
+        { spriteName, error: String(error) },
+        "Health check failed: could not reach agent-app"
+      );
+      return false;
+    }
+
+    logger.info({ spriteName }, "Health check passed");
+    return true;
+  }
 
   async function setupSprite(config: SpriteSetupConfig): Promise<void> {
     const {
       spriteName,
       boxAgentBinaryUrl,
       envVars,
-      password,
       spriteUrl,
       onProgress,
       resumeFromStep,
     } = config;
-
-    const finalEnvVars = password
-      ? { ...envVars, PASSWORD: password }
-      : envVars;
 
     async function runStep(stepNum: number, name: string, cmd: string) {
       const stepKey = SETUP_STEP_KEYS[stepNum - 1];
@@ -460,7 +635,7 @@ ENVEOF`
     `
     );
 
-    const envExports = Object.entries(finalEnvVars)
+    const envExports = Object.entries(envVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
@@ -480,7 +655,7 @@ ENVEOF
       "Create env file",
       `
       tee /home/sprite/.bashrc.env > /dev/null << 'ENVEOF'
-${Object.entries(finalEnvVars)
+${Object.entries(envVars)
   .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
   .join("\n")}
 ENVEOF
@@ -569,38 +744,6 @@ STARTEOF
       sprite-env services create agent-app \\
         --cmd /home/sprite/start-agent-app.sh \\
         --needs box-agent \\
-        --no-stream
-    `
-    );
-
-    const codeServerPassword = password || "changeme";
-    await runStep(
-      11,
-      "Install code-server",
-      `
-      curl -fsSL https://code-server.dev/install.sh | sudo sh
-      mkdir -p /home/sprite/.config/code-server
-      tee /home/sprite/.config/code-server/config.yaml > /dev/null << 'CODESERVEOF'
-bind-addr: 127.0.0.1:8443
-auth: password
-password: ${codeServerPassword}
-cert: false
-CODESERVEOF
-    `
-    );
-
-    await runStep(
-      12,
-      "Create code-server service",
-      `
-      cat > /home/sprite/start-code-server.sh << 'CODEEOF'
-#!/bin/bash
-exec /usr/bin/code-server --config /home/sprite/.config/code-server/config.yaml /home/sprite/agent-app
-CODEEOF
-      chmod +x /home/sprite/start-code-server.sh
-
-      sprite-env services create code-server \\
-        --cmd /home/sprite/start-code-server.sh \\
         --no-stream
     `
     );
@@ -767,6 +910,8 @@ sprite-env services restart box-agent`
     execCommand,
     execShell,
     setupSprite,
+    runSetupStep,
+    checkHealth,
     createCheckpoint,
     listCheckpoints,
     restoreCheckpoint,

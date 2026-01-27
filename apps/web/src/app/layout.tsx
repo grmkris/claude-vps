@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
 
 import "../index.css";
+import Script from "next/script";
+
 import Header from "@/components/header";
 import Providers from "@/components/providers";
 
@@ -30,6 +32,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        {process.env.NODE_ENV === "development" && (
+          <Script
+            crossOrigin="anonymous"
+            src="//unpkg.com/react-grab/dist/index.global.js"
+            strategy="beforeInteractive"
+          />
+        )}
+      </head>
       <body className={`${outfit.variable} ${jetbrainsMono.variable}`}>
         <Providers>
           <div className="min-h-svh flex flex-col">

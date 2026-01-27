@@ -59,10 +59,7 @@ export function createEnableAccessWorker({
           "completed"
         );
 
-        logger.info(
-          { boxId, spriteName },
-          "ENABLE_PUBLIC_ACCESS: Completed"
-        );
+        logger.info({ boxId, spriteName }, "ENABLE_PUBLIC_ACCESS: Completed");
 
         return { success: true };
       } catch (error) {

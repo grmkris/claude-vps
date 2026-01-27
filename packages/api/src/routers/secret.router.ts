@@ -39,7 +39,9 @@ export const secretRouter = {
       return result.match(
         async () => {
           // Sync to running boxes (fire and forget)
-          void context.secretService.syncToRunningBoxes(context.session.user.id);
+          void context.secretService.syncToRunningBoxes(
+            context.session.user.id
+          );
           return { success: true as const };
         },
         (error) => {
@@ -59,7 +61,9 @@ export const secretRouter = {
       return result.match(
         async () => {
           // Sync to running boxes (fire and forget)
-          void context.secretService.syncToRunningBoxes(context.session.user.id);
+          void context.secretService.syncToRunningBoxes(
+            context.session.user.id
+          );
           return { success: true as const };
         },
         (error) => {

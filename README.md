@@ -8,7 +8,7 @@ VPS-Claude is a platform that creates isolated development environments ("boxes"
 
 Traditional development environments require manual setup, configuration, and maintenance. VPS-Claude automates this by deploying fully-configured VMs on-demand, each with:
 
-- **Code-Server**: Browser-based VS Code IDE with Claude Code CLI pre-installed
+- **Claude Code CLI**: Pre-installed CLI for AI-assisted development
 - **Email-to-AI**: Inbound emails trigger autonomous Claude AI sessions that can read code, make changes, and respond
 - **Custom Skills**: Install package bundles (apt/npm/pip) and configuration files
 - **User Secrets**: Environment variables injected across all your boxes
@@ -27,7 +27,7 @@ Boxes are deployed via Sprites (Fly.io) API and accessible through unique URLs.
    | (Sprites API)
 
 3. Sprite starts with environment
-   | (code-server :8080, box-agent :9999)
+   | (agent-app :3000, box-agent :9999)
 
 4. User accesses via HTTPS
    | (https://{subdomain}.sprites.dev)
@@ -54,8 +54,8 @@ Boxes are deployed via Sprites (Fly.io) API and accessible through unique URLs.
                                             |   (Email)     |
                                             +-------+-------+
                                             +-------v-------+
-                                            | code-server   |
-                                            |  (VS Code)    |
+                                            |  agent-app    |
+                                            |  (Next.js)    |
                                             +---------------+
 ```
 

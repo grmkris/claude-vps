@@ -31,7 +31,9 @@ export function DeployProgress({ boxId }: { boxId: Box["id"] }) {
     hasError,
   } = useMemo(() => {
     const steps = data?.steps ?? [];
-    const parents = steps.filter((s) => !s.parentId);
+    const parents = steps
+      .filter((s) => !s.parentId)
+      .sort((a, b) => a.stepOrder - b.stepOrder);
     const done = parents.filter((s) => s.status === "completed").length;
     const current =
       parents.find((s) => s.status === "running") ??

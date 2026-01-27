@@ -11,11 +11,14 @@ export type {
   FsReadOptions,
   FsWriteOptions,
   SetupProgressCallback,
+  SetupStepConfig,
+  SetupStepKey,
   SpriteInfo,
   SpriteSetupConfig,
   SpriteStatus,
   SpritesClient,
 } from "./types";
+export { SETUP_STEP_KEYS } from "./types";
 
 // Re-export official SDK for advanced usage
 export {

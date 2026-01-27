@@ -35,7 +35,6 @@ export const boxRouter = {
       z.object({
         name: z.string().min(1).max(50),
         skills: z.array(z.string()).default([]),
-        password: z.string().min(4).max(100).optional(),
       })
     )
     .output(BoxCreateOutput)
@@ -81,15 +80,13 @@ export const boxRouter = {
     .input(
       z.object({
         id: BoxId,
-        password: z.string().min(4).max(100).optional(),
       })
     )
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
       const result = await context.boxService.deploy(
         input.id,
-        context.session.user.id,
-        input.password
+        context.session.user.id
       );
       return result.match(
         () => ({ success: true as const }),

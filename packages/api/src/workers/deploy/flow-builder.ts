@@ -1,4 +1,5 @@
 import type { FlowJob } from "@vps-claude/queue";
+
 import { DEPLOY_QUEUES } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 import { SETUP_STEP_KEYS } from "@vps-claude/sprites";
@@ -28,8 +29,8 @@ interface BaseJobData {
  *
  * Flow Structure (parent → children):
  *   FINALIZE (root, runs LAST)
- *       └── ENABLE_ACCESS
- *               └── HEALTH_CHECK
+ *       └── HEALTH_CHECK
+ *               └── ENABLE_ACCESS
  *                       ├── SETUP_STEP_10 (last setup step)
  *                       │       └── SETUP_STEP_9
  *                       │               └── ... → SETUP_STEP_1 (runs FIRST)
@@ -40,8 +41,8 @@ interface BaseJobData {
  * Execution Order (children first):
  *   1. SETUP_STEP_1 → SETUP_STEP_2 → ... → SETUP_STEP_10
  *   2. SKILL_1, SKILL_2 (parallel) → SKILLS_GATE
- *   3. HEALTH_CHECK (after setup + skills)
- *   4. ENABLE_ACCESS
+ *   3. ENABLE_ACCESS (must happen before health check - sets URL auth to public)
+ *   4. HEALTH_CHECK (requires public URL access)
  *   5. FINALIZE (marks box as running)
  */
 export function buildDeployFlow(params: DeployFlowParams): FlowJob {
@@ -69,16 +70,18 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
     boxAgentBinaryUrl,
   });
 
-  // Health check children: setup chain is always required
-  const healthCheckChildren: FlowJob[] = [setupChain];
+  // Enable access children: setup chain is always required
+  // Enable access must run BEFORE health check (sets URL auth to public)
+  const enableAccessChildren: FlowJob[] = [setupChain];
 
   // Add skills gate if there are skills to install
   if (skills.length > 0) {
     const skillsGate = buildSkillsGate({ baseData, skills });
-    healthCheckChildren.push(skillsGate);
+    enableAccessChildren.push(skillsGate);
   }
 
   // Build the full flow DAG
+  // Order: setup steps → enable access → health check → finalize
   return {
     name: `finalize-${boxId}`,
     queueName: DEPLOY_QUEUES.finalize,
@@ -88,25 +91,25 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
     },
     children: [
       {
-        name: `enable-access-${boxId}`,
-        queueName: DEPLOY_QUEUES.enableAccess,
-        data: { boxId, deploymentAttempt, spriteName },
+        name: `health-check-${boxId}`,
+        queueName: DEPLOY_QUEUES.healthCheck,
+        data: baseData,
         opts: {
-          attempts: WORKER_CONFIG.enableAccess.attempts,
-          backoff: WORKER_CONFIG.enableAccess.backoff,
-          jobId: `${boxId}-${deploymentAttempt}-enable-access`,
+          attempts: WORKER_CONFIG.healthCheck.attempts,
+          backoff: WORKER_CONFIG.healthCheck.backoff,
+          jobId: `${boxId}-${deploymentAttempt}-health-check`,
         },
         children: [
           {
-            name: `health-check-${boxId}`,
-            queueName: DEPLOY_QUEUES.healthCheck,
-            data: baseData,
+            name: `enable-access-${boxId}`,
+            queueName: DEPLOY_QUEUES.enableAccess,
+            data: { boxId, deploymentAttempt, spriteName },
             opts: {
-              attempts: WORKER_CONFIG.healthCheck.attempts,
-              backoff: WORKER_CONFIG.healthCheck.backoff,
-              jobId: `${boxId}-${deploymentAttempt}-health-check`,
+              attempts: WORKER_CONFIG.enableAccess.attempts,
+              backoff: WORKER_CONFIG.enableAccess.backoff,
+              jobId: `${boxId}-${deploymentAttempt}-enable-access`,
             },
-            children: healthCheckChildren,
+            children: enableAccessChildren,
           },
         ],
       },

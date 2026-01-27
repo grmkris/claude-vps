@@ -55,14 +55,21 @@ export interface SpriteSetupConfig {
   spriteName: string;
   boxAgentBinaryUrl: string;
   envVars: Record<string, string>;
-  /** Password for code-server authentication */
-  password?: string;
   /** Sprite public URL (e.g., https://subdomain.sprites.dev) */
   spriteUrl: string;
   /** Callback for progress tracking */
   onProgress?: SetupProgressCallback;
   /** Resume from specific step order (skip completed steps) */
   resumeFromStep?: number;
+}
+
+// Config for running a single setup step
+export interface SetupStepConfig {
+  spriteName: string;
+  stepKey: string;
+  boxAgentBinaryUrl: string;
+  envVars: Record<string, string>;
+  spriteUrl: string;
 }
 
 // Proxy config for TCP tunneling
@@ -95,6 +102,22 @@ export interface FsListOptions {
   workingDir?: string;
 }
 
+// Setup step keys - exported for workers to use
+export const SETUP_STEP_KEYS = [
+  "SETUP_DOWNLOAD_AGENT",
+  "SETUP_CREATE_DIRS",
+  "SETUP_ENV_VARS",
+  "SETUP_CREATE_ENV_FILE",
+  "SETUP_BOX_AGENT_SERVICE",
+  "SETUP_INSTALL_NGINX",
+  "SETUP_NGINX_SERVICE",
+  "SETUP_CLONE_AGENT_APP",
+  "SETUP_INSTALL_AGENT_APP",
+  "SETUP_AGENT_APP_SERVICE",
+] as const;
+
+export type SetupStepKey = (typeof SETUP_STEP_KEYS)[number];
+
 // Sprites client interface
 export interface SpritesClient {
   createSprite: (
@@ -106,7 +129,12 @@ export interface SpritesClient {
   execCommand: (spriteName: string, command: string) => Promise<ExecResult>;
   /** Execute shell command with bash -c wrapper (supports heredocs, pipes, redirects) */
   execShell: (spriteName: string, command: string) => Promise<ExecResult>;
+  /** Run all setup steps (legacy monolithic approach) */
   setupSprite: (config: SpriteSetupConfig) => Promise<void>;
+  /** Run a single setup step by key (for modular workers) */
+  runSetupStep: (config: SetupStepConfig) => Promise<ExecResult>;
+  /** Check if services are healthy */
+  checkHealth: (spriteName: string, spriteUrl: string) => Promise<boolean>;
   createCheckpoint: (spriteName: string) => Promise<Checkpoint>;
   listCheckpoints: (spriteName: string) => Promise<Checkpoint[]>;
   restoreCheckpoint: (

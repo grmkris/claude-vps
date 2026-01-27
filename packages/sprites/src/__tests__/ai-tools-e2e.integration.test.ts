@@ -631,7 +631,6 @@ describe.skipIf(SKIP_TEST)("AI Tools E2E - Connectivity Check", () => {
           BOX_API_URL: `${SERVER_URL}/box`,
           BOX_SUBDOMAIN: suffix,
         },
-        password: "testpass123",
         spriteUrl,
       });
       console.log("setupSprite completed successfully");
