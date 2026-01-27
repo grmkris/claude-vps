@@ -13,6 +13,8 @@ import { cors } from "hono/cors";
 import { createContext, type Services } from "./context";
 import {
   appRouter,
+  boxRouter,
+  secretRouter,
   boxAiRouter,
   boxApiRouter,
   boxDetailsRouter,
@@ -20,19 +22,19 @@ import {
   apiKeyRouter,
   skillRouter,
   cronjobRouter,
-  credentialRouter,
 } from "./routers/index";
 
 // Combined router for handlers - includes all routes
 // (Type not exported to avoid TS7056)
 const fullAppRouter = {
   ...appRouter,
+  box: boxRouter,
+  secret: secretRouter,
   apiKey: apiKeyRouter,
   skill: skillRouter,
   boxFs: boxFsRouter,
   boxDetails: boxDetailsRouter,
   cronjob: cronjobRouter,
-  credential: credentialRouter,
 };
 
 type HonoVariables = {

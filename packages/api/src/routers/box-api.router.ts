@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { SelectBoxCronjobSchema, TriggerType } from "@vps-claude/db";
-import { BoxCronjobId, CredentialService } from "@vps-claude/shared";
+import { BoxCronjobId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { boxProcedure } from "../index";
@@ -294,48 +294,6 @@ export const boxApiRouter = {
         return result.match(
           () => ({ success: true as const }),
           (error) => {
-            throw new ORPCError("INTERNAL_SERVER_ERROR", {
-              message: error.message,
-            });
-          }
-        );
-      }),
-  },
-
-  credential: {
-    get: boxProcedure
-      .route({ method: "GET", path: "/box/credential/{service}" })
-      .input(z.object({ service: CredentialService }))
-      .output(
-        z.object({
-          apiKey: z.string(),
-          source: z.enum(["user", "system"]),
-          metadata: z.record(z.string(), z.unknown()).nullish(),
-        })
-      )
-      .handler(async ({ context, input }) => {
-        const result = await context.credentialService.getByBoxToken(
-          context.boxToken!,
-          input.service
-        );
-
-        return result.match(
-          (credential) => ({
-            apiKey: credential.apiKey,
-            source: credential.source,
-            metadata: credential.metadata,
-          }),
-          (error) => {
-            if (error.type === "BOX_NOT_FOUND") {
-              throw new ORPCError("UNAUTHORIZED", {
-                message: "Invalid box token",
-              });
-            }
-            if (error.type === "NOT_FOUND") {
-              throw new ORPCError("NOT_FOUND", {
-                message: error.message,
-              });
-            }
             throw new ORPCError("INTERNAL_SERVER_ERROR", {
               message: error.message,
             });

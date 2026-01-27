@@ -1,20 +1,23 @@
 import type { Database, SelectUserSecretSchema } from "@vps-claude/db";
+import type { SpritesClient } from "@vps-claude/sprites";
 import type { UserId } from "@vps-claude/shared";
 
-import { userSecret } from "@vps-claude/db";
+import { box, userSecret } from "@vps-claude/db";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 
 export type SecretServiceError =
   | { type: "NOT_FOUND"; message: string }
-  | { type: "ALREADY_EXISTS"; message: string };
+  | { type: "ALREADY_EXISTS"; message: string }
+  | { type: "SYNC_FAILED"; message: string };
 
 interface SecretServiceDeps {
   db: Database;
+  spritesClient?: SpritesClient;
 }
 
 export function createSecretService({ deps }: { deps: SecretServiceDeps }) {
-  const { db } = deps;
+  const { db, spritesClient } = deps;
 
   return {
     async list(
@@ -79,6 +82,54 @@ export function createSecretService({ deps }: { deps: SecretServiceDeps }) {
         result[s.key] = s.value;
       }
       return ok(result);
+    },
+
+    /**
+     * Sync environment variables to all running boxes for a user.
+     * Called when user adds/updates/deletes a secret.
+     */
+    async syncToRunningBoxes(
+      userId: UserId
+    ): Promise<Result<{ synced: number; failed: number }, SecretServiceError>> {
+      if (!spritesClient) {
+        return ok({ synced: 0, failed: 0 });
+      }
+
+      // Get all running boxes for this user
+      const boxes = await db.query.box.findMany({
+        where: and(eq(box.userId, userId), eq(box.status, "running")),
+      });
+
+      if (boxes.length === 0) {
+        return ok({ synced: 0, failed: 0 });
+      }
+
+      // Get all user secrets
+      const secretsResult = await this.getAll(userId);
+      if (secretsResult.isErr()) {
+        return err(secretsResult.error);
+      }
+
+      const secrets = secretsResult.value;
+      let synced = 0;
+      let failed = 0;
+
+      // Sync to each running box
+      for (const boxRecord of boxes) {
+        if (!boxRecord.spriteName) {
+          continue;
+        }
+
+        try {
+          await spritesClient.updateEnvVars(boxRecord.spriteName, secrets);
+          synced++;
+        } catch {
+          // Log but don't fail the whole operation
+          failed++;
+        }
+      }
+
+      return ok({ synced, failed });
     },
   };
 }
