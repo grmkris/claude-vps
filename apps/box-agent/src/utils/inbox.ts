@@ -74,6 +74,6 @@ File: ${filepath}
 
 Read the email and handle it appropriately.
 
-To reply: POST http://localhost:9999/email/send
+To reply: POST http://localhost:${env.BOX_AGENT_PORT}/email/send
 {"to": "${email.from.email}", "subject": "Re: ${email.subject || ""}", "body": "..."}`;
 }

@@ -13,6 +13,7 @@ export const SERVICE_URLS: Record<
     api: string;
     apiInternal: string;
     web: string;
+    boxAgent: string;
     emailFrom: string;
     agentsDomain: string;
     sshBastion: string;
@@ -25,6 +26,7 @@ export const SERVICE_URLS: Record<
     api: "http://localhost:33000",
     apiInternal: "http://localhost:33000",
     web: "http://localhost:33001",
+    boxAgent: "http://localhost:9999",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     agentsDomain: "yoda.fun",
     sshBastion: "https://ssh.claude-vps.grm.wtf",
@@ -36,6 +38,7 @@ export const SERVICE_URLS: Record<
     api: "http://api.localhost:33000",
     apiInternal: "http://api.localhost:33000",
     web: "http://app.localhost:33001",
+    boxAgent: "http://boxagent.localhost:9999",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     agentsDomain: "agents.localhost",
     sshBastion: "http://ssh.localhost:2222",
@@ -47,6 +50,7 @@ export const SERVICE_URLS: Record<
     api: "https://api.claude-vps.grm.wtf",
     apiInternal: "http://api.internal:33000",
     web: "https://claude-vps.grm.wtf",
+    boxAgent: "",
     emailFrom: "VPS Claude <agent@inbnd.dev>",
     agentsDomain: "agents.claude-vps.grm.wtf",
     sshBastion: "https://ssh.claude-vps.grm.wtf",

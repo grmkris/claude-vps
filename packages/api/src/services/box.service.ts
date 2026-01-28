@@ -17,6 +17,7 @@ import {
   type UserId,
 } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
+import { type Environment, SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 
@@ -145,13 +146,14 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
       const subdomain = generateSubdomain(name);
 
+      const appEnv = (process.env.APP_ENV || "dev") as Environment;
       const result = await db
         .insert(box)
         .values({
           name,
           subdomain,
           status: "running",
-          spriteUrl: "http://localhost:9999",
+          spriteUrl: SERVICE_URLS[appEnv].boxAgent,
           spriteName: null,
           userId,
         })
