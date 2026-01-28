@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
-import { SecretListOutput, SuccessOutput } from "./schemas";
+import { CredentialListOutput, SuccessOutput } from "./schemas";
 
 const keySchema = z
   .string()
@@ -12,13 +12,15 @@ const keySchema = z
     message: "Key must be uppercase with underscores (e.g., API_KEY)",
   });
 
-export const secretRouter = {
+export const credentialRouter = {
   list: protectedProcedure
-    .output(SecretListOutput)
+    .output(CredentialListOutput)
     .handler(async ({ context }) => {
-      const result = await context.secretService.list(context.session.user.id);
+      const result = await context.credentialService.list(
+        context.session.user.id
+      );
       return result.match(
-        (secrets) => ({ secrets }),
+        (credentials) => ({ credentials }),
         (error) => {
           throw new ORPCError("INTERNAL_SERVER_ERROR", {
             message: error.message,
@@ -31,7 +33,7 @@ export const secretRouter = {
     .input(z.object({ key: keySchema, value: z.string().min(1).max(10000) }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
-      const result = await context.secretService.set(
+      const result = await context.credentialService.set(
         context.session.user.id,
         input.key,
         input.value
@@ -48,7 +50,7 @@ export const secretRouter = {
     .input(z.object({ key: z.string().min(1) }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
-      const result = await context.secretService.delete(
+      const result = await context.credentialService.delete(
         context.session.user.id,
         input.key
       );
@@ -57,6 +59,9 @@ export const secretRouter = {
         (error) => {
           if (error.type === "NOT_FOUND") {
             throw new ORPCError("NOT_FOUND", { message: error.message });
+          }
+          if (error.type === "IN_USE") {
+            throw new ORPCError("CONFLICT", { message: error.message });
           }
           throw new ORPCError("BAD_REQUEST", { message: error.message });
         }

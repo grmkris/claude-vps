@@ -1,20 +1,20 @@
 import {
   typeIdGenerator,
   type UserId,
-  type UserSecretId,
+  type UserCredentialId,
 } from "@vps-claude/shared";
 import { pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { baseEntityFields, typeId } from "../../utils/db-utils";
 import { user } from "../auth";
 
-export const userSecret = pgTable(
-  "user_secret",
+export const userCredential = pgTable(
+  "user_credential",
   {
-    id: typeId("userSecret", "id")
+    id: typeId("userCredential", "id")
       .primaryKey()
-      .$defaultFn(() => typeIdGenerator("userSecret"))
-      .$type<UserSecretId>(),
+      .$defaultFn(() => typeIdGenerator("userCredential"))
+      .$type<UserCredentialId>(),
     userId: typeId("user", "user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" })
@@ -23,8 +23,10 @@ export const userSecret = pgTable(
     value: text("value").notNull(),
     ...baseEntityFields,
   },
-  (table) => [uniqueIndex("user_secret_unique_idx").on(table.userId, table.key)]
+  (table) => [
+    uniqueIndex("user_credential_unique_idx").on(table.userId, table.key),
+  ]
 );
 
-export type UserSecret = typeof userSecret.$inferSelect;
-export type NewUserSecret = typeof userSecret.$inferInsert;
+export type UserCredential = typeof userCredential.$inferSelect;
+export type NewUserCredential = typeof userCredential.$inferInsert;

@@ -35,12 +35,12 @@ describe("SDK E2E Tests", () => {
       expect(Array.isArray(result.boxes)).toBe(true);
     });
 
-    test("can list secrets with API key", async () => {
-      const result = await setup.client.secret.list({});
+    test("can list credentials with API key", async () => {
+      const result = await setup.client.credential.list({});
 
       expect(result).toBeDefined();
-      expect(result.secrets).toBeDefined();
-      expect(Array.isArray(result.secrets)).toBe(true);
+      expect(result.credentials).toBeDefined();
+      expect(Array.isArray(result.credentials)).toBe(true);
     });
 
     test("can fetch skills catalog", async () => {
@@ -143,8 +143,8 @@ describe("SDK E2E Tests", () => {
       });
 
       try {
-        await client.secret.set({
-          key: "TEST_SECRET",
+        await client.credential.set({
+          key: "TEST_CREDENTIAL",
           value: "should-fail",
         });
         expect(true).toBe(false);

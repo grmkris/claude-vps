@@ -6,7 +6,7 @@ import {
   SelectBoxEmailSchema,
   SelectBoxEnvVarSchema,
   SelectBoxSchema,
-  SelectUserSecretSchema,
+  SelectUserCredentialSchema,
 } from "@vps-claude/db";
 import { z } from "zod";
 
@@ -63,9 +63,9 @@ export const AgentConfigOutput = z.object({
   config: SelectBoxAgentConfigSchema,
 });
 
-// === Secret Router ===
-export const SecretListOutput = z.object({
-  secrets: z.array(SelectUserSecretSchema),
+// === Credential Router ===
+export const CredentialListOutput = z.object({
+  credentials: z.array(SelectUserCredentialSchema),
 });
 
 // === Box Env Var Router ===

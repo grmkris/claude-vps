@@ -42,7 +42,7 @@ describe("inbound-email webhook", () => {
         cronjobService: {} as never,
         deployStepService,
         emailService,
-        secretService: {} as never,
+        credentialService: {} as never,
         apiKeyService: {} as never,
         aiService: {} as never,
         spritesClient: {} as never,

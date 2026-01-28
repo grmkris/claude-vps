@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth-client.server";
 
-import EnvVarsList from "./env-vars-list";
+import CredentialsList from "./credentials-list";
 
-export default async function EnvVarsPage() {
+export default async function CredentialsPage() {
   const session = await getSession();
 
   if (!session?.user) {
@@ -13,7 +13,7 @@ export default async function EnvVarsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 lg:px-8 py-12">
-      <EnvVarsList />
+      <CredentialsList />
     </div>
   );
 }

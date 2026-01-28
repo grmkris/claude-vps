@@ -4,5 +4,5 @@ export * from "./box-agent-config";
 export * from "./box-cronjob";
 export * from "./box-deploy-step";
 export * from "./box-email";
-export * from "./secret";
+export * from "./credential";
 export * from "./ai-usage";

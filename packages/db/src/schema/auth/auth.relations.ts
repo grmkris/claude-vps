@@ -1,12 +1,12 @@
 import { relations } from "drizzle-orm";
 
-import { userSecret } from "../secret";
+import { userCredential } from "../credential";
 import { account, session, user } from "./auth.db";
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
-  userSecrets: many(userSecret),
+  userCredentials: many(userCredential),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

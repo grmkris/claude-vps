@@ -1,7 +1,7 @@
 import type { Database, SelectBoxEnvVarSchema } from "@vps-claude/db";
 import type { BoxId, UserId } from "@vps-claude/shared";
 
-import { box, boxEnvVar, userSecret } from "@vps-claude/db";
+import { box, boxEnvVar, userCredential } from "@vps-claude/db";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 
@@ -75,10 +75,10 @@ export function createBoxEnvVarService({
 
       // If credential_ref, verify the credential exists
       if (input.type === "credential_ref" && input.credentialKey) {
-        const credential = await db.query.userSecret.findFirst({
+        const credential = await db.query.userCredential.findFirst({
           where: and(
-            eq(userSecret.userId, userId),
-            eq(userSecret.key, input.credentialKey)
+            eq(userCredential.userId, userId),
+            eq(userCredential.key, input.credentialKey)
           ),
         });
         if (!credential) {
@@ -157,8 +157,8 @@ export function createBoxEnvVarService({
       });
 
       // Get all user credentials for resolving refs
-      const credentials = await db.query.userSecret.findMany({
-        where: eq(userSecret.userId, userId),
+      const credentials = await db.query.userCredential.findMany({
+        where: eq(userCredential.userId, userId),
       });
       const credentialMap = new Map(credentials.map((c) => [c.key, c.value]));
 

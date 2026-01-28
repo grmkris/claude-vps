@@ -8,9 +8,9 @@ import { boxDetailsRouter } from "./box-details.router";
 import { boxEnvVarRouter } from "./box-env-var.router";
 import { boxFsRouter } from "./box-fs.router";
 import { boxRouter } from "./box.router";
+import { credentialRouter } from "./credential.router";
 import { cronjobRouter } from "./cronjob.router";
 import { HealthCheckOutput, PrivateDataOutput } from "./schemas";
-import { secretRouter } from "./secret.router";
 import { skillRouter } from "./skill.router";
 
 // Minimal app router - only inline procedures to avoid TS7056
@@ -31,7 +31,7 @@ export const appRouter = {
 // All routers exported separately to avoid TS7056 type explosion
 export {
   boxRouter,
-  secretRouter,
+  credentialRouter,
   boxApiRouter,
   boxAiRouter,
   boxDetailsRouter,
@@ -45,7 +45,7 @@ export {
 // Individual router types for SDK client composition
 export type AppRouter = typeof appRouter;
 export type BoxRouterType = typeof boxRouter;
-export type SecretRouterType = typeof secretRouter;
+export type CredentialRouterType = typeof credentialRouter;
 export type BoxEnvVarRouterType = typeof boxEnvVarRouter;
 export type ApiKeyRouterType = typeof apiKeyRouter;
 export type SkillRouterType = typeof skillRouter;
@@ -56,7 +56,7 @@ export type CronjobRouterType = typeof cronjobRouter;
 // Combined client type for SDK - includes all routers
 export type AppRouterClient = RouterClient<AppRouter> & {
   box: RouterClient<BoxRouterType>;
-  secret: RouterClient<SecretRouterType>;
+  credential: RouterClient<CredentialRouterType>;
   boxEnvVar: RouterClient<BoxEnvVarRouterType>;
   apiKey: RouterClient<ApiKeyRouterType>;
   skill: RouterClient<SkillRouterType>;

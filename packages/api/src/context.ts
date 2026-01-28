@@ -8,20 +8,20 @@ import type { AiService } from "./services/ai.service";
 import type { ApiKeyService } from "./services/api-key.service";
 import type { BoxEnvVarService } from "./services/box-env-var.service";
 import type { BoxService } from "./services/box.service";
+import type { CredentialService } from "./services/credential.service";
 import type { CronjobService } from "./services/cronjob.service";
 import type { DeployStepService } from "./services/deploy-step.service";
 import type { EmailService } from "./services/email.service";
-import type { SecretService } from "./services/secret.service";
 
 export interface Services {
   aiService: AiService;
   apiKeyService: ApiKeyService;
   boxEnvVarService: BoxEnvVarService;
   boxService: BoxService;
+  credentialService: CredentialService;
   cronjobService: CronjobService;
   deployStepService: DeployStepService;
   emailService: EmailService;
-  secretService: SecretService;
   spritesClient: SpritesClient;
 }
 
