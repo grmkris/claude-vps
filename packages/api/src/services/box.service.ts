@@ -17,7 +17,10 @@ import {
   type UserId,
 } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
-import { type Environment, SERVICE_URLS } from "@vps-claude/shared/services.schema";
+import {
+  type Environment,
+  SERVICE_URLS,
+} from "@vps-claude/shared/services.schema";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
 

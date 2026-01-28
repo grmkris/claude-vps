@@ -70,7 +70,7 @@ export async function textToSpeech(
 
   const replicate = new Replicate({ auth: apiToken });
 
-  const output = (await replicate.run(
+  const output = await replicate.run(
     "lucataco/xtts-v2:684bc3855b37866c0c65add2ff39c78f3dea3f4ff103a436465326e0f438d55e",
     {
       input: {
@@ -80,12 +80,12 @@ export async function textToSpeech(
         language: "en",
       },
     }
-  )) as unknown as string;
+  );
 
   const durationMs = Date.now() - start;
 
-  if (!output) {
-    throw new Error("No audio returned from Replicate");
+  if (!output || typeof output !== "string") {
+    throw new Error("No audio URL returned from Replicate");
   }
 
   // Estimate audio duration (rough: ~150 chars per second of speech)

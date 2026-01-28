@@ -11,7 +11,11 @@ import {
   type Job,
 } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
-import { SETUP_STEP_KEYS } from "@vps-claude/sprites";
+import { SETUP_STEP_KEYS, type SetupStepKey } from "@vps-claude/sprites";
+
+function isSetupStepKey(key: string): key is SetupStepKey {
+  return (SETUP_STEP_KEYS as readonly string[]).includes(key);
+}
 
 import type { BoxEnvVarService } from "../../services/box-env-var.service";
 import type { BoxService } from "../../services/box.service";
@@ -402,10 +406,7 @@ async function getCompletedSteps(
 
   // Get completed setup step keys
   const completedStepKeys = steps
-    .filter(
-      (s) =>
-        s.status === "completed" && SETUP_STEP_KEYS.includes(s.stepKey as any)
-    )
+    .filter((s) => s.status === "completed" && isSetupStepKey(s.stepKey))
     .map((s) => s.stepKey);
 
   // Get completed skill IDs (step key format: SKILL_{skillId})

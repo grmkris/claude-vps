@@ -22,69 +22,10 @@ import {
   useDeleteCronjob,
   useToggleCronjob,
 } from "@/hooks/use-cronjobs";
+import { describeCron } from "@/utils/cron";
+import { formatRelativeTime } from "@/utils/time";
 
 import { CronjobForm } from "./cronjob-form";
-
-// Human-readable cron descriptions (simplified)
-function describeCron(schedule: string): string {
-  const parts = schedule.split(" ");
-  if (parts.length !== 5) return schedule;
-
-  const [minute, hour, dayMonth, month, dayWeek] = parts;
-
-  // Common patterns
-  if (schedule === "* * * * *") return "Every minute";
-  if (schedule === "0 * * * *") return "Every hour";
-  if (schedule === "0 0 * * *") return "Daily at midnight";
-  if (minute?.startsWith("*/")) {
-    const interval = minute.slice(2);
-    return `Every ${interval} minutes`;
-  }
-  if (hour?.startsWith("*/")) {
-    const interval = hour.slice(2);
-    return `Every ${interval} hours`;
-  }
-  if (dayWeek === "1-5" && minute !== "*" && hour !== "*") {
-    return `Weekdays at ${hour}:${minute?.padStart(2, "0")}`;
-  }
-  if (dayMonth !== "*" || month !== "*") {
-    return schedule; // Complex, just show raw
-  }
-  if (dayWeek !== "*") {
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dayName = days[Number.parseInt(dayWeek)] ?? dayWeek;
-    return `${dayName} at ${hour}:${minute?.padStart(2, "0")}`;
-  }
-  if (hour !== "*" && minute !== "*") {
-    return `Daily at ${hour}:${minute?.padStart(2, "0")}`;
-  }
-
-  return schedule;
-}
-
-function formatRelativeTime(date: Date | string | null): string {
-  if (!date) return "Never";
-  const now = new Date();
-  const d = typeof date === "string" ? new Date(date) : date;
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 0) {
-    const futureMs = -diffMs;
-    const futureMins = Math.floor(futureMs / 60000);
-    const futureHours = Math.floor(futureMs / 3600000);
-    if (futureMins < 60) return `in ${futureMins}m`;
-    if (futureHours < 24) return `in ${futureHours}h`;
-    return d.toLocaleDateString();
-  }
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
-}
 
 function ExecutionStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {

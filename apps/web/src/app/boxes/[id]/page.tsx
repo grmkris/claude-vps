@@ -7,8 +7,6 @@ import {
   ArrowLeft,
   Bot,
   CalendarClock,
-  Check,
-  Copy,
   ExternalLink,
   Mail,
   MailOpen,
@@ -23,6 +21,7 @@ import { useState } from "react";
 import { BoxCommandRunner } from "@/components/box-command-runner";
 import { StatusDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { env } from "@/env";
 import { useBox } from "@/hooks/use-boxes";
@@ -34,31 +33,6 @@ import { EnvVarsPanel } from "./components/env-vars-panel";
 import { FileBrowser } from "./components/file-browser";
 
 type TabType = "inbox" | "console" | "files" | "agent" | "cronjobs" | "env";
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="p-1 hover:bg-secondary rounded transition-colors"
-      title="Copy to clipboard"
-    >
-      {copied ? (
-        <Check className="h-4 w-4 text-green-500" />
-      ) : (
-        <Copy className="h-4 w-4 text-muted-foreground" />
-      )}
-    </button>
-  );
-}
 
 function EmailStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
