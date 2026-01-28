@@ -61,12 +61,19 @@ export function buildEmailPrompt(
   email: InboundEmail,
   filepath: string
 ): string {
-  return `New email received. Process the email at ${filepath}
+  const sender = email.from.name
+    ? `${email.from.name} <${email.from.email}>`
+    : email.from.email;
 
-From: ${email.from.email}${email.from.name ? ` (${email.from.name})` : ""}
+  return `New email received.
+
+From: ${sender}
 Subject: ${email.subject || "(no subject)"}
 Received: ${email.receivedAt}
+File: ${filepath}
 
-Read the email content and respond appropriately. You can send a reply using:
-curl -X POST http://localhost:9999/email/send -H "Content-Type: application/json" -d '{"to": "${email.from.email}", "subject": "Re: ${email.subject || ""}", "body": "your reply here"}'`;
+Read the email and handle it appropriately.
+
+To reply: POST http://localhost:9999/email/send
+{"to": "${email.from.email}", "subject": "Re: ${email.subject || ""}", "body": "..."}`;
 }
