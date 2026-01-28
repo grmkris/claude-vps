@@ -105,4 +105,44 @@ export const boxEnvVarRouter = {
         }
       );
     }),
+
+  bulkSet: protectedProcedure
+    .input(
+      z.object({
+        boxId: BoxId,
+        envVars: z.array(
+          z.object({
+            key: keySchema,
+            type: envVarTypeSchema,
+            value: z.string().max(10000).optional(),
+            credentialKey: z.string().max(100).optional(),
+          })
+        ),
+      })
+    )
+    .output(SuccessOutput)
+    .handler(async ({ context, input }) => {
+      const result = await context.boxEnvVarService.bulkSet(
+        input.boxId,
+        context.session.user.id,
+        input.envVars
+      );
+      return result.match(
+        () => ({ success: true as const }),
+        (error) => {
+          if (error.type === "NOT_AUTHORIZED") {
+            throw new ORPCError("FORBIDDEN", { message: error.message });
+          }
+          if (error.type === "BOX_NOT_FOUND") {
+            throw new ORPCError("NOT_FOUND", { message: error.message });
+          }
+          if (error.type === "INVALID_CREDENTIAL") {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: error.message,
+          });
+        }
+      );
+    }),
 };

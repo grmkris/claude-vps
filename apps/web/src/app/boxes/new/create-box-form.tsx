@@ -6,10 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 
+import { EnvVarsInput, type EnvVarInput } from "@/components/env-vars-input";
 import { SkillSelector } from "@/components/skill-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useBulkSetBoxEnvVars } from "@/hooks/use-box-env-vars";
 import { useCreateBox } from "@/hooks/use-boxes";
 
 function generateSubdomainPreview(name: string): string {
@@ -20,8 +22,10 @@ function generateSubdomainPreview(name: string): string {
 export default function CreateBoxForm() {
   const router = useRouter();
   const createMutation = useCreateBox();
+  const bulkSetEnvVars = useBulkSetBoxEnvVars();
   const [name, setName] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
+  const [envVars, setEnvVars] = useState<EnvVarInput[]>([]);
 
   const subdomainPreview = useMemo(
     () => generateSubdomainPreview(name),
@@ -36,7 +40,18 @@ export default function CreateBoxForm() {
         skills,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          // Set env vars if any were added
+          const validEnvVars = envVars.filter(
+            (ev) =>
+              ev.key && (ev.type === "literal" ? ev.value : ev.credentialKey)
+          );
+          if (validEnvVars.length > 0) {
+            bulkSetEnvVars.mutate({
+              boxId: data.box.id,
+              envVars: validEnvVars,
+            });
+          }
           router.push("/");
         },
       }
@@ -98,6 +113,11 @@ export default function CreateBoxForm() {
         {/* Skills.sh Skills */}
         <div className="pt-6 border-t">
           <SkillSelector value={skills} onChange={setSkills} />
+        </div>
+
+        {/* Environment Variables */}
+        <div className="pt-6 border-t">
+          <EnvVarsInput value={envVars} onChange={setEnvVars} />
         </div>
 
         <Button

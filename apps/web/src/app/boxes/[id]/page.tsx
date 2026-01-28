@@ -14,6 +14,7 @@ import {
   MailOpen,
   Send,
   Terminal,
+  Variable,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -29,9 +30,10 @@ import { useBoxEmails } from "@/hooks/use-emails";
 import { useBoxSessions, useSendMessage } from "@/hooks/use-sessions";
 
 import { CronjobList } from "./components/cronjob-list";
+import { EnvVarsPanel } from "./components/env-vars-panel";
 import { FileBrowser } from "./components/file-browser";
 
-type TabType = "inbox" | "console" | "files" | "agent" | "cronjobs";
+type TabType = "inbox" | "console" | "files" | "agent" | "cronjobs" | "env";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -252,6 +254,18 @@ export default function BoxDetailPage() {
                 <CalendarClock className="h-4 w-4 inline-block mr-2" />
                 Schedules
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("env")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "env"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Variable className="h-4 w-4 inline-block mr-2" />
+                Environment
+              </button>
             </>
           )}
         </div>
@@ -377,6 +391,10 @@ export default function BoxDetailPage() {
 
         {activeTab === "cronjobs" && box.status === "running" && (
           <CronjobList boxId={id} />
+        )}
+
+        {activeTab === "env" && box.status === "running" && (
+          <EnvVarsPanel boxId={id} />
         )}
       </div>
     </div>
