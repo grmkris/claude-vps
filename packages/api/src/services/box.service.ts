@@ -19,7 +19,6 @@ import {
 import { generateSubdomain } from "@vps-claude/shared";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
-import { randomBytes } from "node:crypto";
 
 export type BoxServiceError =
   | { type: "NOT_FOUND"; message: string }
@@ -27,10 +26,6 @@ export type BoxServiceError =
   | { type: "INVALID_STATUS"; message: string }
   | { type: "VALIDATION_FAILED"; message: string }
   | { type: "FORBIDDEN"; message: string };
-
-function generateAgentSecret(): string {
-  return randomBytes(32).toString("hex");
-}
 
 interface BoxServiceDeps {
   db: Database;

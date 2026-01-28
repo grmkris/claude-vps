@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import { env } from "../env";
+import { logger } from "../logger";
 import { protectedProcedure, publicProcedure } from "../procedures";
 import { runWithSession } from "../utils/agent";
 import {
@@ -26,7 +27,7 @@ export const emailRouter = {
         prompt,
         contextType: "email",
         contextId: input.messageId,
-      }).catch(console.error);
+      }).catch((err) => logger.error({ err }, "Email session failed"));
 
       return { success: true, filepath };
     }),

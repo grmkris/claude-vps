@@ -28,6 +28,7 @@
         "@modelcontextprotocol/sdk": "^1.13.0",
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
+        "@vps-claude/logger": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
         "hono": "catalog:",

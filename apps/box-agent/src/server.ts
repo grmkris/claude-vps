@@ -2,6 +2,7 @@ import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { Hono } from "hono";
 
 import { env } from "./env";
+import { logger } from "./logger";
 import { cronRouter } from "./routers/cron.router";
 import { emailRouter } from "./routers/email.router";
 import { healthRouter } from "./routers/health.router";
@@ -35,7 +36,7 @@ app.all("/*", async (c) => {
   return c.text("Not Found", 404);
 });
 
-console.log(`Box agent starting on port ${env.BOX_AGENT_PORT}...`);
+logger.info(`Box agent starting on port ${env.BOX_AGENT_PORT}...`);
 
 export default {
   port: env.BOX_AGENT_PORT,

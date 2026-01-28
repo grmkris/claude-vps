@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { logger } from "../logger";
 import { protectedProcedure } from "../procedures";
 import { runWithSession } from "../utils/agent";
 
@@ -17,8 +18,8 @@ export const cronRouter = {
       z.object({ success: z.boolean(), sessionId: z.string().optional() })
     )
     .handler(async ({ input }) => {
-      console.log(
-        `[cron.router] Triggering cronjob ${input.cronjobName} (${input.cronjobId})`
+      logger.info(
+        `Triggering cronjob ${input.cronjobName} (${input.cronjobId})`
       );
 
       // Run Claude session with the cronjob prompt
@@ -26,10 +27,10 @@ export const cronRouter = {
         prompt: input.prompt,
         contextType: "cron",
         contextId: input.cronjobId,
-      }).catch((error) => {
-        console.error(
-          `[cron.router] Cronjob session failed: ${input.cronjobId}`,
-          error
+      }).catch((err) => {
+        logger.error(
+          { err, cronjobId: input.cronjobId },
+          "Cronjob session failed"
         );
       });
 

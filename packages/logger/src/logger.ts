@@ -1,9 +1,33 @@
 import type { LoggerOptions } from "pino";
 
+import fs from "node:fs";
+import path from "node:path";
 import { pino } from "pino";
 import pkg from "pino-std-serializers";
 
 export type Environment = "dev" | "staging" | "prod" | "local";
+
+// Find monorepo root (where package.json with workspaces exists)
+function findMonorepoRoot(): string {
+  let dir = process.cwd();
+  while (dir !== "/") {
+    const pkgPath = path.join(dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+        if (pkg.workspaces) {
+          return dir;
+        }
+      } catch {
+        // Continue searching
+      }
+    }
+    dir = path.dirname(dir);
+  }
+  return process.cwd();
+}
+
+const LOGS_DIR = path.join(findMonorepoRoot(), "logs");
 
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
 
@@ -69,15 +93,27 @@ export function createLogger(config: LoggerConfig = {}): Logger {
     ? pino({
         ...loggerOptions,
         transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "HH:MM:ss Z",
-            ignore: "pid,hostname,app,env",
-            singleLine: true,
-            messageFormat: "{msg}",
-            sync: true,
-          },
+          targets: [
+            {
+              target: "pino-pretty",
+              options: {
+                colorize: true,
+                translateTime: "HH:MM:ss Z",
+                ignore: "pid,hostname,app,env",
+                singleLine: true,
+                messageFormat: "{msg}",
+              },
+              level,
+            },
+            {
+              target: "pino/file",
+              options: {
+                destination: path.join(LOGS_DIR, `${appName}.log`),
+                mkdir: true,
+              },
+              level,
+            },
+          ],
         },
       })
     : pino(loggerOptions);

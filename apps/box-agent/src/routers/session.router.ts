@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { logger } from "../logger";
 import { protectedProcedure, publicProcedure } from "../procedures";
 import { runWithSession } from "../utils/agent";
 import { listSessions } from "../utils/sessions";
@@ -38,7 +39,7 @@ export const sessionRouter = {
         prompt: input.message,
         contextType: input.contextType,
         contextId,
-      }).catch(console.error);
+      }).catch((err) => logger.error({ err }, "Session failed"));
 
       return { success: true, contextId };
     }),
