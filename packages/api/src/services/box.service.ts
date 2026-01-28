@@ -127,7 +127,9 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
     async createDev(
       userId: UserId,
       name: string
-    ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
+    ): Promise<
+      Result<{ box: SelectBoxSchema; agentSecret: string }, BoxServiceError>
+    > {
       if (process.env.APP_ENV !== "dev") {
         return err({
           type: "FORBIDDEN",
@@ -180,7 +182,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: "Default",
       });
 
-      return ok(created);
+      return ok({ box: created, agentSecret });
     },
 
     async deploy(

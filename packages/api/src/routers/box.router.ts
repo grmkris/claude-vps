@@ -3,7 +3,12 @@ import { BoxId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
-import { BoxCreateOutput, BoxListOutput, SuccessOutput } from "./schemas";
+import {
+  BoxCreateOutput,
+  BoxListOutput,
+  DevBoxCreateOutput,
+  SuccessOutput,
+} from "./schemas";
 
 export const boxRouter = {
   list: protectedProcedure
@@ -58,14 +63,14 @@ export const boxRouter = {
         name: z.string().min(1).max(50),
       })
     )
-    .output(BoxCreateOutput)
+    .output(DevBoxCreateOutput)
     .handler(async ({ context, input }) => {
       const result = await context.boxService.createDev(
         context.session.user.id,
         input.name
       );
       return result.match(
-        (box) => ({ box }),
+        ({ box, agentSecret }) => ({ box, agentSecret }),
         (error) => {
           if (error.type === "FORBIDDEN") {
             throw new ORPCError("FORBIDDEN", { message: error.message });

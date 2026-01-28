@@ -9,14 +9,24 @@ import {
   Rocket,
   Box,
   MoreHorizontal,
+  Copy,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 import type { Box as BoxType } from "@/lib/orpc-types";
 
 import { DeployProgress } from "@/components/deploy-progress";
 import { StatusDot } from "@/components/status-dot";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,9 +198,88 @@ function LoadingSkeleton() {
   );
 }
 
+function DevBoxCredentialsDialog({
+  credentials,
+  onClose,
+}: {
+  credentials: { agentSecret: string; subdomain: string } | null;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (!credentials) return null;
+
+  const envContent = `BOX_AGENT_SECRET=${credentials.agentSecret}
+BOX_API_TOKEN=${credentials.agentSecret}
+BOX_API_URL=http://localhost:33000/box
+BOX_SUBDOMAIN=${credentials.subdomain}
+BOX_AGENT_PORT=9999
+BOX_INBOX_DIR=./.inbox
+BOX_DB_PATH=./.box-agent/sessions.db`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(envContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Dialog open={!!credentials} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Dev Box Created</DialogTitle>
+          <DialogDescription>
+            Copy these credentials to <code>apps/box-agent/.env</code> then run{" "}
+            <code>bun run dev</code> in the box-agent directory.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="relative">
+            <pre className="bg-secondary p-4 rounded-lg text-sm font-mono overflow-x-auto">
+              {envContent}
+            </pre>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="absolute top-2 right-2"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <p className="font-medium mb-1">Quick start:</p>
+            <pre className="bg-secondary p-2 rounded text-xs">
+              cd apps/box-agent && bun run dev
+            </pre>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BoxesList() {
   const { data, isLoading, error } = useBoxes();
   const createDevBox = useCreateDevBox();
+  const [devBoxCredentials, setDevBoxCredentials] = useState<{
+    agentSecret: string;
+    subdomain: string;
+  } | null>(null);
+
+  // Show credentials dialog when dev box is created
+  useEffect(() => {
+    if (createDevBox.isSuccess && createDevBox.data) {
+      setDevBoxCredentials({
+        agentSecret: createDevBox.data.agentSecret,
+        subdomain: createDevBox.data.box.subdomain,
+      });
+    }
+  }, [createDevBox.isSuccess, createDevBox.data]);
 
   const handleCreateDevBox = () => {
     const name = `dev-${Date.now().toString(36)}`;
@@ -210,6 +299,11 @@ export default function BoxesList() {
 
   return (
     <div className="space-y-8">
+      <DevBoxCredentialsDialog
+        credentials={devBoxCredentials}
+        onClose={() => setDevBoxCredentials(null)}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Your Boxes</h1>

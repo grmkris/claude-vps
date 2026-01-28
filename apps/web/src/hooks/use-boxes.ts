@@ -54,7 +54,7 @@ export function useCreateDevBox() {
       void queryClient.invalidateQueries({
         queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
       });
-      toast.success("Dev box created!");
+      // Don't show toast - component will show credentials dialog
     },
     onError: (error) => {
       toast.error(

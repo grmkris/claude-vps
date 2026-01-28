@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "dev": "bun run --watch src/index.ts",
     "build": "bun build --compile --minify --sourcemap ./src/index.ts --outfile dist/box-agent",
     "build:linux": "bun build --compile --target=bun-linux-x64 --minify ./src/index.ts --outfile dist/box-agent-linux-x64",
     "start": "bun run src/index.ts",
