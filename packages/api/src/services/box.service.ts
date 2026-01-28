@@ -170,7 +170,9 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         });
       }
 
-      const agentSecret = generateAgentSecret();
+      // Hardcoded secret for dev boxes - matches apps/box-agent/.env
+      const agentSecret =
+        "dev-secret-0000000000000000000000000000000000000000000000";
       await db.insert(boxEmailSettings).values({
         boxId: created.id,
         agentSecret,
