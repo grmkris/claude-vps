@@ -392,7 +392,56 @@ ENVEOF`
         chmod +x /usr/local/bin/box-agent
       `,
       SETUP_CREATE_DIRS: `
-        mkdir -p /home/sprite/.inbox /home/sprite/.box-agent
+        mkdir -p /home/sprite/.inbox /home/sprite/.box-agent /home/sprite/.claude/skills/email-templates
+      `,
+      SETUP_EMAIL_SKILL: `
+        cat > /home/sprite/.claude/skills/email-templates/SKILL.md << 'SKILLEOF'
+# Email Templates Skill
+
+Send beautifully formatted emails using markdown.
+
+## Quick Send
+
+\`\`\`bash
+POST http://localhost:9999/email/send
+Content-Type: application/json
+
+{
+  "to": "recipient@example.com",
+  "subject": "Your subject",
+  "body": "# Hello\\n\\nYour **markdown** content here."
+}
+\`\`\`
+
+## Markdown Formatting
+
+Your email body supports full markdown:
+
+- **Bold**: \`**text**\`
+- *Italic*: \`*text*\`
+- Lists: \`- item\` or \`1. item\`
+- Links: \`[text](url)\`
+- Headers: \`# H1\`, \`## H2\`, \`### H3\`
+- Code: \\\`inline\\\` or fenced blocks
+- Blockquotes: \`> quoted text\`
+
+## Example: Professional Reply
+
+\`\`\`json
+{
+  "to": "john@example.com",
+  "subject": "Re: Project Update",
+  "body": "Hi John,\\n\\nThank you for the update. Here are my thoughts:\\n\\n## Key Points\\n\\n1. **Timeline** looks good\\n2. *Budget* needs review\\n3. Next steps:\\n   - Schedule call\\n   - Review docs\\n\\nBest regards"
+}
+\`\`\`
+
+## Tips
+
+- Keep subject lines concise
+- Use headers to organize longer emails
+- Include clear calls-to-action
+- The email will be rendered as styled HTML
+SKILLEOF
       `,
       SETUP_ENV_VARS: `
         tee -a /home/sprite/.bashrc > /dev/null << 'ENVEOF'
@@ -633,7 +682,61 @@ STARTEOF
       2,
       "Create directories",
       `
-      mkdir -p /home/sprite/.inbox /home/sprite/.box-agent
+      mkdir -p /home/sprite/.inbox /home/sprite/.box-agent /home/sprite/.claude/skills/email-templates
+    `
+    );
+
+    await runStep(
+      3,
+      "Install email skill",
+      `
+      cat > /home/sprite/.claude/skills/email-templates/SKILL.md << 'SKILLEOF'
+# Email Templates Skill
+
+Send beautifully formatted emails using markdown.
+
+## Quick Send
+
+\`\`\`bash
+POST http://localhost:9999/email/send
+Content-Type: application/json
+
+{
+  "to": "recipient@example.com",
+  "subject": "Your subject",
+  "body": "# Hello\\n\\nYour **markdown** content here."
+}
+\`\`\`
+
+## Markdown Formatting
+
+Your email body supports full markdown:
+
+- **Bold**: \`**text**\`
+- *Italic*: \`*text*\`
+- Lists: \`- item\` or \`1. item\`
+- Links: \`[text](url)\`
+- Headers: \`# H1\`, \`## H2\`, \`### H3\`
+- Code: \\\`inline\\\` or fenced blocks
+- Blockquotes: \`> quoted text\`
+
+## Example: Professional Reply
+
+\`\`\`json
+{
+  "to": "john@example.com",
+  "subject": "Re: Project Update",
+  "body": "Hi John,\\n\\nThank you for the update. Here are my thoughts:\\n\\n## Key Points\\n\\n1. **Timeline** looks good\\n2. *Budget* needs review\\n3. Next steps:\\n   - Schedule call\\n   - Review docs\\n\\nBest regards"
+}
+\`\`\`
+
+## Tips
+
+- Keep subject lines concise
+- Use headers to organize longer emails
+- Include clear calls-to-action
+- The email will be rendered as styled HTML
+SKILLEOF
     `
     );
 
@@ -642,7 +745,7 @@ STARTEOF
       .join("\n");
 
     await runStep(
-      3,
+      4,
       "Set env vars",
       `
       tee -a /home/sprite/.bashrc > /dev/null << 'ENVEOF'
@@ -653,7 +756,7 @@ ENVEOF
     );
 
     await runStep(
-      4,
+      5,
       "Create env file",
       `
       tee /home/sprite/.bashrc.env > /dev/null << 'ENVEOF'
@@ -665,7 +768,7 @@ ENVEOF
     );
 
     await runStep(
-      5,
+      6,
       "Create box-agent service",
       `
       cat > /home/sprite/start-box-agent.sh << 'STARTEOF'
@@ -683,7 +786,7 @@ STARTEOF
     );
 
     await runStep(
-      6,
+      7,
       "Install nginx",
       `
       sudo apt-get update && sudo apt-get install -y nginx
@@ -692,7 +795,7 @@ STARTEOF
 
     await writeFile(spriteName, "/etc/nginx/nginx.conf", NGINX_CONFIG);
     await runStep(
-      7,
+      8,
       "Create nginx service",
       `
       sudo nginx -t
@@ -712,7 +815,7 @@ NGINXEOF
     );
 
     await runStep(
-      8,
+      9,
       "Clone agent-app",
       `
       git clone https://github.com/grmkris/agent-next-app /home/sprite/agent-app
@@ -720,7 +823,7 @@ NGINXEOF
     );
 
     await runStep(
-      9,
+      10,
       "Install agent-app",
       `
       cd /home/sprite/agent-app && /.sprite/bin/bun install
@@ -728,7 +831,7 @@ NGINXEOF
     );
 
     await runStep(
-      10,
+      11,
       "Create agent-app service",
       `
       cat > /home/sprite/start-agent-app.sh << 'STARTEOF'

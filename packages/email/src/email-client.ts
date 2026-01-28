@@ -3,6 +3,7 @@ import type { Logger } from "@vps-claude/logger";
 import { render } from "@react-email/render";
 import { Inbound } from "inboundemail";
 
+import { AgentReply } from "../emails/agent-reply";
 import { EmailVerificationOTP } from "../emails/email-verification-otp";
 import { ForgetPasswordOTP } from "../emails/forget-password-otp";
 import { SignInOTP } from "../emails/sign-in-otp";
@@ -215,4 +216,29 @@ export function createMockEmailClient(): EmailClient {
     sendEmail: async () => "mock-email-id",
     sendRawEmail: async () => "mock-email-id",
   };
+}
+
+/**
+ * Render markdown body to HTML using the agent reply template
+ */
+export async function renderAgentEmail(body: string): Promise<string> {
+  return render(AgentReply({ body }));
+}
+
+/**
+ * Convert markdown to plain text for email fallback
+ */
+export function markdownToPlainText(markdown: string): string {
+  return markdown
+    .replace(/#{1,6}\s+/g, "") // Remove headers
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // Bold
+    .replace(/\*([^*]+)\*/g, "$1") // Italic
+    .replace(/`([^`]+)`/g, "$1") // Inline code
+    .replace(/```[\s\S]*?```/g, (match) => match.replace(/```\w*\n?/g, "")) // Code blocks
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Links
+    .replace(/^\s*[-*+]\s+/gm, "• ") // Unordered lists
+    .replace(/^\s*\d+\.\s+/gm, "• ") // Ordered lists
+    .replace(/>\s*/gm, "") // Blockquotes
+    .replace(/\n{3,}/g, "\n\n") // Multiple newlines
+    .trim();
 }

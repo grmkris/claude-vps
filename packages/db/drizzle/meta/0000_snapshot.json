@@ -1,5 +1,5 @@
 {
-  "id": "d3831b93-d5be-46e2-b458-216753a664a2",
+  "id": "39d4def3-62f8-41ca-bd20-f03c4975e6e9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -702,6 +702,102 @@
           "columns": ["subdomain"]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.box_env_var": {
+      "name": "box_env_var",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "box_id": {
+          "name": "box_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "box_env_var_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credential_key": {
+          "name": "credential_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "box_env_var_unique_idx": {
+          "name": "box_env_var_unique_idx",
+          "columns": [
+            {
+              "expression": "box_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "box_env_var_box_id_box_id_fk": {
+          "name": "box_env_var_box_id_box_id_fk",
+          "tableFrom": "box_env_var",
+          "tableTo": "box",
+          "columnsFrom": ["box_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1599,8 +1695,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user_secret": {
-      "name": "user_secret",
+    "public.user_credential": {
+      "name": "user_credential",
       "schema": "",
       "columns": {
         "id": {
@@ -1643,8 +1739,8 @@
         }
       },
       "indexes": {
-        "user_secret_unique_idx": {
-          "name": "user_secret_unique_idx",
+        "user_credential_unique_idx": {
+          "name": "user_credential_unique_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -1666,9 +1762,9 @@
         }
       },
       "foreignKeys": {
-        "user_secret_user_id_user_id_fk": {
-          "name": "user_secret_user_id_user_id_fk",
-          "tableFrom": "user_secret",
+        "user_credential_user_id_user_id_fk": {
+          "name": "user_credential_user_id_user_id_fk",
+          "tableFrom": "user_credential",
           "tableTo": "user",
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
@@ -1896,6 +1992,11 @@
         "error",
         "deleted"
       ]
+    },
+    "public.box_env_var_type": {
+      "name": "box_env_var_type",
+      "schema": "public",
+      "values": ["literal", "credential_ref"]
     },
     "public.trigger_type": {
       "name": "trigger_type",

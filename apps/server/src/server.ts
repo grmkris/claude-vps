@@ -24,7 +24,11 @@ import {
 } from "@vps-claude/api/workers/email-delivery.worker";
 import { createAuth } from "@vps-claude/auth";
 import { createDb, runMigrations } from "@vps-claude/db";
-import { createEmailClient } from "@vps-claude/email";
+import {
+  createEmailClient,
+  markdownToPlainText,
+  renderAgentEmail,
+} from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
 import { createQueueClient } from "@vps-claude/queue";
 import { createRedisClient } from "@vps-claude/redis";
@@ -168,10 +172,15 @@ const emailSendWorker = createEmailSendWorker({
   deps: {
     emailService,
     sendEmail: async (params) => {
+      // Render markdown body to HTML
+      const html = await renderAgentEmail(params.body);
+      const text = markdownToPlainText(params.body);
+
       await emailClient.sendRawEmail({
         to: params.to,
         subject: params.subject,
-        text: params.body,
+        text,
+        html,
         replyTo: params.inReplyTo?.from,
       });
     },

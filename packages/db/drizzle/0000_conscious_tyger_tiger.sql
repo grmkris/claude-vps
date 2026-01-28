@@ -1,4 +1,5 @@
 CREATE TYPE "public"."box_status" AS ENUM('pending', 'deploying', 'running', 'stopped', 'error', 'deleted');--> statement-breakpoint
+CREATE TYPE "public"."box_env_var_type" AS ENUM('literal', 'credential_ref');--> statement-breakpoint
 CREATE TYPE "public"."trigger_type" AS ENUM('email', 'cron', 'webhook', 'manual', 'default');--> statement-breakpoint
 CREATE TYPE "public"."box_cronjob_execution_status" AS ENUM('pending', 'waking_box', 'running', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."box_deploy_step_status" AS ENUM('pending', 'running', 'completed', 'failed', 'skipped');--> statement-breakpoint
@@ -92,6 +93,17 @@ CREATE TABLE "box" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "box_subdomain_unique" UNIQUE("subdomain")
+);
+--> statement-breakpoint
+CREATE TABLE "box_env_var" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"box_id" uuid NOT NULL,
+	"key" text NOT NULL,
+	"type" "box_env_var_type" NOT NULL,
+	"value" text,
+	"credential_key" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "box_agent_config" (
@@ -190,7 +202,7 @@ CREATE TABLE "box_email_settings" (
 	CONSTRAINT "box_email_settings_box_id_unique" UNIQUE("box_id")
 );
 --> statement-breakpoint
-CREATE TABLE "user_secret" (
+CREATE TABLE "user_credential" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"user_id" uuid NOT NULL,
 	"key" text NOT NULL,
@@ -221,13 +233,14 @@ ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("
 ALTER TABLE "apikey" ADD CONSTRAINT "apikey_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box" ADD CONSTRAINT "box_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "box_env_var" ADD CONSTRAINT "box_env_var_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_agent_config" ADD CONSTRAINT "box_agent_config_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_cronjob" ADD CONSTRAINT "box_cronjob_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_cronjob_execution" ADD CONSTRAINT "box_cronjob_execution_cronjob_id_box_cronjob_id_fk" FOREIGN KEY ("cronjob_id") REFERENCES "public"."box_cronjob"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_deploy_step" ADD CONSTRAINT "box_deploy_step_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_email" ADD CONSTRAINT "box_email_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "box_email_settings" ADD CONSTRAINT "box_email_settings_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_secret" ADD CONSTRAINT "user_secret_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_credential" ADD CONSTRAINT "user_credential_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_usage" ADD CONSTRAINT "ai_usage_box_id_box_id_fk" FOREIGN KEY ("box_id") REFERENCES "public"."box"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
@@ -238,6 +251,7 @@ CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("ident
 CREATE INDEX "box_userId_idx" ON "box" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "box_subdomain_idx" ON "box" USING btree ("subdomain");--> statement-breakpoint
 CREATE INDEX "box_status_idx" ON "box" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "box_env_var_unique_idx" ON "box_env_var" USING btree ("box_id","key");--> statement-breakpoint
 CREATE UNIQUE INDEX "box_agent_config_box_trigger_idx" ON "box_agent_config" USING btree ("box_id","trigger_type");--> statement-breakpoint
 CREATE INDEX "box_agent_config_box_id_idx" ON "box_agent_config" USING btree ("box_id");--> statement-breakpoint
 CREATE INDEX "box_cronjob_box_id_idx" ON "box_cronjob" USING btree ("box_id");--> statement-breakpoint
@@ -254,7 +268,7 @@ CREATE INDEX "box_email_box_id_idx" ON "box_email" USING btree ("box_id");--> st
 CREATE INDEX "box_email_status_idx" ON "box_email" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "box_email_received_at_idx" ON "box_email" USING btree ("received_at");--> statement-breakpoint
 CREATE INDEX "box_email_settings_boxId_idx" ON "box_email_settings" USING btree ("box_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "user_secret_unique_idx" ON "user_secret" USING btree ("user_id","key");--> statement-breakpoint
+CREATE UNIQUE INDEX "user_credential_unique_idx" ON "user_credential" USING btree ("user_id","key");--> statement-breakpoint
 CREATE INDEX "ai_usage_user_id_idx" ON "ai_usage" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "ai_usage_box_id_idx" ON "ai_usage" USING btree ("box_id");--> statement-breakpoint
 CREATE INDEX "ai_usage_provider_idx" ON "ai_usage" USING btree ("provider");--> statement-breakpoint
