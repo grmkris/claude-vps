@@ -1,13 +1,13 @@
 /**
- * MCP Server for AI Tools
+ * MCP Server for Box Agent Tools
  *
  * When box-agent is run with `mcp` subcommand, it serves MCP over stdio.
- * This allows Claude to discover and use AI tools via the MCP protocol.
+ * This allows Claude to discover and use tools via the MCP protocol.
  *
  * Tools:
- * - generate_image: Generate images from text prompts
- * - text_to_speech: Convert text to audio
- * - speech_to_text: Transcribe audio to text
+ * - AI: generate_image, text_to_speech, speech_to_text
+ * - Cronjob: cronjob_list, cronjob_create, cronjob_update, cronjob_delete
+ * - Email: email_send, email_list, email_read
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -81,6 +81,56 @@ const AI_TOOLS = [
         },
       },
       required: ["audioUrl"],
+    },
+  },
+];
+
+const EMAIL_TOOLS = [
+  {
+    name: "email_send",
+    description:
+      "Send an email with markdown formatting. The body supports **bold**, *italic*, lists, links, headers, and code blocks.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        to: {
+          type: "string",
+          description: "Recipient email address",
+        },
+        subject: {
+          type: "string",
+          description: "Email subject line",
+        },
+        body: {
+          type: "string",
+          description:
+            "Email body content. Supports markdown formatting: **bold**, *italic*, # headers, - lists, [links](url), `code`",
+        },
+      },
+      required: ["to", "subject", "body"],
+    },
+  },
+  {
+    name: "email_list",
+    description: "List all emails in the inbox",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+      required: [] as string[],
+    },
+  },
+  {
+    name: "email_read",
+    description: "Read an email by its ID",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: {
+          type: "string",
+          description: "The email ID (filename without .json extension)",
+        },
+      },
+      required: ["id"],
     },
   },
 ];
@@ -175,6 +225,7 @@ const CRONJOB_TOOLS = [
 interface EndpointConfig {
   path: string;
   method: "GET" | "POST" | "PUT" | "DELETE";
+  local?: boolean; // If true, use local box-agent server instead of BOX_API_URL
 }
 
 async function callApiEndpoint(
@@ -183,16 +234,25 @@ async function callApiEndpoint(
 ): Promise<unknown> {
   // Map tool name to endpoint path and method
   // BOX_API_URL already includes /box (e.g., http://server:33000/box)
+  // Local endpoints use localhost:BOX_AGENT_PORT (box-agent's own server)
   const endpointMap: Record<string, EndpointConfig> = {
-    // AI tools
+    // AI tools (remote - main API server)
     generate_image: { path: "/ai/generate-image", method: "POST" },
     text_to_speech: { path: "/ai/text-to-speech", method: "POST" },
     speech_to_text: { path: "/ai/speech-to-text", method: "POST" },
-    // Cronjob tools
+    // Cronjob tools (remote - main API server)
     cronjob_list: { path: "/cronjobs", method: "GET" },
     cronjob_create: { path: "/cronjobs", method: "POST" },
     cronjob_update: { path: `/cronjobs/${String(args.id)}`, method: "PUT" },
     cronjob_delete: { path: `/cronjobs/${String(args.id)}`, method: "DELETE" },
+    // Email tools (local - box-agent server)
+    email_send: { path: "/email/send", method: "POST", local: true },
+    email_list: { path: "/email/list", method: "GET", local: true },
+    email_read: {
+      path: `/email/${String(args.id)}`,
+      method: "GET",
+      local: true,
+    },
   };
 
   const config = endpointMap[toolName];
@@ -200,7 +260,12 @@ async function callApiEndpoint(
     throw new Error(`Unknown tool: ${toolName}`);
   }
 
-  const url = `${env.BOX_API_URL}${config.path}`;
+  // Use local box-agent server for email, remote BOX_API_URL for others
+  const baseUrl = config.local
+    ? `http://localhost:${env.BOX_AGENT_PORT}`
+    : env.BOX_API_URL;
+  const url = `${baseUrl}${config.path}`;
+
   const response = await fetch(url, {
     method: config.method,
     headers: {
@@ -232,7 +297,7 @@ export async function startMcpServer() {
     }
   );
 
-  const allTools = [...AI_TOOLS, ...CRONJOB_TOOLS];
+  const allTools = [...AI_TOOLS, ...CRONJOB_TOOLS, ...EMAIL_TOOLS];
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: allTools,
