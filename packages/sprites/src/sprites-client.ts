@@ -513,6 +513,16 @@ STARTEOF
       `,
       SETUP_MCP_SETTINGS: `
         mkdir -p /home/sprite/.claude
+
+        # Create MCP wrapper script
+        cat > /home/sprite/start-mcp.sh << 'MCPSCRIPT'
+#!/bin/bash
+source /home/sprite/.bashrc.env
+exec /usr/local/bin/box-agent mcp
+MCPSCRIPT
+        chmod +x /home/sprite/start-mcp.sh
+
+        # Create Claude settings with MCP config
         cat > /home/sprite/.claude/settings.json << 'MCPEOF'
 {
   "mcpServers": {
@@ -871,6 +881,16 @@ STARTEOF
       "Configure MCP settings",
       `
       mkdir -p /home/sprite/.claude
+
+      # Create MCP wrapper script
+      cat > /home/sprite/start-mcp.sh << 'MCPSCRIPT'
+#!/bin/bash
+source /home/sprite/.bashrc.env
+exec /usr/local/bin/box-agent mcp
+MCPSCRIPT
+      chmod +x /home/sprite/start-mcp.sh
+
+      # Create Claude settings with MCP config
       cat > /home/sprite/.claude/settings.json << 'MCPEOF'
 {
   "mcpServers": {
