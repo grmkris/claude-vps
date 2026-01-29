@@ -27,6 +27,7 @@ export const cronRouter = {
         prompt: input.prompt,
         contextType: "cron",
         contextId: input.cronjobId,
+        triggerType: "cron",
       }).catch((err) => {
         logger.error(
           { err, cronjobId: input.cronjobId },

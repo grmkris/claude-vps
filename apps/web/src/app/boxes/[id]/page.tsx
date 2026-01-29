@@ -28,6 +28,7 @@ import { useBox } from "@/hooks/use-boxes";
 import { useBoxEmails } from "@/hooks/use-emails";
 import { useBoxSessions, useSendMessage } from "@/hooks/use-sessions";
 
+import { AgentConfigPanel } from "./components/agent-config-panel";
 import { CronjobList } from "./components/cronjob-list";
 import { EnvVarsPanel } from "./components/env-vars-panel";
 import { FileBrowser } from "./components/file-browser";
@@ -360,7 +361,7 @@ export default function BoxDetailPage() {
         )}
 
         {activeTab === "agent" && box.status === "running" && (
-          <SessionsPanel boxId={id} />
+          <AgentTabContent boxId={id} />
         )}
 
         {activeTab === "cronjobs" && box.status === "running" && (
@@ -371,6 +372,34 @@ export default function BoxDetailPage() {
           <EnvVarsPanel boxId={id} />
         )}
       </div>
+    </div>
+  );
+}
+
+function AgentTabContent({ boxId }: { boxId: BoxId }) {
+  const [subTab, setSubTab] = useState<"sessions" | "config">("sessions");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button
+          variant={subTab === "sessions" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setSubTab("sessions")}
+        >
+          Sessions
+        </Button>
+        <Button
+          variant={subTab === "config" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => setSubTab("config")}
+        >
+          Configuration
+        </Button>
+      </div>
+
+      {subTab === "sessions" && <SessionsPanel boxId={boxId} />}
+      {subTab === "config" && <AgentConfigPanel boxId={boxId} />}
     </div>
   );
 }

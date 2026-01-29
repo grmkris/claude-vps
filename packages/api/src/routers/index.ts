@@ -2,6 +2,7 @@ import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
 import { apiKeyRouter } from "./api-key.router";
+import { boxAgentConfigRouter } from "./box-agent-config.router";
 import { boxAiRouter } from "./box-ai.router";
 import { boxApiRouter } from "./box-api.router";
 import { boxDetailsRouter } from "./box-details.router";
@@ -36,6 +37,7 @@ export {
   boxAiRouter,
   boxDetailsRouter,
   boxEnvVarRouter,
+  boxAgentConfigRouter,
   apiKeyRouter,
   skillRouter,
   boxFsRouter,
@@ -47,6 +49,7 @@ export type AppRouter = typeof appRouter;
 export type BoxRouterType = typeof boxRouter;
 export type CredentialRouterType = typeof credentialRouter;
 export type BoxEnvVarRouterType = typeof boxEnvVarRouter;
+export type BoxAgentConfigRouterType = typeof boxAgentConfigRouter;
 export type ApiKeyRouterType = typeof apiKeyRouter;
 export type SkillRouterType = typeof skillRouter;
 export type BoxFsRouterType = typeof boxFsRouter;
@@ -58,6 +61,7 @@ export type AppRouterClient = RouterClient<AppRouter> & {
   box: RouterClient<BoxRouterType>;
   credential: RouterClient<CredentialRouterType>;
   boxEnvVar: RouterClient<BoxEnvVarRouterType>;
+  boxAgentConfig: RouterClient<BoxAgentConfigRouterType>;
   apiKey: RouterClient<ApiKeyRouterType>;
   skill: RouterClient<SkillRouterType>;
   boxFs: RouterClient<BoxFsRouterType>;

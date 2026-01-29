@@ -5,11 +5,9 @@ import { env } from "./env";
 import { logger } from "./logger";
 import { cronRouter } from "./routers/cron.router";
 import { emailRouter } from "./routers/email.router";
-import { healthRouter } from "./routers/health.router";
 import { sessionRouter } from "./routers/session.router";
 
 const appRouter = {
-  ...healthRouter,
   cron: cronRouter,
   email: emailRouter,
   session: sessionRouter,
@@ -19,6 +17,11 @@ const apiHandler = new OpenAPIHandler(appRouter, {});
 
 const app = new Hono();
 
+// Health endpoints - direct Hono routes (same pattern as main server)
+app.get("/", (c) => c.text("OK"));
+app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));
+
+// ORPC handler for API routes
 app.all("/*", async (c) => {
   const context = {
     boxSecretHeader: c.req.header("X-Box-Secret"),

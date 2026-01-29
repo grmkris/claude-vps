@@ -39,6 +39,7 @@ export const sessionRouter = {
         prompt: input.message,
         contextType: input.contextType,
         contextId,
+        triggerType: "manual",
       }).catch((err) => logger.error({ err }, "Session failed"));
 
       return { success: true, contextId };

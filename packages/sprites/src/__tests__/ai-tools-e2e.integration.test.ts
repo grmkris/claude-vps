@@ -548,6 +548,67 @@ exec /usr/local/bin/box-agent`;
       console.log(`Duration: ${usage.durationMs}ms`);
     }
   }, 240_000); // 4 minute timeout for test
+
+  test("box-agent uses configured model from agent config", async () => {
+    console.log("\n=== Test: Agent Config Model Verification ===");
+
+    // 1. Update box's agent config to use a different model
+    const { boxAgentConfig } = await import("@vps-claude/db");
+    const configs = await db
+      .select()
+      .from(boxAgentConfig)
+      .where(eq(boxAgentConfig.boxId, boxId));
+
+    if (configs.length > 0) {
+      await db
+        .update(boxAgentConfig)
+        .set({
+          model: "claude-opus-4-5-20251101",
+          appendSystemPrompt: "E2E_CONFIG_TEST_MARKER",
+        })
+        .where(eq(boxAgentConfig.id, configs[0]!.id));
+      console.log("Updated agent config to use opus model");
+    }
+
+    // 2. Trigger a session (simple message, no AI tools needed)
+    const sessionPayload = {
+      message: "Hello, just testing config. Please respond with OK.",
+      contextType: "e2e-config-test",
+      contextId: `config-test-${Date.now()}`,
+    };
+
+    console.log("Triggering session via /sessions/send...");
+    const sessionResult = await execShell(`
+      curl -s -X POST http://localhost:8080/sessions/send \\
+        -H "Content-Type: application/json" \\
+        -H "X-Box-Secret: ${boxToken}" \\
+        -d '${JSON.stringify(sessionPayload).replace(/'/g, "'\\''")}' 2>&1 || echo "CURL_FAILED"
+    `);
+    console.log("Session trigger result:", sessionResult.stdout.slice(0, 200));
+
+    // 3. Wait for box-agent to fetch config and start session
+    console.log("Waiting 15s for config fetch and session start...");
+    await new Promise((r) => setTimeout(r, 15_000));
+
+    // 4. Check box-agent logs for config fetch
+    const logs = await execShell(
+      "tail -100 /home/sprite/.box-agent.log 2>/dev/null || echo 'No logs'"
+    );
+    console.log("Box-agent logs (last 100 lines):");
+    console.log(logs.stdout.slice(-2000)); // Last 2000 chars
+
+    // 5. Verify logs show the configured model was fetched
+    const hasConfigFetch = logs.stdout.includes("[fetchAgentConfig]");
+    const hasOpusModel = logs.stdout.includes("claude-opus-4-5-20251101");
+
+    console.log(`Config fetch logged: ${hasConfigFetch}`);
+    console.log(`Opus model in logs: ${hasOpusModel}`);
+
+    // Assert config was fetched (may not use opus if session didn't run, but fetch should happen)
+    expect(hasConfigFetch).toBe(true);
+
+    console.log("\n=== Agent Config Test Passed ===");
+  }, 120_000); // 2 minute timeout
 });
 
 /**

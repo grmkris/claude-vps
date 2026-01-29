@@ -27,6 +27,7 @@ export const emailRouter = {
         prompt,
         contextType: "email",
         contextId: input.messageId,
+        triggerType: "email",
       }).catch((err) => logger.error({ err }, "Email session failed"));
 
       return { success: true, filepath };
