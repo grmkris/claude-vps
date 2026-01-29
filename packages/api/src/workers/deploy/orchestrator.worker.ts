@@ -332,6 +332,7 @@ async function prepareEnvVars({
 
   return {
     ...boxEnvVars,
+    APP_ENV: "prod",
     BOX_AGENT_SECRET: emailSettings.agentSecret,
     BOX_API_TOKEN: emailSettings.agentSecret,
     BOX_API_URL: `${serverUrl}/box`,
