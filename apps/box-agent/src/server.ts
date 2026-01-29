@@ -1,4 +1,7 @@
+import type { WideEvent } from "@vps-claude/logger";
+
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
+import { wideEventMiddleware } from "@vps-claude/logger";
 import { Hono } from "hono";
 
 import { env } from "./env";
@@ -15,7 +18,21 @@ const appRouter = {
 
 const apiHandler = new OpenAPIHandler(appRouter, {});
 
-const app = new Hono();
+type HonoVariables = {
+  requestId: string;
+  wideEvent: WideEvent;
+};
+
+const app = new Hono<{ Variables: HonoVariables }>();
+
+// Wide event middleware for structured logging
+app.use(
+  wideEventMiddleware({
+    logger,
+    skipPaths: ["/", "/health"],
+    serviceName: "box-agent",
+  })
+);
 
 // Health endpoints - direct Hono routes (same pattern as main server)
 app.get("/", (c) => c.text("OK"));
@@ -25,6 +42,7 @@ app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));
 app.all("/*", async (c) => {
   const context = {
     boxSecretHeader: c.req.header("X-Box-Secret"),
+    wideEvent: c.get("wideEvent"),
   };
 
   const result = await apiHandler.handle(c.req.raw, {

@@ -19,7 +19,12 @@ export const emailRouter = {
     .route({ method: "POST", path: "/email/receive" })
     .input(InboundEmailSchema)
     .output(z.object({ success: z.boolean(), filepath: z.string() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "email.receive",
+        emailId: input.messageId,
+        from: input.from.email,
+      });
       const filepath = await writeEmailToInbox(input);
       const prompt = buildEmailPrompt(input, filepath);
 
@@ -50,7 +55,8 @@ export const emailRouter = {
       })
     )
     .output(z.object({ success: z.boolean() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "email.send", to: input.to });
       // Box identity is derived from BOX_API_TOKEN on server side (per-box auth)
       const response = await fetch(`${env.BOX_API_URL}/email/send`, {
         method: "POST",
@@ -78,7 +84,8 @@ export const emailRouter = {
   list: publicProcedure
     .route({ method: "GET", path: "/email/list" })
     .output(z.object({ emails: z.array(z.string()) }))
-    .handler(async () => {
+    .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "email.list" });
       const emails = await listEmails();
       return { emails };
     }),
@@ -87,7 +94,8 @@ export const emailRouter = {
     .route({ method: "GET", path: "/email/{id}" })
     .input(z.object({ id: z.string() }))
     .output(InboundEmailSchema.nullable())
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "email.byId", emailId: input.id });
       const email = await readEmail(input.id);
       if (!email) {
         throw new ORPCError("NOT_FOUND", { message: "Email not found" });
@@ -99,7 +107,8 @@ export const emailRouter = {
     .route({ method: "POST", path: "/email/{id}/read" })
     .input(z.object({ id: z.string() }))
     .output(z.object({ success: z.boolean() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "email.markRead", emailId: input.id });
       const success = await archiveEmail(input.id);
       if (!success) {
         throw new ORPCError("NOT_FOUND", { message: "Email not found" });

@@ -1,9 +1,12 @@
+import type { WideEvent } from "@vps-claude/logger";
+
 import { ORPCError, os } from "@orpc/server";
 
 import { env } from "./env";
 
 export interface BoxAgentContext {
   boxSecretHeader: string | undefined;
+  wideEvent: WideEvent | undefined;
 }
 
 export const o = os.$context<BoxAgentContext>();

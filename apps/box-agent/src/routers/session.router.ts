@@ -17,7 +17,8 @@ export const sessionRouter = {
   list: publicProcedure
     .route({ method: "GET", path: "/sessions/list" })
     .output(z.object({ sessions: z.array(SessionSchema) }))
-    .handler(async () => {
+    .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "session.list" });
       const sessions = listSessions();
       return { sessions };
     }),
@@ -32,8 +33,13 @@ export const sessionRouter = {
       })
     )
     .output(z.object({ success: z.boolean(), contextId: z.string() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
       const contextId = input.contextId ?? `chat-${Date.now()}`;
+      context.wideEvent?.set({
+        op: "session.send",
+        contextType: input.contextType,
+        contextId,
+      });
 
       runWithSession({
         prompt: input.message,
