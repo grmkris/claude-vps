@@ -1,5 +1,7 @@
 import type { MiddlewareHandler } from "hono";
-import type { Logger } from "pino";
+
+import type { Logger } from "./logger";
+
 import { createWideEvent } from "./wide-event";
 
 export function wideEventMiddleware(opts: {

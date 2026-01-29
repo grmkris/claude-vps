@@ -38,6 +38,7 @@ export const boxAgentConfigRouter = {
     .input(z.object({ boxId: BoxId }))
     .output(AgentConfigOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "boxAgentConfig.get", boxId: input.boxId });
       // Verify user owns the box
       const boxResult = await context.boxService.getById(input.boxId);
       if (boxResult.isErr()) {
@@ -80,6 +81,10 @@ export const boxAgentConfigRouter = {
     .input(UpdateInput)
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "boxAgentConfig.update",
+        boxId: input.boxId,
+      });
       // Verify user owns the box
       const boxResult = await context.boxService.getById(input.boxId);
       if (boxResult.isErr()) {

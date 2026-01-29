@@ -20,6 +20,7 @@ export const boxEnvVarRouter = {
     .input(z.object({ boxId: BoxId }))
     .output(BoxEnvVarListOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "boxEnvVar.list", boxId: input.boxId });
       const result = await context.boxEnvVarService.list(
         input.boxId,
         context.session.user.id
@@ -52,6 +53,12 @@ export const boxEnvVarRouter = {
     )
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "boxEnvVar.set",
+        boxId: input.boxId,
+        key: input.key,
+        type: input.type,
+      });
       const result = await context.boxEnvVarService.set(
         input.boxId,
         context.session.user.id,
@@ -85,6 +92,11 @@ export const boxEnvVarRouter = {
     .input(z.object({ boxId: BoxId, key: z.string().min(1) }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "boxEnvVar.delete",
+        boxId: input.boxId,
+        key: input.key,
+      });
       const result = await context.boxEnvVarService.delete(
         input.boxId,
         context.session.user.id,
@@ -122,6 +134,11 @@ export const boxEnvVarRouter = {
     )
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "boxEnvVar.bulkSet",
+        boxId: input.boxId,
+        count: input.envVars.length,
+      });
       const result = await context.boxEnvVarService.bulkSet(
         input.boxId,
         context.session.user.id,

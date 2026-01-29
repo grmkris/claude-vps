@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type InstallSkillJobData,
   type DeployJobResult,
@@ -35,10 +35,14 @@ export function createInstallSkillWorker({
 
       const stepKey = `SKILL_${skillId}`;
 
-      logger.info(
-        { boxId, spriteName, skillId, attempt: deploymentAttempt },
-        `INSTALL_SKILL: Starting ${skillId}`
-      );
+      const event = createWideEvent(logger, {
+        worker: "INSTALL_SKILL",
+        jobId: job.id,
+        boxId,
+        spriteName,
+        skillId,
+        attempt: deploymentAttempt,
+      });
 
       // Get parent step ID for tracking
       const parentResult = await deployStepService.getStepByKey(
@@ -60,10 +64,6 @@ export function createInstallSkillWorker({
 
         // topSource is pre-resolved by orchestrator from skills.sh API
         if (!topSource) {
-          logger.warn(
-            { skillId },
-            "INSTALL_SKILL: No topSource provided, skipping"
-          );
           await deployStepService.updateStepStatus(
             boxId,
             deploymentAttempt,
@@ -71,6 +71,8 @@ export function createInstallSkillWorker({
             "skipped",
             { parentId }
           );
+          event.set({ status: "skipped", reason: "no_top_source" });
+          event.emit();
           return { success: true };
         }
 
@@ -79,20 +81,7 @@ export function createInstallSkillWorker({
         // --yes --global skips interactive prompts, echo "" | handles any remaining prompts
         const skillsRepoUrl = `https://github.com/${topSource}`;
         const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId} --yes --global`;
-        logger.info(
-          { skillId, topSource, cmd },
-          "INSTALL_SKILL: Running install command"
-        );
         const result = await spritesClient.execShell(spriteName, cmd);
-        logger.info(
-          {
-            skillId,
-            exitCode: result.exitCode,
-            stdout: result.stdout,
-            stderr: result.stderr,
-          },
-          "INSTALL_SKILL: Command result"
-        );
 
         if (result.exitCode !== 0) {
           throw new Error(
@@ -109,10 +98,12 @@ export function createInstallSkillWorker({
           { parentId }
         );
 
-        logger.info(
-          { boxId, skillId, topSource },
-          `INSTALL_SKILL: Completed ${skillId}`
-        );
+        event.set({
+          topSource,
+          exitCode: result.exitCode,
+          status: "installed",
+        });
+        event.emit();
 
         return { success: true };
       } catch (error) {
@@ -127,10 +118,8 @@ export function createInstallSkillWorker({
           { errorMessage: errorMsg, parentId }
         );
 
-        logger.error(
-          { boxId, skillId, error: errorMsg },
-          `INSTALL_SKILL: Failed ${skillId}`
-        );
+        event.error(error instanceof Error ? error : new Error(String(error)));
+        event.emit();
 
         // Don't throw - skill failures shouldn't fail entire deployment
         // Return success with error noted

@@ -34,6 +34,7 @@ export const apiKeyRouter = {
     .input(createApiKeyInput)
     .output(ApiKeyCreateOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "apiKey.create", name: input.name });
       const result = await context.apiKeyService.create(
         context.session.user.id,
         {
@@ -68,6 +69,7 @@ export const apiKeyRouter = {
     )
     .output(ApiKeyListOutput)
     .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "apiKey.list" });
       const result = await context.apiKeyService.list(context.session.user.id);
 
       return result.match(
@@ -94,6 +96,7 @@ export const apiKeyRouter = {
     .input(z.object({ keyId: ApiKeyId }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "apiKey.delete", keyId: input.keyId });
       const result = await context.apiKeyService.delete(
         context.session.user.id,
         input.keyId

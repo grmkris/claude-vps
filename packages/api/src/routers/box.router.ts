@@ -21,6 +21,7 @@ export const boxRouter = {
     )
     .output(BoxListOutput)
     .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "box.list" });
       const result = await context.boxService.listByUser(
         context.session.user.id
       );
@@ -44,6 +45,11 @@ export const boxRouter = {
     )
     .output(BoxCreateOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.create",
+        boxName: input.name,
+        skillCount: input.skills?.length,
+      });
       const result = await context.boxService.create(
         context.session.user.id,
         input
@@ -65,6 +71,7 @@ export const boxRouter = {
     )
     .output(DevBoxCreateOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "box.createDev", boxName: input.name });
       const result = await context.boxService.createDev(
         context.session.user.id,
         input.name
@@ -89,6 +96,7 @@ export const boxRouter = {
     )
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "box.deploy", boxId: input.id });
       const result = await context.boxService.deploy(
         input.id,
         context.session.user.id
@@ -109,6 +117,7 @@ export const boxRouter = {
     .input(z.object({ id: BoxId }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "box.delete", boxId: input.id });
       const result = await context.boxService.delete(
         input.id,
         context.session.user.id

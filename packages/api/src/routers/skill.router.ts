@@ -20,7 +20,8 @@ export const skillRouter = {
   catalog: publicProcedure
     .route({ method: "GET", path: "/skill/catalog" })
     .output(SkillsShResponse)
-    .handler(async () => {
+    .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "skill.catalog" });
       const res = await fetch("https://skills.sh/api/skills?limit=100");
       if (!res.ok) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {

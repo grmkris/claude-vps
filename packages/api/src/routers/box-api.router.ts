@@ -32,6 +32,10 @@ export const boxApiRouter = {
     )
     .output(AgentConfigOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.getAgentConfig",
+        triggerType: input.triggerType,
+      });
       const boxResult = await context.emailService.getBoxByAgentSecret(
         context.boxToken!
       );
@@ -82,6 +86,11 @@ export const boxApiRouter = {
       )
       .output(SuccessOutput)
       .handler(async ({ context, input }) => {
+        context.wideEvent?.set({
+          op: "box.email.send",
+          to: input.to,
+          subject: input.subject,
+        });
         const boxResult = await context.emailService.getBoxByAgentSecret(
           context.boxToken!
         );
@@ -117,6 +126,7 @@ export const boxApiRouter = {
       .route({ method: "GET", path: "/box/cronjobs" })
       .output(z.object({ cronjobs: z.array(SelectBoxCronjobSchema) }))
       .handler(async ({ context }) => {
+        context.wideEvent?.set({ op: "box.cronjob.list" });
         const boxResult = await context.emailService.getBoxByAgentSecret(
           context.boxToken!
         );
@@ -156,6 +166,11 @@ export const boxApiRouter = {
       )
       .output(z.object({ cronjob: SelectBoxCronjobSchema }))
       .handler(async ({ context, input }) => {
+        context.wideEvent?.set({
+          op: "box.cronjob.create",
+          name: input.name,
+          schedule: input.schedule,
+        });
         const boxResult = await context.emailService.getBoxByAgentSecret(
           context.boxToken!
         );
@@ -205,6 +220,10 @@ export const boxApiRouter = {
       )
       .output(z.object({ cronjob: SelectBoxCronjobSchema }))
       .handler(async ({ context, input }) => {
+        context.wideEvent?.set({
+          op: "box.cronjob.update",
+          cronjobId: input.id,
+        });
         const boxResult = await context.emailService.getBoxByAgentSecret(
           context.boxToken!
         );
@@ -256,6 +275,10 @@ export const boxApiRouter = {
       .input(z.object({ id: BoxCronjobId }))
       .output(SuccessOutput)
       .handler(async ({ context, input }) => {
+        context.wideEvent?.set({
+          op: "box.cronjob.delete",
+          cronjobId: input.id,
+        });
         const boxResult = await context.emailService.getBoxByAgentSecret(
           context.boxToken!
         );
@@ -298,6 +321,10 @@ export const boxApiRouter = {
       .input(z.object({ id: BoxCronjobId }))
       .output(z.object({ cronjob: SelectBoxCronjobSchema }))
       .handler(async ({ context, input }) => {
+        context.wideEvent?.set({
+          op: "box.cronjob.toggle",
+          cronjobId: input.id,
+        });
         const boxResult = await context.emailService.getBoxByAgentSecret(
           context.boxToken!
         );

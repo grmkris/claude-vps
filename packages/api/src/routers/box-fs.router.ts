@@ -16,6 +16,11 @@ export const boxFsRouter = {
     )
     .output(FsListOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.fs.list",
+        boxId: input.id,
+        path: input.path,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -54,6 +59,11 @@ export const boxFsRouter = {
     )
     .output(FsReadOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.fs.read",
+        boxId: input.id,
+        path: input.path,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -104,6 +114,12 @@ export const boxFsRouter = {
     )
     .output(FsWriteOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.fs.write",
+        boxId: input.id,
+        path: input.path,
+        size: input.content.length,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
