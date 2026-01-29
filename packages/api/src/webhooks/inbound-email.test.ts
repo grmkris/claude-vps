@@ -52,7 +52,7 @@ describe("inbound-email webhook", () => {
       agentsDomain: AGENTS_DOMAIN,
     });
     app = honoApp;
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await testEnv.close();

@@ -144,8 +144,8 @@ describe("buildDeployFlow", () => {
 
       const stepKeys = getSetupStepKeysInChain(flow);
 
-      // Should have 8 steps (10 - 2 completed)
-      expect(stepKeys.length).toBe(8);
+      // Should have (total - 2 completed) steps
+      expect(stepKeys.length).toBe(SETUP_STEP_KEYS.length - 2);
       expect(stepKeys).not.toContain("SETUP_ENV_VARS");
       expect(stepKeys).not.toContain("SETUP_BOX_AGENT_SERVICE");
     });
@@ -201,10 +201,11 @@ describe("buildDeployFlow", () => {
 
   describe("full resume scenario", () => {
     it("resumes from middle of deployment", () => {
-      // Scenario: Steps 1-4 completed, step 5 failed, skills not started
+      // Scenario: First 5 steps completed, step 6 failed, skills not started
       const completedStepKeys = [
         "SETUP_DOWNLOAD_AGENT",
         "SETUP_CREATE_DIRS",
+        "SETUP_EMAIL_SKILL",
         "SETUP_ENV_VARS",
         "SETUP_CREATE_ENV_FILE",
       ];
@@ -216,10 +217,10 @@ describe("buildDeployFlow", () => {
         completedSkillIds: [],
       });
 
-      // Should have 6 remaining setup steps (10 - 4)
-      expect(countSetupStepsInChain(flow)).toBe(6);
+      // Should have (total - 5 completed) remaining setup steps
+      expect(countSetupStepsInChain(flow)).toBe(SETUP_STEP_KEYS.length - 5);
 
-      // First step in chain should be step 5
+      // First step in chain should be step 6
       const stepKeys = getSetupStepKeysInChain(flow);
       expect(stepKeys[stepKeys.length - 1]).toBe("SETUP_BOX_AGENT_SERVICE");
 

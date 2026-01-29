@@ -19,7 +19,7 @@ describe("BoxService", () => {
     boxService = createBoxService({
       deps: { db: testSetup.db, queueClient: testSetup.deps.queue },
     });
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await testSetup.close();

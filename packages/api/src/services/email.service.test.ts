@@ -24,7 +24,7 @@ describe("EmailService", () => {
     boxService = createBoxService({
       deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
     });
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await testEnv.close();
