@@ -69,19 +69,6 @@ describe("CronjobService", () => {
     expect(cronjob.boxId).toBe(boxId);
   });
 
-  test("create cronjob with custom timezone", async () => {
-    const boxId = await createTestBox("timezone-test");
-    const result = await cronjobService.create(boxId, {
-      name: "NY Task",
-      schedule: "0 9 * * *",
-      prompt: "Morning task",
-      timezone: "America/New_York",
-    });
-
-    const cronjob = result._unsafeUnwrap();
-    expect(cronjob.timezone).toBe("America/New_York");
-  });
-
   test("create rejects invalid cron expression", async () => {
     const boxId = await createTestBox("invalid-cron-test");
     const result = await cronjobService.create(boxId, {

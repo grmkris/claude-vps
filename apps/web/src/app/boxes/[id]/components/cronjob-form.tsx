@@ -11,10 +11,8 @@ import { useCreateCronjob, useUpdateCronjob } from "@/hooks/use-cronjobs";
 interface Cronjob {
   id: BoxCronjobId;
   name: string;
-  description: string | null;
   schedule: string;
   prompt: string;
-  timezone: string;
   enabled: boolean;
 }
 
@@ -46,11 +44,8 @@ export function CronjobForm({
   const updateCronjob = useUpdateCronjob(boxId);
 
   const [name, setName] = useState(cronjob?.name ?? "");
-  const [description, setDescription] = useState(cronjob?.description ?? "");
   const [schedule, setSchedule] = useState(cronjob?.schedule ?? "0 9 * * *");
   const [prompt, setPrompt] = useState(cronjob?.prompt ?? "");
-  const [timezone, setTimezone] = useState(cronjob?.timezone ?? "UTC");
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const isPending = createCronjob.isPending || updateCronjob.isPending;
 
@@ -61,18 +56,14 @@ export function CronjobForm({
       await updateCronjob.mutateAsync({
         id: editingId,
         name,
-        description: description || undefined,
         schedule,
         prompt,
-        timezone,
       });
     } else {
       await createCronjob.mutateAsync({
         name,
-        description: description || undefined,
         schedule,
         prompt,
-        timezone,
       });
     }
 
@@ -146,7 +137,7 @@ export function CronjobForm({
             required
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Cron format: minute hour day-of-month month day-of-week
+            Cron format: minute hour day-of-month month day-of-week (UTC)
           </p>
         </div>
 
@@ -163,57 +154,6 @@ export function CronjobForm({
             className="mt-1 w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             required
           />
-        </div>
-
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            {showAdvanced ? "Hide" : "Show"} advanced options
-          </button>
-
-          {showAdvanced && (
-            <div className="mt-3 space-y-4">
-              <div>
-                <label className="text-sm font-medium" htmlFor="description">
-                  Description
-                </label>
-                <input
-                  id="description"
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description"
-                  className="mt-1 w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium" htmlFor="timezone">
-                  Timezone
-                </label>
-                <select
-                  id="timezone"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="UTC">UTC</option>
-                  <option value="America/New_York">Eastern Time</option>
-                  <option value="America/Chicago">Central Time</option>
-                  <option value="America/Denver">Mountain Time</option>
-                  <option value="America/Los_Angeles">Pacific Time</option>
-                  <option value="Europe/London">London</option>
-                  <option value="Europe/Paris">Paris</option>
-                  <option value="Europe/Berlin">Berlin</option>
-                  <option value="Asia/Tokyo">Tokyo</option>
-                  <option value="Asia/Shanghai">Shanghai</option>
-                </select>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

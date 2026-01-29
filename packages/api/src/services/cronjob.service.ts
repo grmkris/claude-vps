@@ -32,18 +32,14 @@ interface CronjobServiceDeps {
 
 export interface CreateCronjobInput {
   name: string;
-  description?: string;
   schedule: string;
   prompt: string;
-  timezone?: string;
 }
 
 export interface UpdateCronjobInput {
   name?: string;
-  description?: string;
   schedule?: string;
   prompt?: string;
-  timezone?: string;
   enabled?: boolean;
 }
 
@@ -144,7 +140,7 @@ export function createCronjobService({ deps }: { deps: CronjobServiceDeps }) {
       const validationResult = validateCronExpression(input.schedule);
       if (validationResult.isErr()) return err(validationResult.error);
 
-      const timezone = input.timezone ?? "UTC";
+      const timezone = "UTC";
       const nextRunAt = calculateNextRunAt(input.schedule, timezone);
 
       const result = await db
@@ -152,7 +148,6 @@ export function createCronjobService({ deps }: { deps: CronjobServiceDeps }) {
         .values({
           boxId,
           name: input.name,
-          description: input.description,
           schedule: input.schedule,
           prompt: input.prompt,
           timezone,
@@ -192,7 +187,7 @@ export function createCronjobService({ deps }: { deps: CronjobServiceDeps }) {
         if (validationResult.isErr()) return err(validationResult.error);
       }
 
-      const timezone = input.timezone ?? existing.timezone;
+      const timezone = existing.timezone;
       const schedule = input.schedule ?? existing.schedule;
       const nextRunAt = calculateNextRunAt(schedule, timezone);
 

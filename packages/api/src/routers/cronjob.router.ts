@@ -13,19 +13,15 @@ import {
 const CreateCronjobInput = z.object({
   boxId: BoxId,
   name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
   schedule: z.string().min(1).max(100),
   prompt: z.string().min(1).max(10000),
-  timezone: z.string().max(50).optional(),
 });
 
 const UpdateCronjobInput = z.object({
   id: BoxCronjobId,
   name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
   schedule: z.string().min(1).max(100).optional(),
   prompt: z.string().min(1).max(10000).optional(),
-  timezone: z.string().max(50).optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -77,10 +73,8 @@ export const cronjobRouter = {
 
       const result = await context.cronjobService.create(input.boxId, {
         name: input.name,
-        description: input.description,
         schedule: input.schedule,
         prompt: input.prompt,
-        timezone: input.timezone,
       });
 
       return result.match(
@@ -119,10 +113,8 @@ export const cronjobRouter = {
 
       const result = await context.cronjobService.update(input.id, {
         name: input.name,
-        description: input.description,
         schedule: input.schedule,
         prompt: input.prompt,
-        timezone: input.timezone,
         enabled: input.enabled,
       });
 

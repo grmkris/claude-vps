@@ -6,7 +6,7 @@
  *
  * Tools:
  * - AI: generate_image, text_to_speech, speech_to_text
- * - Cronjob: cronjob_list, cronjob_create, cronjob_update, cronjob_delete
+ * - Cronjob: cronjob_list, cronjob_create, cronjob_update, cronjob_delete, cronjob_toggle
  * - Email: email_send, email_list, email_read
  */
 
@@ -164,14 +164,6 @@ const CRONJOB_TOOLS = [
           type: "string",
           description: "What Claude should do when the cronjob triggers",
         },
-        description: {
-          type: "string",
-          description: "Optional description of what this cronjob does",
-        },
-        timezone: {
-          type: "string",
-          description: "Timezone for the schedule (default: UTC)",
-        },
       },
       required: ["name", "schedule", "prompt"],
     },
@@ -220,6 +212,21 @@ const CRONJOB_TOOLS = [
       required: ["id"],
     },
   },
+  {
+    name: "cronjob_toggle",
+    description:
+      "Toggle a cronjob's enabled status (enable if disabled, disable if enabled)",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        id: {
+          type: "string",
+          description: "The cronjob ID to toggle",
+        },
+      },
+      required: ["id"],
+    },
+  },
 ];
 
 interface EndpointConfig {
@@ -245,6 +252,10 @@ async function callApiEndpoint(
     cronjob_create: { path: "/cronjobs", method: "POST" },
     cronjob_update: { path: `/cronjobs/${String(args.id)}`, method: "PUT" },
     cronjob_delete: { path: `/cronjobs/${String(args.id)}`, method: "DELETE" },
+    cronjob_toggle: {
+      path: `/cronjobs/${String(args.id)}/toggle`,
+      method: "POST",
+    },
     // Email tools (local - box-agent server)
     email_send: { path: "/email/send", method: "POST", local: true },
     email_list: { path: "/email/list", method: "GET", local: true },

@@ -18,13 +18,7 @@ export function useCreateCronjob(boxId: BoxId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: {
-      name: string;
-      description?: string;
-      schedule: string;
-      prompt: string;
-      timezone?: string;
-    }) =>
+    mutationFn: (input: { name: string; schedule: string; prompt: string }) =>
       orpc.cronjob.create.call({
         boxId,
         ...input,
@@ -44,10 +38,8 @@ export function useUpdateCronjob(boxId: BoxId) {
     mutationFn: (input: {
       id: BoxCronjobId;
       name?: string;
-      description?: string;
       schedule?: string;
       prompt?: string;
-      timezone?: string;
       enabled?: boolean;
     }) => orpc.cronjob.update.call(input),
     onSuccess: () => {

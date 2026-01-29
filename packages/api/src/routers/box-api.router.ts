@@ -150,10 +150,8 @@ export const boxApiRouter = {
       .input(
         z.object({
           name: z.string().min(1).max(100),
-          description: z.string().max(500).optional(),
           schedule: z.string().min(1).max(100),
           prompt: z.string().min(1).max(10000),
-          timezone: z.string().max(50).optional(),
         })
       )
       .output(z.object({ cronjob: SelectBoxCronjobSchema }))
@@ -177,10 +175,8 @@ export const boxApiRouter = {
 
         const result = await context.cronjobService.create(boxRecord.id, {
           name: input.name,
-          description: input.description,
           schedule: input.schedule,
           prompt: input.prompt,
-          timezone: input.timezone,
         });
 
         return result.match(
@@ -202,10 +198,8 @@ export const boxApiRouter = {
         z.object({
           id: BoxCronjobId,
           name: z.string().min(1).max(100).optional(),
-          description: z.string().max(500).optional(),
           schedule: z.string().min(1).max(100).optional(),
           prompt: z.string().min(1).max(10000).optional(),
-          timezone: z.string().max(50).optional(),
           enabled: z.boolean().optional(),
         })
       )
@@ -239,10 +233,8 @@ export const boxApiRouter = {
 
         const result = await context.cronjobService.update(input.id, {
           name: input.name,
-          description: input.description,
           schedule: input.schedule,
           prompt: input.prompt,
-          timezone: input.timezone,
           enabled: input.enabled,
         });
 
@@ -293,6 +285,48 @@ export const boxApiRouter = {
         const result = await context.cronjobService.delete(input.id);
         return result.match(
           () => ({ success: true as const }),
+          (error) => {
+            throw new ORPCError("INTERNAL_SERVER_ERROR", {
+              message: error.message,
+            });
+          }
+        );
+      }),
+
+    toggle: boxProcedure
+      .route({ method: "POST", path: "/box/cronjobs/{id}/toggle" })
+      .input(z.object({ id: BoxCronjobId }))
+      .output(z.object({ cronjob: SelectBoxCronjobSchema }))
+      .handler(async ({ context, input }) => {
+        const boxResult = await context.emailService.getBoxByAgentSecret(
+          context.boxToken!
+        );
+
+        if (boxResult.isErr()) {
+          throw new ORPCError("INTERNAL_SERVER_ERROR", {
+            message: boxResult.error.message,
+          });
+        }
+
+        const boxRecord = boxResult.value;
+        if (!boxRecord) {
+          throw new ORPCError("UNAUTHORIZED", {
+            message: "Invalid box token",
+          });
+        }
+
+        // Verify cronjob belongs to this box
+        const cronjobResult = await context.cronjobService.getById(input.id);
+        if (cronjobResult.isErr() || !cronjobResult.value) {
+          throw new ORPCError("NOT_FOUND", { message: "Cronjob not found" });
+        }
+        if (cronjobResult.value.boxId !== boxRecord.id) {
+          throw new ORPCError("FORBIDDEN", { message: "Not authorized" });
+        }
+
+        const result = await context.cronjobService.toggle(input.id);
+        return result.match(
+          (cronjob) => ({ cronjob }),
           (error) => {
             throw new ORPCError("INTERNAL_SERVER_ERROR", {
               message: error.message,

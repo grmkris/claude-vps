@@ -240,11 +240,6 @@ export function CronjobList({ boxId }: { boxId: BoxId }) {
 
               {expandedId === cronjob.id && (
                 <div className="px-4 pb-4 border-t border-border pt-3">
-                  {cronjob.description && (
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {cronjob.description}
-                    </p>
-                  )}
                   <div className="bg-secondary/50 rounded-md p-3 mb-3">
                     <p className="text-xs text-muted-foreground mb-1">
                       Prompt:
