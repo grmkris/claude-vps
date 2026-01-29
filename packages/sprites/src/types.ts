@@ -115,6 +115,7 @@ export const SETUP_STEP_KEYS = [
   "SETUP_CLONE_AGENT_APP",
   "SETUP_INSTALL_AGENT_APP",
   "SETUP_AGENT_APP_SERVICE",
+  "SETUP_MCP_SETTINGS",
 ] as const;
 
 export type SetupStepKey = (typeof SETUP_STEP_KEYS)[number];

@@ -511,6 +511,19 @@ STARTEOF
           --needs box-agent \\
           --no-stream
       `,
+      SETUP_MCP_SETTINGS: `
+        mkdir -p /home/sprite/.claude
+        cat > /home/sprite/.claude/settings.json << 'MCPEOF'
+{
+  "mcpServers": {
+    "ai-tools": {
+      "command": "/home/sprite/start-mcp.sh",
+      "args": []
+    }
+  }
+}
+MCPEOF
+      `,
     };
 
     return commands[stepKey] ?? "";
@@ -850,6 +863,24 @@ STARTEOF
         --cmd /home/sprite/start-agent-app.sh \\
         --needs box-agent \\
         --no-stream
+    `
+    );
+
+    await runStep(
+      12,
+      "Configure MCP settings",
+      `
+      mkdir -p /home/sprite/.claude
+      cat > /home/sprite/.claude/settings.json << 'MCPEOF'
+{
+  "mcpServers": {
+    "ai-tools": {
+      "command": "/home/sprite/start-mcp.sh",
+      "args": []
+    }
+  }
+}
+MCPEOF
     `
     );
   }

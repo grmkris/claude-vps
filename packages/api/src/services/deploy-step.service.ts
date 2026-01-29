@@ -47,6 +47,7 @@ export const SETUP_SUBSTEPS = [
     order: 10,
     name: "Creating agent-app service",
   },
+  { key: "SETUP_MCP_SETTINGS", order: 11, name: "Configuring MCP settings" },
 ] as const;
 
 interface DeployStepServiceDeps {
