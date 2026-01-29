@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type DeployOrchestratorJobData,
   type DeployJobResult,
@@ -75,10 +75,14 @@ export function createOrchestratorWorker({
       const attempt = deploymentAttempt ?? 1;
       const hasSkills = skills && skills.length > 0;
 
-      logger.info(
-        { boxId, subdomain, attempt, hasSkills, skillCount: skills?.length },
-        "ORCHESTRATOR: Starting deployment flow"
-      );
+      const event = createWideEvent(logger, {
+        worker: "ORCHESTRATOR",
+        jobId: job.id,
+        boxId,
+        subdomain,
+        attempt,
+        skillCount: skills?.length ?? 0,
+      });
 
       try {
         // 1. Verify box exists
@@ -247,28 +251,22 @@ export function createOrchestratorWorker({
           jobIdSuffix,
         });
 
-        logger.info(
-          {
-            boxId,
-            completedSetupSteps: completedStepKeys.length,
-            completedSkills: completedSkillIds.length,
-            totalSetupSteps: SETUP_STEP_KEYS.length,
-            totalSkills: skillsWithSources.length,
-            isResume,
-            jobIdSuffix: jobIdSuffix || "(none)",
-          },
-          "ORCHESTRATOR: Building flow with resume support"
-        );
-
         await flowProducer.add(flow);
 
-        logger.info(
-          { boxId, subdomain, spriteName },
-          "ORCHESTRATOR: Deployment flow added, jobs will execute"
-        );
+        event.set({
+          completedSetupSteps: completedStepKeys.length,
+          completedSkills: completedSkillIds.length,
+          totalSetupSteps: SETUP_STEP_KEYS.length,
+          totalSkills: skillsWithSources.length,
+          isResume,
+          status: "flow_started",
+        });
+        event.emit();
 
         return { success: true, spriteName, spriteUrl };
       } catch (error) {
+        event.error(error instanceof Error ? error : new Error(String(error)));
+        event.emit();
         const message =
           error instanceof Error ? error.message : "Unknown error";
         logger.error(

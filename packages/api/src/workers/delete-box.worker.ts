@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import { type DeleteBoxJobData, Worker, type Job } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 
@@ -21,6 +21,11 @@ export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
     WORKER_CONFIG.deleteBox.name,
     async (job: Job<DeleteBoxJobData>) => {
       const { boxId } = job.data;
+      const event = createWideEvent(logger, {
+        worker: "DELETE_BOX",
+        jobId: job.id,
+        boxId,
+      });
 
       try {
         const boxResult = await boxService.getById(boxId);
@@ -29,27 +34,20 @@ export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
         }
         const box = boxResult.value;
         if (!box?.spriteName) {
-          logger.warn(
-            { boxId },
-            "Box has no sprite name, skipping sprite deletion"
-          );
+          event.set({ status: "skipped", reason: "no_sprite_name" });
           return { success: true };
         }
 
-        logger.info({ boxId, spriteName: box.spriteName }, "Deleting Sprite");
+        event.set({ spriteName: box.spriteName });
         await spritesClient.deleteSprite(box.spriteName);
 
-        logger.info({ boxId }, "Sprite deleted successfully");
+        event.set({ status: "deleted" });
         return { success: true };
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        logger.error({
-          msg: "Failed to delete sprite",
-          boxId,
-          error: message,
-        });
-        throw error;
+      } catch (err) {
+        event.error(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      } finally {
+        event.emit();
       }
     },
     {
@@ -57,14 +55,6 @@ export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
       concurrency: 5,
     }
   );
-
-  worker.on("failed", (job, err) => {
-    logger.error({
-      msg: "Delete job failed",
-      jobId: job?.id,
-      error: err.message,
-    });
-  });
 
   return worker;
 }

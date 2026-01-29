@@ -1,6 +1,6 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type DeliverEmailJobData,
   type SendEmailJobData,
@@ -40,66 +40,51 @@ export function createEmailDeliveryWorker({
     WORKER_CONFIG.deliverEmail.name,
     async (job: Job<DeliverEmailJobData>) => {
       const { emailId, spriteUrl, agentSecret, email } = job.data;
-
-      // Sprites: box-agent accessible via sprite's public URL
-      const boxAgentUrl = `${spriteUrl}/email/receive`;
-
-      logger.info({ emailId, spriteUrl }, "Delivering email to box");
-
-      const response = await fetch(boxAgentUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Box-Secret": agentSecret,
-        },
-        body: JSON.stringify(email),
-        signal: AbortSignal.timeout(WORKER_CONFIG.deliverEmail.timeout),
+      const event = createWideEvent(logger, {
+        worker: "EMAIL_DELIVERY",
+        jobId: job.id,
+        emailId,
+        spriteUrl,
       });
 
-      if (!response.ok) {
-        const text = await response.text();
-        const message = `Box agent returned ${response.status}: ${text}`;
-        const updateResult = await emailService.updateStatus(
-          emailId,
-          "failed",
-          message
-        );
-        if (updateResult.isErr()) {
-          logger.error({
-            msg: "Failed to update email status",
-            emailId,
-            error: updateResult.error.message,
-          });
-        }
-        throw new Error(message);
-      }
+      try {
+        // Sprites: box-agent accessible via sprite's public URL
+        const boxAgentUrl = `${spriteUrl}/email/receive`;
 
-      const updateResult = await emailService.updateStatus(
-        emailId,
-        "delivered"
-      );
-      if (updateResult.isErr()) {
-        logger.error({
-          msg: "Failed to update email status",
-          emailId,
-          error: updateResult.error.message,
+        const response = await fetch(boxAgentUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Box-Secret": agentSecret,
+          },
+          body: JSON.stringify(email),
+          signal: AbortSignal.timeout(WORKER_CONFIG.deliverEmail.timeout),
         });
+
+        if (!response.ok) {
+          const text = await response.text();
+          const message = `Box agent returned ${response.status}: ${text}`;
+          await emailService.updateStatus(emailId, "failed", message);
+          throw new Error(message);
+        }
+
+        await emailService.updateStatus(emailId, "delivered");
+        event.set({ status: "delivered" });
+        return { success: true };
+      } catch (err) {
+        event.error(err instanceof Error ? err : new Error(String(err)), {
+          status: "failed",
+        });
+        throw err;
+      } finally {
+        event.emit();
       }
-      return { success: true };
     },
     {
       connection: redis,
       concurrency: 10,
     }
   );
-
-  worker.on("failed", (job, err) => {
-    logger.error({
-      msg: "Email delivery job failed",
-      jobId: job?.id,
-      error: err.message,
-    });
-  });
 
   return worker;
 }
@@ -111,33 +96,39 @@ export function createEmailSendWorker({ deps }: { deps: EmailSendWorkerDeps }) {
     WORKER_CONFIG.sendEmail.name,
     async (job: Job<SendEmailJobData>) => {
       const { to, subject, body, inReplyTo } = job.data;
-
-      logger.info({ to, subject }, "Sending email");
-
-      await sendEmail({
+      const event = createWideEvent(logger, {
+        worker: "EMAIL_SEND",
+        jobId: job.id,
         to,
         subject,
-        body,
-        inReplyTo: inReplyTo
-          ? { messageId: inReplyTo.messageId, from: inReplyTo.from }
-          : undefined,
       });
 
-      return { success: true };
+      try {
+        await sendEmail({
+          to,
+          subject,
+          body,
+          inReplyTo: inReplyTo
+            ? { messageId: inReplyTo.messageId, from: inReplyTo.from }
+            : undefined,
+        });
+
+        event.set({ status: "sent" });
+        return { success: true };
+      } catch (err) {
+        event.error(err instanceof Error ? err : new Error(String(err)), {
+          status: "failed",
+        });
+        throw err;
+      } finally {
+        event.emit();
+      }
     },
     {
       connection: redis,
       concurrency: 10,
     }
   );
-
-  worker.on("failed", (job, err) => {
-    logger.error({
-      msg: "Email send job failed",
-      jobId: job?.id,
-      error: err.message,
-    });
-  });
 
   return worker;
 }

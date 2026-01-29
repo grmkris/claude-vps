@@ -1,12 +1,13 @@
 import type { Auth } from "@vps-claude/auth";
 import type { Database } from "@vps-claude/db";
-import type { Logger } from "@vps-claude/logger";
+import type { Logger, WideEvent } from "@vps-claude/logger";
 
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { wideEventMiddleware } from "@vps-claude/logger";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
@@ -43,6 +44,7 @@ const fullAppRouter = {
 
 type HonoVariables = {
   requestId: string;
+  wideEvent: WideEvent;
 };
 
 export interface CreateApiOptions {
@@ -65,29 +67,12 @@ export function createApi({
 }: CreateApiOptions) {
   const app = new Hono<{ Variables: HonoVariables }>();
 
-  app.use(async (c, next) => {
-    const requestId = crypto.randomUUID().slice(0, 8);
-    const start = performance.now();
-
-    c.set("requestId", requestId);
-
-    await next();
-
-    const duration = Math.round(performance.now() - start);
-    const path = c.req.path;
-
-    if (path === "/" || path === "/health") {
-      return;
-    }
-
-    logger.info({
-      requestId,
-      method: c.req.method,
-      path,
-      status: c.res.status,
-      durationMs: duration,
-    });
-  });
+  app.use(
+    wideEventMiddleware({
+      logger,
+      skipPaths: ["/", "/health"],
+    })
+  );
 
   app.use(
     "/*",
@@ -118,25 +103,19 @@ export function createApi({
   app.get("/health", (c) => c.text("OK"));
 
   app.post("/webhooks/inbound-email", async (c) => {
-    logger.debug({ msg: "Inbound email webhook received" });
+    const wideEvent = c.get("wideEvent");
+    wideEvent?.set({ op: "webhook.inboundEmail" });
 
     if (inboundWebhookSecret) {
       const token = c.req.header("X-Webhook-Verification-Token");
       if (token !== inboundWebhookSecret) {
-        logger.debug({ msg: "Webhook auth failed" });
+        wideEvent?.set({ status: "unauthorized" });
         return c.json({ error: "Unauthorized" }, 401);
       }
     }
 
     const body = await c.req.json();
     const emailData = body.email || body;
-
-    logger.debug({
-      msg: "Parsing email",
-      hasEmailWrapper: !!body.email,
-      subject: emailData.subject,
-      recipient: emailData.recipient,
-    });
 
     // Extract to address - inbound.new uses { to: { addresses: [{address}] }, recipient }
     const toAddress =
@@ -146,7 +125,7 @@ export function createApi({
       (Array.isArray(emailData.to) ? emailData.to[0] : null);
 
     if (!toAddress) {
-      logger.debug({ msg: "Missing to address in email payload" });
+      wideEvent?.set({ status: "missing_to_address" });
       return c.json({ error: "Missing to address" }, 400);
     }
 
@@ -155,22 +134,19 @@ export function createApi({
       new RegExp(`^([^@]+)@${agentsDomain.replace(".", "\\.")}$`, "i")
     );
 
-    logger.debug({
-      msg: "Regex match result",
-      toAddress,
-      agentsDomain,
-      matched: !!match,
-      subdomain: match?.[1],
-    });
-
     if (!match) {
+      wideEvent?.set({ status: "unknown_recipient", toAddress });
       return c.json({ message: "Unknown recipient" }, 200);
     }
 
     const subdomain = match[1];
     if (!subdomain) {
+      wideEvent?.set({ status: "invalid_recipient_format" });
       return c.json({ message: "Invalid recipient format" }, 200);
     }
+
+    wideEvent?.set({ subdomain });
+
     // Extract from - inbound.new uses { from: { addresses: [{name, address}] } }
     const fromAddr = emailData.from?.addresses?.[0];
     const fromEmail =
@@ -202,20 +178,15 @@ export function createApi({
     });
 
     if (result.isErr()) {
-      logger.debug({
-        msg: "processInbound failed",
-        subdomain,
-        error: result.error.message,
+      wideEvent?.set({
+        status: "error",
         errorType: result.error.type,
+        errorMessage: result.error.message,
       });
       return c.json({ message: result.error.message }, 200);
     }
 
-    logger.debug({
-      msg: "Email processed",
-      subdomain,
-      emailId: result.value.id,
-    });
+    wideEvent?.set({ emailId: result.value.id, status: "queued" });
     return c.json({ success: true, emailId: result.value.id });
   });
 
@@ -262,6 +233,13 @@ export function createApi({
   app.use("/*", async (c, next) => {
     const config = { agentsDomain };
     const context = await createContext({ context: c, services, auth, config });
+
+    // Auto-inject user context into wide event
+    if (context.session?.user) {
+      c.get("wideEvent")?.set({
+        user: { id: context.session.user.id },
+      });
+    }
 
     const rpcResult = await rpcHandler.handle(c.req.raw, {
       prefix: "/rpc",

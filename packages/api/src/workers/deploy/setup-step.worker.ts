@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type SetupStepJobData,
   type DeployJobResult,
@@ -41,10 +41,14 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
         boxAgentBinaryUrl,
       } = job.data;
 
-      logger.info(
-        { boxId, spriteName, stepKey, attempt: deploymentAttempt },
-        `SETUP_STEP: Starting ${stepKey}`
-      );
+      const event = createWideEvent(logger, {
+        worker: "SETUP_STEP",
+        jobId: job.id,
+        boxId,
+        spriteName,
+        stepKey,
+        attempt: deploymentAttempt,
+      });
 
       // Get parent step ID for tracking substeps
       const parentResult = await deployStepService.getStepByKey(
@@ -90,16 +94,11 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
             "SETUP_SERVICES",
             "completed"
           );
-          logger.info(
-            { boxId, spriteName },
-            "SETUP_STEP: All setup steps completed"
-          );
+          event.set({ isLastStep: true });
         }
 
-        logger.info(
-          { boxId, spriteName, stepKey },
-          `SETUP_STEP: Completed ${stepKey}`
-        );
+        event.set({ status: "completed" });
+        event.emit();
 
         return { success: true };
       } catch (error) {
@@ -114,10 +113,8 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
           { errorMessage: errorMsg, parentId }
         );
 
-        logger.error(
-          { boxId, stepKey, error: errorMsg },
-          `SETUP_STEP: Failed ${stepKey}`
-        );
+        event.error(error instanceof Error ? error : new Error(String(error)));
+        event.emit();
 
         throw error;
       }

@@ -31,6 +31,7 @@ export const cronjobRouter = {
     .input(z.object({ boxId: BoxId }))
     .output(CronjobListOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "cronjob.list", boxId: input.boxId });
       // Verify user owns the box
       const boxResult = await context.boxService.getById(input.boxId);
       if (boxResult.isErr()) {
@@ -59,6 +60,11 @@ export const cronjobRouter = {
     .input(CreateCronjobInput)
     .output(CronjobOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "cronjob.create",
+        boxId: input.boxId,
+        name: input.name,
+      });
       // Verify user owns the box
       const boxResult = await context.boxService.getById(input.boxId);
       if (boxResult.isErr()) {
@@ -95,6 +101,7 @@ export const cronjobRouter = {
     .input(UpdateCronjobInput)
     .output(CronjobOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "cronjob.update", cronjobId: input.id });
       // Verify ownership via cronjob -> box -> user
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {
@@ -136,6 +143,7 @@ export const cronjobRouter = {
     .input(z.object({ id: BoxCronjobId }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "cronjob.delete", cronjobId: input.id });
       // Verify ownership
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {
@@ -168,6 +176,7 @@ export const cronjobRouter = {
     .input(z.object({ id: BoxCronjobId }))
     .output(CronjobOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "cronjob.toggle", cronjobId: input.id });
       // Verify ownership
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {
@@ -205,6 +214,7 @@ export const cronjobRouter = {
     )
     .output(CronjobExecutionListOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "cronjob.executions", cronjobId: input.id });
       // Verify ownership
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {

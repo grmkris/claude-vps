@@ -89,6 +89,7 @@ describe("session router", () => {
       prefix: "/",
       context: {
         boxSecretHeader: options.headers?.["X-Box-Secret"],
+        wideEvent: undefined,
       },
     });
     if (!result.matched) throw new Error("Route not matched");

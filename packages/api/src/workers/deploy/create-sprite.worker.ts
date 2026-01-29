@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type CreateSpriteJobData,
   type DeployJobResult,
@@ -34,10 +34,13 @@ export function createCreateSpriteWorker({
     async (job: Job<CreateSpriteJobData>): Promise<DeployJobResult> => {
       const { boxId, userId, subdomain, deploymentAttempt } = job.data;
 
-      logger.info(
-        { boxId, subdomain, attempt: deploymentAttempt },
-        "CREATE_SPRITE: Starting"
-      );
+      const event = createWideEvent(logger, {
+        worker: "CREATE_SPRITE",
+        jobId: job.id,
+        boxId,
+        subdomain,
+        attempt: deploymentAttempt,
+      });
 
       try {
         // Update step status to running
@@ -67,10 +70,12 @@ export function createCreateSpriteWorker({
           "completed"
         );
 
-        logger.info(
-          { boxId, spriteName: sprite.spriteName, url: sprite.url },
-          "CREATE_SPRITE: Completed"
-        );
+        event.set({
+          spriteName: sprite.spriteName,
+          spriteUrl: sprite.url,
+          status: "created",
+        });
+        event.emit();
 
         return {
           success: true,
@@ -89,7 +94,8 @@ export function createCreateSpriteWorker({
           { errorMessage: errorMsg }
         );
 
-        logger.error({ boxId, error: errorMsg }, "CREATE_SPRITE: Failed");
+        event.error(error instanceof Error ? error : new Error(String(error)));
+        event.emit();
 
         throw error;
       }
