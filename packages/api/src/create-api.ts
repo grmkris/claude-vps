@@ -1,6 +1,7 @@
 import type { Auth } from "@vps-claude/auth";
 import type { Database } from "@vps-claude/db";
-import type { Logger } from "@vps-claude/logger";
+import type { Logger, WideEvent } from "@vps-claude/logger";
+import { wideEventMiddleware } from "@vps-claude/logger";
 
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
@@ -43,6 +44,7 @@ const fullAppRouter = {
 
 type HonoVariables = {
   requestId: string;
+  wideEvent: WideEvent;
 };
 
 export interface CreateApiOptions {
@@ -65,29 +67,12 @@ export function createApi({
 }: CreateApiOptions) {
   const app = new Hono<{ Variables: HonoVariables }>();
 
-  app.use(async (c, next) => {
-    const requestId = crypto.randomUUID().slice(0, 8);
-    const start = performance.now();
-
-    c.set("requestId", requestId);
-
-    await next();
-
-    const duration = Math.round(performance.now() - start);
-    const path = c.req.path;
-
-    if (path === "/" || path === "/health") {
-      return;
-    }
-
-    logger.info({
-      requestId,
-      method: c.req.method,
-      path,
-      status: c.res.status,
-      durationMs: duration,
-    });
-  });
+  app.use(
+    wideEventMiddleware({
+      logger,
+      skipPaths: ["/", "/health"],
+    })
+  );
 
   app.use(
     "/*",

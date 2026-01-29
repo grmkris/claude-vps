@@ -1,4 +1,5 @@
 import type { Auth } from "@vps-claude/auth";
+import type { WideEvent } from "@vps-claude/logger";
 import type { SpritesClient } from "@vps-claude/sprites";
 import type { Context as HonoContext } from "hono";
 
@@ -59,6 +60,7 @@ export async function createContext({
   return {
     session: typedSession,
     config,
+    wideEvent: context.get?.("wideEvent") as WideEvent | undefined,
     authorizationHeader: context.req.header("Authorization"),
     boxToken: context.req.header("X-Box-Secret"),
     ...services,
