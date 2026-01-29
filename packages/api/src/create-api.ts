@@ -234,6 +234,13 @@ export function createApi({
     const config = { agentsDomain };
     const context = await createContext({ context: c, services, auth, config });
 
+    // Auto-inject user context into wide event
+    if (context.session?.user) {
+      c.get("wideEvent")?.set({
+        user: { id: context.session.user.id },
+      });
+    }
+
     const rpcResult = await rpcHandler.handle(c.req.raw, {
       prefix: "/rpc",
       context,
