@@ -16,7 +16,7 @@ void mock.module("../env", () => ({
     BOX_API_URL: "http://localhost:33000/box",
     BOX_API_TOKEN: "test-token",
     BOX_SUBDOMAIN: "test-box",
-    BOX_AGENT_PORT: 9999,
+    BOX_AGENT_PORT: 33002,
     BOX_INBOX_DIR: "/tmp/test-inbox",
     BOX_DB_PATH: ":memory:",
   },
@@ -84,7 +84,7 @@ describe("session router", () => {
     path: string,
     options: RequestInit & { headers?: Record<string, string> } = {}
   ): Promise<Response> {
-    const request = new Request(`http://localhost:9999${path}`, options);
+    const request = new Request(`http://localhost:33002${path}`, options);
     const result = await handler.handle(request, {
       prefix: "/",
       context: {

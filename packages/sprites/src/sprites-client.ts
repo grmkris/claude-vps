@@ -5,9 +5,9 @@ import { SpritesClient as FlySpritesClient } from "@fly/sprites";
 /**
  * Embedded nginx config for sprite reverse proxy.
  * Routes:
- *   /email/*  → box-agent :9999 (email webhooks)
- *   /agent/*  → box-agent :9999 (agent API)
- *   /health   → box-agent :9999 (health check)
+ *   /email/*  → box-agent :33002 (email webhooks)
+ *   /agent/*  → box-agent :33002 (agent API)
+ *   /health   → box-agent :33002 (health check)
  *   /*        → agent-app :3000 (Next.js user app)
  */
 const NGINX_CONFIG = `events {
@@ -24,7 +24,7 @@ http {
     error_log /var/log/nginx/error.log;
 
     upstream box_agent {
-        server 127.0.0.1:9999;
+        server 127.0.0.1:33002;
         keepalive 8;
     }
 
@@ -403,7 +403,7 @@ Send beautifully formatted emails using markdown.
 ## Quick Send
 
 \`\`\`bash
-POST http://localhost:9999/email/send
+POST http://localhost:33002/email/send
 Content-Type: application/json
 
 {
@@ -711,7 +711,7 @@ Send beautifully formatted emails using markdown.
 ## Quick Send
 
 \`\`\`bash
-POST http://localhost:9999/email/send
+POST http://localhost:33002/email/send
 Content-Type: application/json
 
 {
