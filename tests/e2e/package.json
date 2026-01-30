@@ -1,0 +1,14 @@
+{
+  "name": "@vps-claude/e2e-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "test:api": "bun test api-e2e.test.ts"
+  },
+  "devDependencies": {
+    "@vps-claude/config": "workspace:*",
+    "@vps-claude/sdk": "workspace:*",
+    "resend": "^4.5.0"
+  }
+}

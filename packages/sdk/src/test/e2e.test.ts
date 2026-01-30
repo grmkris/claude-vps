@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { createClient } from "../src";
+import { createClient } from "../index";
 import {
   createReadOnlyApiKey,
   setupTestUser,

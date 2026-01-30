@@ -1,13 +1,13 @@
 import type { Auth } from "@vps-claude/auth";
 import type { Database } from "@vps-claude/db";
 import type { Logger, WideEvent } from "@vps-claude/logger";
-import { wideEventMiddleware } from "@vps-claude/logger";
 
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { wideEventMiddleware } from "@vps-claude/logger";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 

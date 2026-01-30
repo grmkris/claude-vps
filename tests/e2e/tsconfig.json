@@ -1,0 +1,9 @@
+{
+  "extends": "@vps-claude/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "outDir": "dist",
+    "composite": true,
+    "strictNullChecks": true
+  }
+}

@@ -4,7 +4,7 @@ import {
   createClient,
   signIn,
   type AppRouterClient,
-} from "../src";
+} from "../index";
 
 export const TEST_CONFIG = {
   baseUrl: process.env.API_URL || "http://localhost:33000",
