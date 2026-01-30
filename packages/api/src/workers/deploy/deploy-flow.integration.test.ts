@@ -259,6 +259,55 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     expect(accessStep).toBeDefined();
     expect(accessStep?.status).toBe("completed");
 
+    // 7. Verify MCP settings file exists and has correct content
+    logger.info("Verifying MCP settings...");
+    const settingsResult = await spritesClient.execShell(
+      finalBox.spriteName!,
+      "cat /home/sprite/.claude/settings.json"
+    );
+    expect(settingsResult.exitCode).toBe(0);
+    const settings = JSON.parse(settingsResult.stdout);
+    expect(settings.mcpServers).toBeDefined();
+    expect(settings.mcpServers["ai-tools"]).toBeDefined();
+    expect(settings.mcpServers["ai-tools"].command).toBe(
+      "/home/sprite/start-mcp.sh"
+    );
+    logger.info("MCP settings.json verified");
+
+    // 8. Verify start-mcp.sh script exists and has correct content
+    const mcpScriptResult = await spritesClient.execShell(
+      finalBox.spriteName!,
+      "cat /home/sprite/start-mcp.sh"
+    );
+    expect(mcpScriptResult.exitCode).toBe(0);
+    expect(mcpScriptResult.stdout).toContain("source /home/sprite/.bashrc.env");
+    expect(mcpScriptResult.stdout).toContain("box-agent mcp");
+    logger.info("start-mcp.sh script verified");
+
+    // 9. Verify environment variables in .bashrc.env
+    const envResult = await spritesClient.execShell(
+      finalBox.spriteName!,
+      "source /home/sprite/.bashrc.env && env | grep -E '^BOX_|^APP_ENV'"
+    );
+    expect(envResult.exitCode).toBe(0);
+    expect(envResult.stdout).toContain("BOX_AGENT_SECRET=");
+    expect(envResult.stdout).toContain("BOX_API_TOKEN=");
+    expect(envResult.stdout).toContain("BOX_API_URL=");
+    expect(envResult.stdout).toContain("BOX_SUBDOMAIN=");
+    expect(envResult.stdout).toContain("APP_ENV=prod");
+
+    // 10. Verify BOX_AGENT_SECRET is 64 chars hex
+    const secretMatch = envResult.stdout.match(/BOX_AGENT_SECRET=([a-f0-9]+)/);
+    expect(secretMatch).toBeDefined();
+    expect(secretMatch![1]!.length).toBe(64);
+
+    // 11. Verify BOX_API_URL ends with /box
+    expect(envResult.stdout).toMatch(/BOX_API_URL=.*\/box/);
+
+    // 12. Verify BOX_SUBDOMAIN matches box subdomain
+    expect(envResult.stdout).toContain(`BOX_SUBDOMAIN=${box.subdomain}`);
+
+    logger.info("Environment variables verified");
     logger.info("All assertions passed - deployment flow working correctly");
   }, 600_000); // 10 minute timeout
 
