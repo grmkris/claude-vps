@@ -443,6 +443,14 @@ ENVEOF
 ${envFileContent}
 ENVEOF
       `,
+      SETUP_INSTALL_CLAUDE: `
+        # Install Claude Code CLI globally using bun
+        source /home/sprite/.bashrc.env
+        /.sprite/bin/bun add -g @anthropic-ai/claude-code
+
+        # Verify installation
+        /.sprite/bin/claude --version || echo "Claude CLI installed"
+      `,
       SETUP_BOX_AGENT_SERVICE: `
         cat > /home/sprite/start-box-agent.sh << 'STARTEOF'
 #!/bin/bash

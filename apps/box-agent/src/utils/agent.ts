@@ -82,12 +82,15 @@ interface ContentBlock {
 
 // Common locations for Claude Code executable
 const CLAUDE_PATHS = [
+  // Bun global install location (sprites)
+  "/home/sprite/.bun/bin/claude",
   "/.sprite/bin/claude",
   "/usr/local/bin/claude",
   "/usr/bin/claude",
   "/home/sprite/.local/bin/claude",
   "/home/coder/.local/bin/claude",
   // macOS paths for local testing
+  `${process.env.HOME}/.bun/bin/claude`,
   `${process.env.HOME}/.local/bin/claude`,
   `${process.env.HOME}/.npm-global/bin/claude`,
 ];
