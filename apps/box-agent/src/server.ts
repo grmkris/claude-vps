@@ -1,4 +1,6 @@
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
+import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
+import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
 
 import { env } from "./env";
@@ -13,7 +15,13 @@ const appRouter = {
   session: sessionRouter,
 };
 
-const apiHandler = new OpenAPIHandler(appRouter, {});
+const apiHandler = new OpenAPIHandler(appRouter, {
+  plugins: [
+    new OpenAPIReferencePlugin({
+      schemaConverters: [new ZodToJsonSchemaConverter()],
+    }),
+  ],
+});
 
 const app = new Hono();
 

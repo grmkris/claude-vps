@@ -96,14 +96,14 @@ const aiService = createAiService({
   },
 });
 const apiKeyService = createApiKeyService({ deps: { auth } });
+const boxEnvVarService = createBoxEnvVarService({ deps: { db } });
 const boxService = createBoxService({
-  deps: { db, queueClient, spritesClient },
+  deps: { db, queueClient, spritesClient, boxEnvVarService },
 });
 const cronjobService = createCronjobService({ deps: { db, queueClient } });
 const deployStepService = createDeployStepService({ deps: { db } });
 const emailService = createEmailService({ deps: { db, queueClient } });
 const credentialService = createCredentialService({ deps: { db } });
-const boxEnvVarService = createBoxEnvVarService({ deps: { db } });
 
 const services = {
   aiService,

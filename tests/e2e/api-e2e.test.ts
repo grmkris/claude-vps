@@ -6,7 +6,7 @@
  *
  * Tests the complete flow:
  * 1. Create test user via SDK
- * 2. Create box via SDK
+ * 2. Create box via SDK (with optional Claude token for sessions)
  * 3. Wait for deployment
  * 4. Send real email via inboundemail
  * 5. Verify email delivered and Claude session created via SDK
@@ -15,10 +15,12 @@
  * - Server running (local dev or remote)
  * - inboundemail API key for sending test emails
  * - Ngrok or public URL for server (for email webhooks)
+ * - CLAUDE_CODE_OAUTH_TOKEN for Claude session spawning (optional)
  *
  * Run:
  *   SERVER_URL=http://localhost:33000 \
- *   INBOUND_API_KEY=xxx AGENTS_DOMAIN=inbnd.dev \
+ *   INBOUND_API_KEY=xxx AGENTS_DOMAIN=yoda.fun \
+ *   CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-... \
  *     bun test tests/e2e/api-e2e.test.ts
  */
 
@@ -35,6 +37,7 @@ import { Inbound } from "inboundemail";
 const SERVER_URL = process.env.SERVER_URL || "http://localhost:33000";
 const INBOUND_API_KEY = process.env.INBOUND_API_KEY;
 const AGENTS_DOMAIN = process.env.AGENTS_DOMAIN || "inbnd.dev";
+const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
 
 // Generate unique test user credentials
 const testId = Date.now().toString(36);
@@ -131,6 +134,9 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
     console.log("Creating box via SDK...");
     const { box } = await client.box.create({
       name: `E2E Test Box ${Date.now().toString(36)}`,
+      ...(CLAUDE_CODE_OAUTH_TOKEN && {
+        envVars: { CLAUDE_CODE_OAUTH_TOKEN },
+      }),
     });
     boxId = box.id;
     subdomain = box.subdomain;

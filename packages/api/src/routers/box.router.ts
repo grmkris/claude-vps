@@ -40,6 +40,7 @@ export const boxRouter = {
       z.object({
         name: z.string().min(1).max(50),
         skills: z.array(z.string()).default([]),
+        envVars: z.record(z.string(), z.string()).optional(),
       })
     )
     .output(BoxCreateOutput)
