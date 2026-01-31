@@ -257,10 +257,10 @@ async function callApiEndpoint(
       method: "POST",
     },
     // Email tools (local - box-agent server)
-    email_send: { path: "/email/send", method: "POST", local: true },
-    email_list: { path: "/email/list", method: "GET", local: true },
+    email_send: { path: "/rpc/email/send", method: "POST", local: true },
+    email_list: { path: "/rpc/email/list", method: "GET", local: true },
     email_read: {
-      path: `/email/${String(args.id)}`,
+      path: `/rpc/email/${String(args.id)}`,
       method: "GET",
       local: true,
     },

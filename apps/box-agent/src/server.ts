@@ -28,7 +28,7 @@ app.all("/*", async (c) => {
   };
 
   const result = await apiHandler.handle(c.req.raw, {
-    prefix: "/",
+    prefix: "/rpc",
     context,
   });
 

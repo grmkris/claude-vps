@@ -41,18 +41,7 @@ http {
         proxy_buffers 4 256k;
         proxy_busy_buffers_size 256k;
 
-        location /email/ {
-            proxy_pass http://box_agent;
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_read_timeout 120s;
-            proxy_connect_timeout 10s;
-        }
-
-        location /agent/ {
+        location /rpc/ {
             proxy_pass http://box_agent;
             proxy_http_version 1.1;
             proxy_set_header Host $host;

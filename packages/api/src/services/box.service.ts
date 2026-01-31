@@ -436,7 +436,7 @@ When handling emails, read the content and respond appropriately.`;
         BoxServiceError
       >
     > {
-      const job = await queueClient.deployQueue.getJob(boxId);
+      const job = await queueClient.deployOrchestratorQueue.getJob(boxId);
       if (!job) return ok(null);
 
       const progress = job.progress as

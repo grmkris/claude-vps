@@ -9,6 +9,6 @@
   "devDependencies": {
     "@vps-claude/config": "workspace:*",
     "@vps-claude/sdk": "workspace:*",
-    "resend": "^4.5.0"
+    "inboundemail": "^0.20.0"
   }
 }
