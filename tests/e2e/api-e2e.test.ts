@@ -218,31 +218,6 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
     expect(deliveredEmail).toBeDefined();
     console.log(`Email delivered: ${deliveredEmail?.id}`);
 
-    // Debug: Check box environment
-    console.log("\n=== Debug: Checking box environment ===");
-    try {
-      const envCheck = await client.boxDetails.exec({
-        id: boxId,
-        command: "cat /home/sprite/.bashrc.env | grep CLAUDE || echo 'NOT_FOUND'",
-      });
-      console.log("CLAUDE_CODE_OAUTH_TOKEN:", envCheck.stdout?.trim() || envCheck.stderr);
-
-      const claudeCheck = await client.boxDetails.exec({
-        id: boxId,
-        command: "ls -la /.sprite/bin/claude 2>&1 || echo NOT_FOUND",
-      });
-      console.log("Claude executable:", claudeCheck.stdout?.trim() || claudeCheck.stderr);
-
-      const logsCheck = await client.boxDetails.exec({
-        id: boxId,
-        command: "sprite-env services logs box-agent 2>&1 | tail -20",
-      });
-      console.log("Box-agent logs:\n", logsCheck.stdout || logsCheck.stderr);
-    } catch (e) {
-      console.log("Debug check failed:", e);
-    }
-    console.log("=== End Debug ===\n");
-
     // Wait for Claude session to be created
     console.log("Waiting for Claude session...");
     const { sessions } = await waitFor(
