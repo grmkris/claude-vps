@@ -30,6 +30,7 @@ import {
   renderAgentEmail,
 } from "@vps-claude/email";
 import { createLogger } from "@vps-claude/logger";
+import { createProviderFactory } from "@vps-claude/providers";
 import { createQueueClient } from "@vps-claude/queue";
 import { createRedisClient } from "@vps-claude/redis";
 import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
@@ -65,6 +66,11 @@ const emailClient = createEmailClient({
 
 const spritesClient = createSpritesClient({
   token: env.SPRITES_TOKEN,
+  logger,
+});
+
+const providerFactory = createProviderFactory({
+  spritesClient,
   logger,
 });
 
@@ -114,6 +120,7 @@ const services = {
   cronjobService,
   deployStepService,
   emailService,
+  providerFactory,
   spritesClient,
 };
 

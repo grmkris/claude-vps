@@ -1,5 +1,8 @@
 import type { MiddlewareHandler } from "hono";
-import type { Logger } from "pino";
+import type { Logger as PinoLogger } from "pino";
+
+import type { Logger } from "./logger";
+
 import { createWideEvent } from "./wide-event";
 
 export function wideEventMiddleware(opts: {
@@ -11,7 +14,8 @@ export function wideEventMiddleware(opts: {
     if (opts.skipPaths?.includes(path)) return next();
 
     const requestId = crypto.randomUUID().slice(0, 8);
-    const event = createWideEvent(opts.logger, {
+    // Cast to PinoLogger - our Logger interface is a compatible subset
+    const event = createWideEvent(opts.logger as unknown as PinoLogger, {
       requestId,
       method: c.req.method,
       path,

@@ -25,6 +25,7 @@
     "@vps-claude/auth": "workspace:*",
     "@vps-claude/db": "workspace:*",
     "@vps-claude/logger": "workspace:*",
+    "@vps-claude/providers": "workspace:*",
     "@vps-claude/queue": "workspace:*",
     "@vps-claude/redis": "workspace:*",
     "@vps-claude/shared": "workspace:*",

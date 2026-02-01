@@ -20,6 +20,8 @@ export const boxStatusEnum = pgEnum("box_status", [
   "deleted",
 ]);
 
+export const providerTypeEnum = pgEnum("provider_type", ["sprites", "docker"]);
+
 export const box = pgTable(
   "box",
   {
@@ -31,6 +33,13 @@ export const box = pgTable(
     subdomain: text("subdomain").notNull().unique(),
     status: boxStatusEnum("status").notNull().default("pending"),
 
+    // Provider configuration
+    provider: providerTypeEnum("provider").notNull().default("sprites"),
+    providerHostId: text("provider_host_id"),
+    instanceName: text("instance_name"),
+    instanceUrl: text("instance_url"),
+
+    // Legacy Sprites-specific fields (kept for backwards compatibility)
     spriteName: text("sprite_name"),
     spriteUrl: text("sprite_url"),
     lastCheckpointId: text("last_checkpoint_id"),
@@ -51,6 +60,7 @@ export const box = pgTable(
     index("box_userId_idx").on(table.userId),
     index("box_subdomain_idx").on(table.subdomain),
     index("box_status_idx").on(table.status),
+    index("box_provider_idx").on(table.provider),
   ]
 );
 
