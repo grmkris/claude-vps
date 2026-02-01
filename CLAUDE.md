@@ -174,7 +174,7 @@ box-agent → POST `/box/email/send` → queue send → Resend API
 
 **Inbound:** Webhook → `emailService.processInbound()` → queue delivery → POST to box-agent → spawn Claude session
 
-**Outbound:** Claude MCP tool → box-agent → POST `/box/email/send` → queue → Resend API
+**Outbound:** Claude `email_send` MCP tool → boxApi ORPC → server `/box/email/send` → queue → Resend API
 
 **Files:**
 
@@ -224,9 +224,6 @@ box-agent → POST `/box/email/send` → queue send → Resend API
 | `/`                         | GET    | -         | Scalar API docs      |
 | `/health`                   | GET    | -         | Health check         |
 | `/rpc/email/receive`        | POST   | Protected | Receive from server  |
-| `/rpc/email/send`           | POST   | Public    | Proxy to server      |
-| `/rpc/email/list`           | GET    | Public    | List inbox           |
-| `/rpc/email/{id}`           | GET    | Public    | Read email           |
 | `/rpc/session/list`         | GET    | Public    | List Claude sessions |
 | `/rpc/session/{id}/history` | GET    | Public    | Session messages     |
 | `/rpc/session/send`         | POST   | Protected | Send to Claude       |
@@ -261,8 +258,9 @@ box-agent → POST `/box/email/send` → queue send → Resend API
 
 **Routing:**
 
-- Email tools → local box-agent (`localhost:33002/rpc/*`)
-- AI/Cronjob tools → main server (`BOX_API_URL/box/*`)
+- `email_list`, `email_read` → local filesystem (`~/.inbox/`)
+- `email_send` → boxApi ORPC client → server `/box/email/send`
+- AI/Cronjob tools → boxApi ORPC client → server (`BOX_API_URL/box/*`)
 
 **Configuration:**
 
