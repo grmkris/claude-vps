@@ -2,7 +2,7 @@ import type { FlowJob } from "@vps-claude/queue";
 
 import { DEPLOY_QUEUES } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
-import { SETUP_STEP_KEYS,type SetupStepKey } from "@vps-claude/sprites";
+import { SETUP_STEP_KEYS, type SetupStepKey } from "@vps-claude/sprites";
 
 export interface SkillWithSource {
   skillId: string;
@@ -197,7 +197,10 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
   }
 
   // Helper to create a step job
-  const createStepJob = (stepKey: SetupStepKey, children?: FlowJob[]): FlowJob => {
+  const createStepJob = (
+    stepKey: SetupStepKey,
+    children?: FlowJob[]
+  ): FlowJob => {
     const stepOrder = SETUP_STEP_KEYS.indexOf(stepKey) + 1;
     return {
       name: `${stepKey}-${boxId}`,
@@ -223,10 +226,15 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
 
   // Split steps into Phase 1 (parallel) and Phase 2+ (sequential)
   const phase1Steps = stepsToRun.filter((key) =>
-    PARALLEL_PHASE1_STEPS.includes(key as (typeof PARALLEL_PHASE1_STEPS)[number])
+    PARALLEL_PHASE1_STEPS.includes(
+      key as (typeof PARALLEL_PHASE1_STEPS)[number]
+    )
   );
   const sequentialSteps = stepsToRun.filter(
-    (key) => !PARALLEL_PHASE1_STEPS.includes(key as (typeof PARALLEL_PHASE1_STEPS)[number])
+    (key) =>
+      !PARALLEL_PHASE1_STEPS.includes(
+        key as (typeof PARALLEL_PHASE1_STEPS)[number]
+      )
   );
 
   // Build Phase 1 parallel jobs (if any)
@@ -261,7 +269,10 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
   if (sequentialSteps.length > 0) {
     // Build chain from last to first (BullMQ children-first execution)
     for (const stepKey of sequentialSteps) {
-      const job = createStepJob(stepKey, sequentialChain ? [sequentialChain] : undefined);
+      const job = createStepJob(
+        stepKey,
+        sequentialChain ? [sequentialChain] : undefined
+      );
       sequentialChain = job;
     }
   }

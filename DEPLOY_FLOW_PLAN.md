@@ -1,6 +1,7 @@
 # Deployment Flow Improvements
 
 ## Goals
+
 1. Add missing step labels to UI (quick fix)
 2. Restructure deployment for parallelization (performance)
 
@@ -11,6 +12,7 @@
 **File:** `packages/api/src/services/deploy-step.service.ts`
 
 Add to `SETUP_SUBSTEPS` array:
+
 ```typescript
 { key: "SETUP_EMAIL_SKILL", name: "Setting up email skill" },
 { key: "SETUP_INSTALL_CLAUDE", name: "Installing Claude CLI" },
@@ -22,6 +24,7 @@ Add to `SETUP_SUBSTEPS` array:
 ## Part 2: Parallel Deployment Architecture
 
 ### Current (Sequential) - ~6 min
+
 ```
 step1 → step2 → step3 → ... → step14
 ```
@@ -51,10 +54,10 @@ Phase 4 (parallel, needs Phase 3): ~30s
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| `packages/api/src/services/deploy-step.service.ts` | Add missing labels |
-| `packages/api/src/workers/deploy/flow-builder.ts` | Restructure DAG to phases |
+| File                                               | Change                    |
+| -------------------------------------------------- | ------------------------- |
+| `packages/api/src/services/deploy-step.service.ts` | Add missing labels        |
+| `packages/api/src/workers/deploy/flow-builder.ts`  | Restructure DAG to phases |
 
 ### Flow Builder Changes
 
@@ -77,14 +80,15 @@ const phase2Jobs = [
 ];
 
 // Phase 3: Sequential chains
-const chainA = chain(["SETUP_CREATE_ENV_FILE", "SETUP_INSTALL_CLAUDE", "SETUP_BOX_AGENT_SERVICE"]);
+const chainA = chain([
+  "SETUP_CREATE_ENV_FILE",
+  "SETUP_INSTALL_CLAUDE",
+  "SETUP_BOX_AGENT_SERVICE",
+]);
 const chainB = chain(["SETUP_INSTALL_AGENT_APP", "SETUP_AGENT_APP_SERVICE"]);
 
 // Phase 4: Service setup (parallel)
-const phase4Jobs = [
-  job("SETUP_NGINX_SERVICE"),
-  job("SETUP_MCP_SETTINGS"),
-];
+const phase4Jobs = [job("SETUP_NGINX_SERVICE"), job("SETUP_MCP_SETTINGS")];
 
 // Wire: phase1 → phase2 → [chainA, chainB] → phase4
 ```
@@ -92,17 +96,21 @@ const phase4Jobs = [
 ---
 
 ## Risks
+
 - apt-get lock contention (mitigated: only nginx install in parallel group)
 - Resume/retry tracking needs updating for phases
 - More complex debugging if step fails
 
 ## Verification
+
 1. Deploy box, verify all 14 steps show with correct labels
 2. Compare deployment time before/after (~50% reduction expected)
 3. Test Tailscale skip when no auth key
 4. Test deployment resume after failure
 
 ## Recommendation
+
 **Phase approach:**
+
 1. Part 1 first (add labels) - quick win, low risk
 2. Part 2 in separate PR after labels ship
