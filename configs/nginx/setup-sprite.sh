@@ -3,7 +3,7 @@
 #
 # This script configures:
 # - nginx as reverse proxy (port 8080)
-# - box-agent HTTP server (port 9999)
+# - box-agent HTTP server (port 33002)
 # - agent-app Next.js server (port 3000)
 # - mcp-agent-app MCP server (stdio, for Claude)
 
@@ -75,7 +75,7 @@ echo "Setup complete!"
 echo ""
 echo "Services:"
 echo "  - nginx: port 8080 (reverse proxy)"
-echo "  - box-agent: port 9999 (agent HTTP API)"
+echo "  - box-agent: port 33002 (agent HTTP API)"
 echo "  - agent-app: port 3000 (Next.js app)"
 echo ""
 echo "URL routes:"

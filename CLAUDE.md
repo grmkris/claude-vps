@@ -27,7 +27,7 @@ Boxes deploy to actual Fly.io VMs. Requires `SPRITES_TOKEN` in `apps/server/.env
 2. Box deploys to `{subdomain}.sprites.dev`
 3. SSH: `ssh coder@{subdomain}.sprites.dev`
 4. Test Claude: `claude` (interactive session)
-5. Test email: POST to `https://{subdomain}.sprites.dev:9999/email/receive`
+5. Test email: POST to `https://{subdomain}.sprites.dev:33002/email/receive`
 
 ### Testing box-agent Changes
 
@@ -213,7 +213,7 @@ box-agent → POST /box/email/send
 
 ## Box-Agent Service
 
-**Purpose:** In-sprite HTTP server (port 9999) that:
+**Purpose:** In-sprite HTTP server (port 33002) that:
 
 - Receives emails from main API
 - Stores emails as JSON in `~/.inbox/`

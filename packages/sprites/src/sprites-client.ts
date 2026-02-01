@@ -932,10 +932,10 @@ MCPEOF
       "cat /home/sprite/.bashrc.env 2>/dev/null || echo ''"
     );
 
-    // Parse existing vars
+    // Parse existing vars (handles both "export KEY=" and "KEY=" formats)
     const existingVars: Record<string, string> = {};
     for (const line of existingResult.stdout.split("\n")) {
-      const match = line.match(/^([A-Z_][A-Z0-9_]*)="(.*)"/);
+      const match = line.match(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)="(.*)"/);
       if (match?.[1] !== undefined && match[2] !== undefined) {
         existingVars[match[1]] = match[2];
       }
@@ -945,10 +945,10 @@ MCPEOF
     const mergedVars = { ...existingVars, ...envVars };
 
     const envFile = Object.entries(mergedVars)
-      .map(([k, v]) => `${k}="${v.replace(/"/g, '\\"')}"`)
+      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
 
-    await execCommand(
+    await execShell(
       spriteName,
       `cat > /home/sprite/.bashrc.env << 'ENVEOF'
 ${envFile}

@@ -24,6 +24,7 @@ import {
   boxFsRouter,
   apiKeyRouter,
   skillRouter,
+  mcpRouter,
   cronjobRouter,
 } from "./routers/index";
 
@@ -37,6 +38,7 @@ const fullAppRouter = {
   credential: credentialRouter,
   apiKey: apiKeyRouter,
   skill: skillRouter,
+  mcp: mcpRouter,
   boxFs: boxFsRouter,
   boxDetails: boxDetailsRouter,
   cronjob: cronjobRouter,
@@ -99,7 +101,6 @@ export function createApi({
   });
 
   app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
-  app.get("/", (c) => c.text("OK"));
   app.get("/health", (c) => c.text("OK"));
 
   app.post("/webhooks/inbound-email", async (c) => {
@@ -262,7 +263,7 @@ export function createApi({
     }
 
     const apiResult = await apiHandler.handle(c.req.raw, {
-      prefix: "/api-reference",
+      prefix: "/",
       context,
     });
 

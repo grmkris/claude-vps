@@ -96,7 +96,9 @@ const aiService = createAiService({
   },
 });
 const apiKeyService = createApiKeyService({ deps: { auth } });
-const boxEnvVarService = createBoxEnvVarService({ deps: { db } });
+const boxEnvVarService = createBoxEnvVarService({
+  deps: { db, spritesClient },
+});
 const boxService = createBoxService({
   deps: { db, queueClient, spritesClient, boxEnvVarService },
 });

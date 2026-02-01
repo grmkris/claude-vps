@@ -1,5 +1,6 @@
 import type { Database, SelectBoxEnvVarSchema } from "@vps-claude/db";
 import type { BoxId, UserId } from "@vps-claude/shared";
+import type { SpritesClient } from "@vps-claude/sprites";
 
 import { box, boxEnvVar, userCredential } from "@vps-claude/db";
 import { and, eq } from "drizzle-orm";
@@ -13,6 +14,7 @@ export type BoxEnvVarServiceError =
 
 interface BoxEnvVarServiceDeps {
   db: Database;
+  spritesClient?: SpritesClient;
 }
 
 export function createBoxEnvVarService({
@@ -20,7 +22,7 @@ export function createBoxEnvVarService({
 }: {
   deps: BoxEnvVarServiceDeps;
 }) {
-  const { db } = deps;
+  const { db, spritesClient } = deps;
 
   async function verifyBoxOwnership(
     boxId: BoxId,
@@ -39,6 +41,52 @@ export function createBoxEnvVarService({
     }
 
     return ok(true);
+  }
+
+  /**
+   * Push all resolved env vars to the running sprite.
+   * Called after set/delete to sync changes immediately.
+   */
+  async function pushEnvVarsToSprite(
+    boxId: BoxId,
+    userId: UserId
+  ): Promise<void> {
+    if (!spritesClient) return;
+
+    const boxRecord = await db.query.box.findFirst({
+      where: eq(box.id, boxId),
+      columns: { spriteName: true, status: true },
+    });
+
+    if (!boxRecord?.spriteName || boxRecord.status !== "running") {
+      return;
+    }
+
+    // Resolve all env vars (expand credential refs)
+    const envVars = await db.query.boxEnvVar.findMany({
+      where: eq(boxEnvVar.boxId, boxId),
+    });
+    const credentials = await db.query.userCredential.findMany({
+      where: eq(userCredential.userId, userId),
+    });
+    const credentialMap = new Map(credentials.map((c) => [c.key, c.value]));
+
+    const resolvedVars: Record<string, string> = {};
+    for (const envVar of envVars) {
+      if (envVar.type === "literal" && envVar.value) {
+        resolvedVars[envVar.key] = envVar.value;
+      } else if (envVar.type === "credential_ref" && envVar.credentialKey) {
+        const credentialValue = credentialMap.get(envVar.credentialKey);
+        if (credentialValue) {
+          resolvedVars[envVar.key] = credentialValue;
+        }
+      }
+    }
+
+    // Push to sprite - don't fail if this errors, DB update already succeeded
+    await spritesClient
+      .updateEnvVars(boxRecord.spriteName, resolvedVars)
+      .catch(() => {});
   }
 
   return {
@@ -116,6 +164,9 @@ export function createBoxEnvVarService({
         });
       }
 
+      // Push to running sprite
+      await pushEnvVarsToSprite(boxId, userId);
+
       return ok(undefined);
     },
 
@@ -140,6 +191,9 @@ export function createBoxEnvVarService({
           message: "Environment variable not found",
         });
       }
+
+      // Push to running sprite
+      await pushEnvVarsToSprite(boxId, userId);
 
       return ok(undefined);
     },

@@ -42,26 +42,38 @@ app.use(
   })
 );
 
-// Health endpoints - direct Hono routes (same pattern as main server)
-app.get("/", (c) => c.text("OK"));
+// Health endpoint
 app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));
 
-// ORPC handler for API routes
+// ORPC handler for API routes at /rpc
+app.all("/rpc/*", async (c) => {
+  const context = {
+    boxSecretHeader: c.req.header("X-Box-Secret"),
+    wideEvent: c.get("wideEvent"),
+  };
+  const result = await apiHandler.handle(c.req.raw, {
+    prefix: "/rpc",
+    context,
+  });
+  if (result.matched) {
+    return c.newResponse(result.response.body, result.response);
+  }
+  return c.text("Not Found", 404);
+});
+
+// Scalar docs at root (catch-all)
 app.all("/*", async (c) => {
   const context = {
     boxSecretHeader: c.req.header("X-Box-Secret"),
     wideEvent: c.get("wideEvent"),
   };
-
   const result = await apiHandler.handle(c.req.raw, {
-    prefix: "/rpc",
+    prefix: "/",
     context,
   });
-
   if (result.matched) {
     return c.newResponse(result.response.body, result.response);
   }
-
   return c.text("Not Found", 404);
 });
 
