@@ -19,10 +19,9 @@ type FlowJob = ReturnType<typeof buildDeployFlow>;
 
 /**
  * Recursively collect all SETUP_* step keys from the flow DAG.
- * Handles both sequential chain and Phase 1 parallel jobs.
+ * Handles both sequential chain and parallel jobs attached as children.
  */
 function collectAllSetupStepKeys(job: FlowJob, keys: string[] = []): string[] {
-  // Check if this is a setup step (not a gate)
   if (job.name.startsWith("SETUP_")) {
     // Extract step key from job name (format: SETUP_XXX-boxId)
     const stepKey = job.name.split("-")[0] ?? "";
@@ -45,26 +44,26 @@ function countSetupStepsInChain(flow: FlowJob): number {
   // Navigate: finalize -> health-check -> enable-access -> setup chain
   const healthCheck = flow.children?.[0];
   const enableAccess = healthCheck?.children?.[0];
-  const setupChainOrGate = enableAccess?.children?.find(
-    (c) => c.name.startsWith("SETUP_") || c.name.startsWith("phase1-gate-")
+  const setupChain = enableAccess?.children?.find((c) =>
+    c.name.startsWith("SETUP_")
   );
 
-  if (!setupChainOrGate) return 0;
+  if (!setupChain) return 0;
 
-  return collectAllSetupStepKeys(setupChainOrGate).length;
+  return collectAllSetupStepKeys(setupChain).length;
 }
 
 function getSetupStepKeysInChain(flow: FlowJob): string[] {
   const healthCheck = flow.children?.[0];
   const enableAccess = healthCheck?.children?.[0];
-  const setupChainOrGate = enableAccess?.children?.find(
-    (c) => c.name.startsWith("SETUP_") || c.name.startsWith("phase1-gate-")
+  const setupChain = enableAccess?.children?.find((c) =>
+    c.name.startsWith("SETUP_")
   );
 
-  if (!setupChainOrGate) return [];
+  if (!setupChain) return [];
 
   // Collect all keys recursively
-  const keys = collectAllSetupStepKeys(setupChainOrGate);
+  const keys = collectAllSetupStepKeys(setupChain);
 
   // Sort by SETUP_STEP_KEYS order (reversed for BullMQ children-first execution)
   return keys.sort((a, b) => {

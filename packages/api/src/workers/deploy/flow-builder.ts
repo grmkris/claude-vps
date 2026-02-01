@@ -40,19 +40,24 @@ interface BaseJobData {
  *   FINALIZE (root, runs LAST)
  *       └── HEALTH_CHECK
  *               └── ENABLE_ACCESS
- *                       ├── SETUP_STEP_10 (last setup step)
+ *                       ├── SETUP_STEP_10 (last sequential step)
  *                       │       └── SETUP_STEP_9
- *                       │               └── ... → SETUP_STEP_1 (runs FIRST)
+ *                       │               └── SETUP_STEP_5 (first sequential)
+ *                       │                       ├── SETUP_STEP_1 (parallel)
+ *                       │                       ├── SETUP_STEP_2 (parallel)
+ *                       │                       ├── SETUP_STEP_3 (parallel)
+ *                       │                       └── SETUP_STEP_4 (parallel)
  *                       └── SKILLS_GATE (optional)
  *                               ├── SKILL_1
  *                               └── SKILL_2
  *
  * Execution Order (children first):
- *   1. SETUP_STEP_1 → SETUP_STEP_2 → ... → SETUP_STEP_10
- *   2. SKILL_1, SKILL_2 (parallel) → SKILLS_GATE
- *   3. ENABLE_ACCESS (must happen before health check - sets URL auth to public)
- *   4. HEALTH_CHECK (requires public URL access)
- *   5. FINALIZE (marks box as running)
+ *   1. Phase 1: SETUP_1-4 run in PARALLEL (all as children of first sequential step)
+ *   2. Phase 2+: Sequential steps run one by one
+ *   3. SKILL_1, SKILL_2 (parallel) → SKILLS_GATE
+ *   4. ENABLE_ACCESS (sets URL auth to public)
+ *   5. HEALTH_CHECK (requires public URL access)
+ *   6. FINALIZE (marks box as running)
  */
 export function buildDeployFlow(params: DeployFlowParams): FlowJob {
   const {
@@ -175,11 +180,11 @@ const PARALLEL_PHASE1_STEPS = [
  * - Phase 2+: Remaining steps run SEQUENTIALLY (depend on Phase 1 results)
  *
  * BullMQ flow execution order (children first):
- * 1. Phase 1 parallel jobs complete
- * 2. Phase 1 gate aggregates
- * 3. Sequential chain executes one by one
+ * 1. Phase 1 parallel jobs complete (as children of first sequential step)
+ * 2. Sequential chain executes one by one
  *
- * This provides ~30-60s savings vs fully sequential execution.
+ * No explicit gate job needed - BullMQ guarantees parent won't run until
+ * all children complete. This provides ~30-60s savings vs fully sequential.
  */
 function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
   const { baseData, envVars, boxAgentBinaryUrl, completedStepKeys, makeJobId } =
@@ -238,31 +243,10 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
   );
 
   // Build Phase 1 parallel jobs (if any)
-  let phase1Gate: FlowJob | undefined;
-  if (phase1Steps.length > 0) {
-    const phase1Jobs = phase1Steps.map((stepKey) => createStepJob(stepKey));
-
-    // Gate job that waits for all Phase 1 jobs
-    phase1Gate = {
-      name: `phase1-gate-${boxId}`,
-      queueName: DEPLOY_QUEUES.setupStep,
-      data: {
-        boxId,
-        deploymentAttempt,
-        spriteName,
-        spriteUrl,
-        stepKey: "PHASE1_GATE",
-        stepOrder: 0, // Meta step, not tracked in UI
-        envVars,
-        boxAgentBinaryUrl,
-        isGate: true, // Worker will skip execution for gate jobs
-      },
-      opts: {
-        jobId: makeJobId("phase1-gate"),
-      },
-      children: phase1Jobs,
-    };
-  }
+  const phase1Jobs =
+    phase1Steps.length > 0
+      ? phase1Steps.map((stepKey) => createStepJob(stepKey))
+      : [];
 
   // Build sequential chain for Phase 2+ steps
   let sequentialChain: FlowJob | undefined;
@@ -277,19 +261,36 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
     }
   }
 
-  // Wire Phase 1 gate as child of first sequential step (if both exist)
-  if (sequentialChain && phase1Gate) {
-    // Find the deepest job in sequential chain and add phase1Gate as sibling child
+  // Attach Phase 1 parallel jobs directly to first sequential step
+  // BullMQ guarantees parent won't run until all children complete - no gate needed
+  if (sequentialChain && phase1Jobs.length > 0) {
+    // Find the deepest job in sequential chain (first to execute)
     let deepest = sequentialChain;
     while (deepest.children && deepest.children.length > 0) {
       deepest = deepest.children[0]!;
     }
-    deepest.children = [phase1Gate];
+    deepest.children = phase1Jobs;
     return sequentialChain;
   }
 
-  // Only Phase 1 or only sequential
-  return sequentialChain ?? phase1Gate;
+  // Edge case: Only Phase 1 parallel jobs remain (rare - only on resume)
+  // Since we can only return one FlowJob, chain them sequentially
+  if (phase1Jobs.length > 0 && !sequentialChain) {
+    const [first, ...rest] = phase1Jobs;
+    if (rest.length > 0) {
+      // Chain phase1 jobs sequentially (slight perf loss, but correct)
+      let chain: FlowJob = first!;
+      for (const job of rest) {
+        job.children = [chain];
+        chain = job;
+      }
+      return chain;
+    }
+    return first;
+  }
+
+  // Only sequential steps (no phase1)
+  return sequentialChain;
 }
 
 interface SkillsGateParams {
