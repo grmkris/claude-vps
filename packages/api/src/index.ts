@@ -3,8 +3,6 @@ import { UserId } from "@vps-claude/shared";
 
 import type { Context } from "./context";
 
-export { createApi } from "./create-api";
-
 export const o = os.$context<Context>();
 
 export const publicProcedure = o;
