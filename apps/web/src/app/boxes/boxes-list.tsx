@@ -213,7 +213,7 @@ function DevBoxCredentialsDialog({
 BOX_API_TOKEN=${credentials.agentSecret}
 BOX_API_URL=http://localhost:33000/box
 BOX_SUBDOMAIN=${credentials.subdomain}
-BOX_AGENT_PORT=9999
+BOX_AGENT_PORT=33002
 BOX_INBOX_DIR=./.inbox
 BOX_DB_PATH=./.box-agent/sessions.db`;
 

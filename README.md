@@ -27,7 +27,7 @@ Boxes are deployed via Sprites (Fly.io) API and accessible through unique URLs.
    | (Sprites API)
 
 3. Sprite starts with environment
-   | (agent-app :3000, box-agent :9999)
+   | (agent-app :3000, box-agent :33002)
 
 4. User accesses via HTTPS
    | (https://{subdomain}.sprites.dev)
