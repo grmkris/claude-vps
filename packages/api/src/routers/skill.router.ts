@@ -22,8 +22,8 @@ export const skillRouter = {
     .input(
       z.object({
         search: z.string().optional(),
-        offset: z.number().min(0).optional(),
-        limit: z.number().min(1).max(100).optional(),
+        offset: z.coerce.number().min(0).optional(),
+        limit: z.coerce.number().min(1).max(100).optional(),
       })
     )
     .output(SkillsShResponse)

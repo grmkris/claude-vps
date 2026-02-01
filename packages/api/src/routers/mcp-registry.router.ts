@@ -115,7 +115,7 @@ export const mcpRouter = {
       z.object({
         search: z.string().optional(),
         cursor: z.string().optional(),
-        limit: z.number().min(1).max(100).optional(),
+        limit: z.coerce.number().min(1).max(100).optional(),
       })
     )
     .output(McpCatalogResponseSchema)
