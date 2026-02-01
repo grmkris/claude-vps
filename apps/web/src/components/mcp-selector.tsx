@@ -1,6 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import {
+  type McpCatalogServer,
+  type McpServerConfig,
+  registryServerToConfig,
+} from "@vps-claude/shared/mcp-registry";
 import { Check, Loader2, Search, Server } from "lucide-react";
 import { useState } from "react";
 
@@ -10,8 +15,8 @@ import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 interface McpSelectorProps {
-  value: string[];
-  onChange: (servers: string[]) => void;
+  value: Record<string, McpServerConfig>;
+  onChange: (servers: Record<string, McpServerConfig>) => void;
 }
 
 export function McpSelector({ value, onChange }: McpSelectorProps) {
@@ -23,13 +28,20 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
     error,
   } = useQuery(orpc.mcp.catalog.queryOptions({}));
 
-  const toggleServer = (serverName: string) => {
-    if (value.includes(serverName)) {
-      onChange(value.filter((name) => name !== serverName));
+  const toggleServer = (server: McpCatalogServer) => {
+    const serverName = server.name;
+    if (value[serverName]) {
+      const { [serverName]: _, ...rest } = value;
+      onChange(rest);
     } else {
-      onChange([...value, serverName]);
+      const config = registryServerToConfig(server);
+      if (config) {
+        onChange({ ...value, [serverName]: config });
+      }
     }
   };
+
+  const selectedCount = Object.keys(value).length;
 
   const filteredServers =
     catalog?.servers.filter(
@@ -57,9 +69,9 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
           <Server className="h-4 w-4 text-primary" />
           <Label className="text-sm font-medium">MCP Servers (Optional)</Label>
         </div>
-        {value.length > 0 && (
+        {selectedCount > 0 && (
           <span className="text-xs text-muted-foreground">
-            {value.length} selected
+            {selectedCount} selected
           </span>
         )}
       </div>
@@ -88,13 +100,15 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
         ) : (
           <div className="divide-y divide-border">
             {filteredServers.map((server) => {
-              const isSelected = value.includes(server.name);
+              const isSelected = !!value[server.name];
               const displayName = server.title || server.name.split("/").pop();
+              const hasValidConfig = !!registryServerToConfig(server);
               return (
                 <button
                   type="button"
                   key={server.name}
-                  onClick={() => toggleServer(server.name)}
+                  onClick={() => toggleServer(server)}
+                  disabled={!hasValidConfig}
                   className={cn(
                     "w-full px-4 py-3 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isSelected && "bg-primary/5"

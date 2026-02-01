@@ -15,7 +15,7 @@ export interface McpRegistryPackage {
   identifier: string;
   transport?: { type: string };
   environmentVariables?: McpEnvVar[];
-  runtimeArguments?: string[];
+  runtimeArguments?: unknown[];
 }
 
 export interface McpRegistryRemote {
@@ -74,6 +74,35 @@ export interface McpCatalogResponse {
 /**
  * Transform raw API response to simplified catalog format
  */
+/** MCP server config for runtime (matches box-agent-config schema) */
+export interface McpServerConfig {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+/**
+ * Convert a registry server to McpServerConfig
+ * Currently only supports npm packages (npx -y <identifier>)
+ */
+export function registryServerToConfig(
+  server: McpCatalogServer
+): McpServerConfig | null {
+  if (!server.primaryPackage) return null;
+
+  const { registryType, identifier } = server.primaryPackage;
+
+  if (registryType === "npm") {
+    return {
+      command: "npx",
+      args: ["-y", identifier],
+    };
+  }
+
+  // OCI and other registry types not yet supported
+  return null;
+}
+
 export function transformToMcpCatalog(
   raw: McpRegistryApiResponse
 ): McpCatalogResponse {

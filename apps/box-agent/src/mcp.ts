@@ -11,71 +11,11 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { BoxCronjobId } from "@vps-claude/shared";
 import { z } from "zod";
 
-import { env } from "./env";
-
-interface EndpointConfig {
-  path: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  local?: boolean;
-}
-
-async function callApiEndpoint(
-  toolName: string,
-  args: Record<string, unknown>
-): Promise<unknown> {
-  const endpointMap: Record<string, EndpointConfig> = {
-    // AI tools (remote - main API server)
-    generate_image: { path: "/ai/generate-image", method: "POST" },
-    text_to_speech: { path: "/ai/text-to-speech", method: "POST" },
-    speech_to_text: { path: "/ai/speech-to-text", method: "POST" },
-    // Cronjob tools (remote - main API server)
-    cronjob_list: { path: "/cronjobs", method: "GET" },
-    cronjob_create: { path: "/cronjobs", method: "POST" },
-    cronjob_update: { path: `/cronjobs/${String(args.id)}`, method: "PUT" },
-    cronjob_delete: { path: `/cronjobs/${String(args.id)}`, method: "DELETE" },
-    cronjob_toggle: {
-      path: `/cronjobs/${String(args.id)}/toggle`,
-      method: "POST",
-    },
-    // Email tools (local - box-agent server)
-    email_send: { path: "/rpc/email/send", method: "POST", local: true },
-    email_list: { path: "/rpc/email/list", method: "GET", local: true },
-    email_read: {
-      path: `/rpc/email/${String(args.id)}`,
-      method: "GET",
-      local: true,
-    },
-  };
-
-  const config = endpointMap[toolName];
-  if (!config) {
-    throw new Error(`Unknown tool: ${toolName}`);
-  }
-
-  const baseUrl = config.local
-    ? `http://localhost:${env.BOX_AGENT_PORT}`
-    : env.BOX_API_URL;
-  const url = `${baseUrl}${config.path}`;
-
-  const response = await fetch(url, {
-    method: config.method,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Box-Secret": env.BOX_API_TOKEN,
-      "ngrok-skip-browser-warning": "true",
-    },
-    body: config.method !== "GET" ? JSON.stringify(args) : undefined,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API error (${response.status}): ${errorText}`);
-  }
-
-  return response.json();
-}
+import { boxApi } from "./box-api-client";
+import { listEmails, readEmail } from "./utils/inbox";
 
 function toolResult(result: unknown) {
   return {
@@ -101,7 +41,8 @@ export function createMcpServer() {
     version: "1.0.0",
   });
 
-  // AI Tools
+  // ===== AI Tools (via boxApi.ai.*) =====
+
   server.registerTool(
     "generate_image",
     {
@@ -123,7 +64,8 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("generate_image", args));
+        const result = await boxApi.ai.generateImage(args);
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -147,7 +89,8 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("text_to_speech", args));
+        const result = await boxApi.ai.textToSpeech(args);
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -171,14 +114,16 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("speech_to_text", args));
+        const result = await boxApi.ai.speechToText(args);
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
     }
   );
 
-  // Email Tools
+  // ===== Email Tools (local functions + boxApi.email.send) =====
+
   server.registerTool(
     "email_send",
     {
@@ -196,7 +141,8 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("email_send", args));
+        const result = await boxApi.email.send(args);
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -211,7 +157,8 @@ export function createMcpServer() {
     },
     async () => {
       try {
-        return toolResult(await callApiEndpoint("email_list", {}));
+        const emails = await listEmails();
+        return toolResult({ emails });
       } catch (e) {
         return toolError(e);
       }
@@ -230,14 +177,19 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("email_read", args));
+        const email = await readEmail(args.id);
+        if (!email) {
+          throw new Error(`Email not found: ${args.id}`);
+        }
+        return toolResult(email);
       } catch (e) {
         return toolError(e);
       }
     }
   );
 
-  // Cronjob Tools
+  // ===== Cronjob Tools (via boxApi.cronjob.*) =====
+
   server.registerTool(
     "cronjob_list",
     {
@@ -246,7 +198,8 @@ export function createMcpServer() {
     },
     async () => {
       try {
-        return toolResult(await callApiEndpoint("cronjob_list", {}));
+        const result = await boxApi.cronjob.list({});
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -271,7 +224,8 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("cronjob_create", args));
+        const result = await boxApi.cronjob.create(args);
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -298,7 +252,11 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("cronjob_update", args));
+        const result = await boxApi.cronjob.update({
+          ...args,
+          id: BoxCronjobId.parse(args.id),
+        });
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -315,7 +273,10 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("cronjob_delete", args));
+        const result = await boxApi.cronjob.delete({
+          id: BoxCronjobId.parse(args.id),
+        });
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -333,7 +294,10 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        return toolResult(await callApiEndpoint("cronjob_toggle", args));
+        const result = await boxApi.cronjob.toggle({
+          id: BoxCronjobId.parse(args.id),
+        });
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }

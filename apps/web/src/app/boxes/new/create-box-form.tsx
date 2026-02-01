@@ -1,12 +1,13 @@
 "use client";
 
-import { slugify } from "@vps-claude/shared";
+import { slugify, type McpServerConfig } from "@vps-claude/shared";
 import { ArrowLeft, Box } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 
 import { EnvVarsInput, type EnvVarInput } from "@/components/env-vars-input";
+import { McpSelector } from "@/components/mcp-selector";
 import { SkillSelector } from "@/components/skill-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,9 @@ export default function CreateBoxForm() {
   const bulkSetEnvVars = useBulkSetBoxEnvVars();
   const [name, setName] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
+  const [mcpServers, setMcpServers] = useState<Record<string, McpServerConfig>>(
+    {}
+  );
   const [envVars, setEnvVars] = useState<EnvVarInput[]>([]);
 
   const subdomainPreview = useMemo(
@@ -34,10 +38,12 @@ export default function CreateBoxForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const hasMcpServers = Object.keys(mcpServers).length > 0;
     createMutation.mutate(
       {
         name,
         skills,
+        ...(hasMcpServers && { mcpServers }),
       },
       {
         onSuccess: (data) => {
@@ -113,6 +119,11 @@ export default function CreateBoxForm() {
         {/* Skills.sh Skills */}
         <div className="pt-6 border-t">
           <SkillSelector value={skills} onChange={setSkills} />
+        </div>
+
+        {/* MCP Servers */}
+        <div className="pt-6 border-t">
+          <McpSelector value={mcpServers} onChange={setMcpServers} />
         </div>
 
         {/* Environment Variables */}
