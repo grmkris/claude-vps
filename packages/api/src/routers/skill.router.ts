@@ -19,9 +19,21 @@ const SkillsShResponse = z.object({
 export const skillRouter = {
   catalog: publicProcedure
     .route({ method: "GET", path: "/skill/catalog" })
+    .input(
+      z.object({
+        search: z.string().optional(),
+        offset: z.number().min(0).optional(),
+        limit: z.number().min(1).max(100).optional(),
+      })
+    )
     .output(SkillsShResponse)
-    .handler(async () => {
-      const res = await fetch("https://skills.sh/api/skills?limit=100");
+    .handler(async ({ input }) => {
+      const params = new URLSearchParams();
+      params.set("limit", String(input.limit ?? 30));
+      if (input.search) params.set("search", input.search);
+      if (input.offset) params.set("offset", String(input.offset));
+
+      const res = await fetch(`https://skills.sh/api/skills?${params}`);
       if (!res.ok) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
           message: "Failed to fetch skills catalog",

@@ -108,6 +108,56 @@ describe("MCP Registry Schema", () => {
   });
 });
 
+describe("MCP Registry Search & Pagination", () => {
+  test("search param filters results", async () => {
+    const res = await fetch(
+      `${MCP_REGISTRY_URL.replace("limit=100", "limit=30&search=github")}`
+    );
+    expect(res.ok).toBe(true);
+
+    const json = await res.json();
+    const result = McpRegistryApiResponseSchema.safeParse(json);
+    expect(result.success).toBe(true);
+
+    // Search should return results (API handles search logic)
+    const servers = result.data?.servers ?? [];
+    expect(servers.length).toBeGreaterThan(0);
+
+    // At least some results should match the search term
+    const matchingServers = servers.filter((entry) => {
+      const name = entry.server.name.toLowerCase();
+      const desc = entry.server.description?.toLowerCase() ?? "";
+      return name.includes("github") || desc.includes("github");
+    });
+    expect(matchingServers.length).toBeGreaterThan(0);
+  });
+
+  test("cursor param paginates results", async () => {
+    // Get first page
+    const res1 = await fetch(
+      `${MCP_REGISTRY_URL.replace("limit=100", "limit=10")}`
+    );
+    const page1 = McpRegistryApiResponseSchema.parse(await res1.json());
+    expect(page1.metadata?.nextCursor).toBeDefined();
+
+    // Get second page using cursor
+    const cursor = page1.metadata?.nextCursor;
+    const res2 = await fetch(
+      `${MCP_REGISTRY_URL.replace("limit=100", `limit=10&cursor=${cursor}`)}`
+    );
+    const page2 = McpRegistryApiResponseSchema.parse(await res2.json());
+
+    // Pages should have different servers
+    const page1Names = new Set(page1.servers.map((s) => s.server.name));
+    const page2Names = new Set(page2.servers.map((s) => s.server.name));
+
+    // No overlap between pages
+    for (const name of page2Names) {
+      expect(page1Names.has(name)).toBe(false);
+    }
+  });
+});
+
 describe("transformToMcpCatalog", () => {
   test("extracts npm package as primaryPackage", () => {
     const rawResponse = {
