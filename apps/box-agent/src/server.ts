@@ -1,7 +1,9 @@
 import type { WideEvent } from "@vps-claude/logger";
 
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
+import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { wideEventMiddleware } from "@vps-claude/logger";
+import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
 
 import { env } from "./env";
@@ -16,7 +18,13 @@ const appRouter = {
   session: sessionRouter,
 };
 
-const apiHandler = new OpenAPIHandler(appRouter, {});
+const apiHandler = new OpenAPIHandler(appRouter, {
+  plugins: [
+    new OpenAPIReferencePlugin({
+      schemaConverters: [new ZodToJsonSchemaConverter()],
+    }),
+  ],
+});
 
 type HonoVariables = {
   requestId: string;
@@ -46,7 +54,7 @@ app.all("/*", async (c) => {
   };
 
   const result = await apiHandler.handle(c.req.raw, {
-    prefix: "/",
+    prefix: "/rpc",
     context,
   });
 

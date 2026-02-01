@@ -49,7 +49,9 @@ export function createEmailDeliveryWorker({
 
       try {
         // Sprites: box-agent accessible via sprite's public URL
-        const boxAgentUrl = `${spriteUrl}/email/receive`;
+        const boxAgentUrl = `${spriteUrl}/rpc/email/receive`;
+
+        logger.info({ emailId, spriteUrl }, "Delivering email to box");
 
         const response = await fetch(boxAgentUrl, {
           method: "POST",

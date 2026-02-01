@@ -260,7 +260,7 @@ export const boxDetailsRouter = {
       }
 
       const response = await fetch(
-        `${boxResult.value.spriteUrl}/sessions/list`,
+        `${boxResult.value.spriteUrl}/rpc/sessions/list`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -329,7 +329,7 @@ export const boxDetailsRouter = {
       }
 
       const response = await fetch(
-        `${boxResult.value.spriteUrl}/sessions/send`,
+        `${boxResult.value.spriteUrl}/rpc/sessions/send`,
         {
           method: "POST",
           headers: {
