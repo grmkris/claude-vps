@@ -30,29 +30,24 @@ import {
   signIn,
   type AppRouterClient,
 } from "@vps-claude/sdk";
+import { env } from "bun";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Inbound } from "inboundemail";
-
+import { z } from "zod";
+const TestEnvSchema = z.object({
+  SERVER_URL: z.string().url(),
+  INBOUND_API_KEY: z.string().min(1),
+  AGENTS_DOMAIN: z.string().min(1),
+  CLAUDE_CODE_OAUTH_TOKEN: z.string().min(1),
+});
 // Environment configuration
-const SERVER_URL = process.env.SERVER_URL || "http://localhost:33000";
-const INBOUND_API_KEY = process.env.INBOUND_API_KEY;
-const AGENTS_DOMAIN = process.env.AGENTS_DOMAIN || "inbnd.dev";
-const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+const TEST_ENV = TestEnvSchema.parse(env);
 
 // Generate unique test user credentials
 const testId = Date.now().toString(36);
 const TEST_EMAIL = `e2e-test-${testId}@test.local`;
 const TEST_PASSWORD = "TestPassword123!";
 const TEST_NAME = `E2E Test User ${testId}`;
-
-// Skip test if required env vars missing
-const SKIP_TEST = !INBOUND_API_KEY;
-
-if (SKIP_TEST) {
-  console.warn("\n⚠️  Skipping API E2E test - missing env vars:");
-  if (!INBOUND_API_KEY) console.warn("   - INBOUND_API_KEY");
-  console.warn("\nSet env vars and ensure server is running.\n");
-}
 
 /**
  * Wait for a condition with polling
@@ -84,7 +79,7 @@ async function waitFor<T>(
   );
 }
 
-describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
+describe("API E2E - Email Flow", () => {
   let client: AppRouterClient;
   let inbound: Inbound;
   let boxId: `box_${string}`;
@@ -92,11 +87,11 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
 
   beforeAll(async () => {
     console.log("\n=== API E2E Test Setup ===");
-    console.log(`Server URL: ${SERVER_URL}`);
-    console.log(`Agents Domain: ${AGENTS_DOMAIN}`);
+    console.log(`Server URL: ${TEST_ENV.SERVER_URL}`);
+    console.log(`Agents Domain: ${TEST_ENV.AGENTS_DOMAIN}`);
 
     // 1. Create auth helper and sign up new user
-    const authHelper = createAuthHelper(SERVER_URL);
+    const authHelper = createAuthHelper(TEST_ENV.SERVER_URL);
     console.log(`Creating test user: ${TEST_EMAIL}`);
 
     const signUpResult = await authHelper.signUp.email({
@@ -112,7 +107,7 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
 
     // 2. Sign in to get session cookie
     const { sessionCookie, error: authError } = await signIn(
-      SERVER_URL,
+      TEST_ENV.SERVER_URL,
       TEST_EMAIL,
       TEST_PASSWORD
     );
@@ -123,19 +118,24 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
     console.log("Authenticated successfully");
 
     // 3. Create SDK client (uses sessionCookie for auth)
-    client = createClient({ baseUrl: SERVER_URL, sessionToken: sessionCookie });
+    client = createClient({
+      baseUrl: TEST_ENV.SERVER_URL,
+      sessionToken: sessionCookie,
+    });
     console.log("SDK client created");
 
     // 4. Create inboundemail client for sending test emails
-    inbound = new Inbound(INBOUND_API_KEY!);
+    inbound = new Inbound({
+      apiKey: TEST_ENV.INBOUND_API_KEY,
+    });
     console.log("Inbound email client created");
 
     // 5. Create box via SDK
     console.log("Creating box via SDK...");
     const { box } = await client.box.create({
       name: `E2E Test Box ${Date.now().toString(36)}`,
-      ...(CLAUDE_CODE_OAUTH_TOKEN && {
-        envVars: { CLAUDE_CODE_OAUTH_TOKEN },
+      ...(TEST_ENV.CLAUDE_CODE_OAUTH_TOKEN && {
+        envVars: { CLAUDE_CODE_OAUTH_TOKEN: TEST_ENV.CLAUDE_CODE_OAUTH_TOKEN },
       }),
     });
     boxId = box.id;
@@ -187,11 +187,11 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
     console.log("\n=== Test: Email triggers Claude session ===");
 
     // Send real email via inboundemail
-    const toAddress = `${subdomain}@${AGENTS_DOMAIN}`;
+    const toAddress = `${subdomain}@${TEST_ENV.AGENTS_DOMAIN}`;
     console.log(`Sending email to ${toAddress}...`);
 
     const result = await inbound.emails.send({
-      from: `e2e-test@${AGENTS_DOMAIN}`,
+      from: `e2e-test@${TEST_ENV.AGENTS_DOMAIN}`,
       to: toAddress,
       subject: `E2E Test ${Date.now()}`,
       text: "This is an automated E2E test. Please respond with a brief acknowledgment.",

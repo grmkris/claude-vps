@@ -66,6 +66,7 @@
   },
   "dependencies": {
     "dotenv": "catalog:",
+    "vps-claude": ".",
     "zod": "catalog:"
   },
   "devDependencies": {
