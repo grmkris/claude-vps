@@ -28,6 +28,7 @@
         "@modelcontextprotocol/sdk": "^1.13.0",
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
+        "@orpc/zod": "catalog:",
         "@vps-claude/logger": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
@@ -318,6 +319,14 @@
       "devDependencies": {
         "@typescript/native-preview": "catalog:",
         "@vps-claude/config": "workspace:*",
+      },
+    },
+    "tests/e2e": {
+      "name": "@vps-claude/e2e-tests",
+      "devDependencies": {
+        "@vps-claude/config": "workspace:*",
+        "@vps-claude/sdk": "workspace:*",
+        "inboundemail": "^0.20.0",
       },
     },
   },
@@ -891,6 +900,8 @@
     "@vps-claude/config": ["@vps-claude/config@workspace:packages/config"],
 
     "@vps-claude/db": ["@vps-claude/db@workspace:packages/db"],
+
+    "@vps-claude/e2e-tests": ["@vps-claude/e2e-tests@workspace:tests/e2e"],
 
     "@vps-claude/email": ["@vps-claude/email@workspace:packages/email"],
 

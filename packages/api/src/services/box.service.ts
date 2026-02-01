@@ -10,6 +10,8 @@ import type {
 import type { QueueClient } from "@vps-claude/queue";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import type { BoxEnvVarService } from "./box-env-var.service";
+
 import { box, boxAgentConfig, boxEmailSettings } from "@vps-claude/db";
 import {
   type BoxAgentConfigId,
@@ -35,10 +37,11 @@ interface BoxServiceDeps {
   db: Database;
   queueClient: QueueClient;
   spritesClient?: SpritesClient;
+  boxEnvVarService?: BoxEnvVarService;
 }
 
 export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
-  const { db, queueClient } = deps;
+  const { db, queueClient, boxEnvVarService } = deps;
 
   const getById = async (
     id: BoxId
@@ -66,6 +69,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       input: {
         name: string;
         skills?: string[];
+        envVars?: Record<string, string>;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
@@ -106,6 +110,22 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         triggerType: "default",
         name: "Default",
       });
+
+      // Set env vars if provided (before queuing deploy)
+      if (
+        boxEnvVarService &&
+        input.envVars &&
+        Object.keys(input.envVars).length > 0
+      ) {
+        const envVarInputs = Object.entries(input.envVars).map(
+          ([key, value]) => ({
+            key,
+            type: "literal" as const,
+            value,
+          })
+        );
+        await boxEnvVarService.bulkSet(created.id, userId, envVarInputs);
+      }
 
       // Use new orchestrator queue for modular deployment
       await queueClient.deployOrchestratorQueue.add(
@@ -436,7 +456,7 @@ When handling emails, read the content and respond appropriately.`;
         BoxServiceError
       >
     > {
-      const job = await queueClient.deployQueue.getJob(boxId);
+      const job = await queueClient.deployOrchestratorQueue.getJob(boxId);
       if (!job) return ok(null);
 
       const progress = job.progress as

@@ -111,7 +111,7 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         });
 
         // Trigger the cronjob via box-agent
-        const triggerUrl = `${spriteUrl}/cron/trigger`;
+        const triggerUrl = `${spriteUrl}/rpc/cron/trigger`;
         logger.info({ cronjobId, triggerUrl }, "Triggering cronjob");
 
         const response = await fetch(triggerUrl, {

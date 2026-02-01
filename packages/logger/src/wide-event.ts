@@ -1,4 +1,4 @@
-import type { Logger } from "pino";
+import type { Logger } from "./logger";
 
 export interface WideEvent {
   set(ctx: Record<string, unknown>): WideEvent;

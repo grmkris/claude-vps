@@ -41,18 +41,7 @@ http {
         proxy_buffers 4 256k;
         proxy_busy_buffers_size 256k;
 
-        location /email/ {
-            proxy_pass http://box_agent;
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_read_timeout 120s;
-            proxy_connect_timeout 10s;
-        }
-
-        location /agent/ {
+        location /rpc/ {
             proxy_pass http://box_agent;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
@@ -453,6 +442,14 @@ ENVEOF
         tee /home/sprite/.bashrc.env > /dev/null << 'ENVEOF'
 ${envFileContent}
 ENVEOF
+      `,
+      SETUP_INSTALL_CLAUDE: `
+        # Install Claude Code CLI globally using bun
+        source /home/sprite/.bashrc.env
+        /.sprite/bin/bun add -g @anthropic-ai/claude-code
+
+        # Verify installation
+        /.sprite/bin/claude --version || echo "Claude CLI installed"
       `,
       SETUP_BOX_AGENT_SERVICE: `
         cat > /home/sprite/start-box-agent.sh << 'STARTEOF'

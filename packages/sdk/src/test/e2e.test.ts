@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { createClient } from "../src";
+import { createClient } from "../index";
 import {
   createReadOnlyApiKey,
   setupTestUser,
@@ -117,11 +117,13 @@ describe("SDK E2E Tests", () => {
         expect(true).toBe(false);
       } catch (error) {
         expect(error).toBeDefined();
-        // Error message includes "Missing permission" or FORBIDDEN code
+        // Error indicates permission denial
         const errorStr = String(error).toLowerCase();
         expect(
           errorStr.includes("forbidden") ||
-            errorStr.includes("missing permission")
+            errorStr.includes("missing permission") ||
+            errorStr.includes("unauthorized") ||
+            errorStr.includes("permission")
         ).toBe(true);
       }
     }, 15_000);

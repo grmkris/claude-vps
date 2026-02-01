@@ -42,7 +42,7 @@ export function createEmailDeliveryWorker({
       const { emailId, spriteUrl, agentSecret, email } = job.data;
 
       // Sprites: box-agent accessible via sprite's public URL
-      const boxAgentUrl = `${spriteUrl}/email/receive`;
+      const boxAgentUrl = `${spriteUrl}/rpc/email/receive`;
 
       logger.info({ emailId, spriteUrl }, "Delivering email to box");
 
