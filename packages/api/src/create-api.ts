@@ -24,6 +24,7 @@ import {
   boxFsRouter,
   apiKeyRouter,
   skillRouter,
+  mcpRouter,
   cronjobRouter,
 } from "./routers/index";
 
@@ -37,6 +38,7 @@ const fullAppRouter = {
   credential: credentialRouter,
   apiKey: apiKeyRouter,
   skill: skillRouter,
+  mcp: mcpRouter,
   boxFs: boxFsRouter,
   boxDetails: boxDetailsRouter,
   cronjob: cronjobRouter,
