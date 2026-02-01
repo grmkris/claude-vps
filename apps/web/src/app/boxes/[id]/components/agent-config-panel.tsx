@@ -42,9 +42,7 @@ const PERMISSION_MODES = [
 ];
 
 // Type guard for stdio config
-function isStdioConfig(
-  config: McpServerConfig
-): config is {
+function isStdioConfig(config: McpServerConfig): config is {
   command: string;
   args?: string[];
   env?: Record<string, string>;

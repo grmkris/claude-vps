@@ -26,7 +26,10 @@ async function testSprite() {
       subdomain: spriteName,
       envVars: {},
     });
-    logger.info({ spriteName: sprite.spriteName, url: sprite.url }, "Sprite created");
+    logger.info(
+      { spriteName: sprite.spriteName, url: sprite.url },
+      "Sprite created"
+    );
 
     // Give sprite a moment to initialize
     logger.info("Waiting for sprite to initialize...");
@@ -51,7 +54,9 @@ async function testSprite() {
     logger.info({ output: envLines }, "env result (first 10 lines)");
 
     logger.info("All commands executed successfully");
-    logger.info("Note: HTTP exec only supports single executable paths. For commands with arguments, use WebSocket exec.");
+    logger.info(
+      "Note: HTTP exec only supports single executable paths. For commands with arguments, use WebSocket exec."
+    );
 
     // Check sprite info
     logger.info("--- Sprite Info ---");

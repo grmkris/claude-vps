@@ -74,7 +74,10 @@ async function waitFor<T>(
       return lastResult;
     }
     const elapsed = Math.round((Date.now() - startTime) / 1000);
-    logger.info({ description: options.description, elapsedSec: elapsed }, "Waiting...");
+    logger.info(
+      { description: options.description, elapsedSec: elapsed },
+      "Waiting..."
+    );
     await new Promise((r) => setTimeout(r, options.pollIntervalMs));
   }
 
@@ -91,7 +94,10 @@ describe("API E2E - Email Flow", () => {
 
   beforeAll(async () => {
     logger.info("=== API E2E Test Setup ===");
-    logger.info({ serverUrl: TEST_ENV.SERVER_URL, agentsDomain: TEST_ENV.AGENTS_DOMAIN }, "Config");
+    logger.info(
+      { serverUrl: TEST_ENV.SERVER_URL, agentsDomain: TEST_ENV.AGENTS_DOMAIN },
+      "Config"
+    );
 
     // 1. Create auth helper and sign up new user
     const authHelper = createAuthHelper(TEST_ENV.SERVER_URL);
@@ -259,7 +265,13 @@ describe("API E2E - Email Flow", () => {
     // Verify assistant response has content
     const assistantMsg = messages.find((m) => m.type === "assistant");
     expect(assistantMsg?.content.length).toBeGreaterThan(0);
-    logger.info({ messageCount: messages.length, preview: assistantMsg?.content.slice(0, 100) }, "Session history verified");
+    logger.info(
+      {
+        messageCount: messages.length,
+        preview: assistantMsg?.content.slice(0, 100),
+      },
+      "Session history verified"
+    );
 
     logger.info("=== Test Passed ===");
   }, 300_000); // 5 minute timeout for test
