@@ -70,7 +70,10 @@ app.all("/rpc/*", async (c) => {
     context,
   });
   if (result.matched) {
-    return c.newResponse(result.response.body, result.response);
+    return c.newResponse(
+      result.response.body as Parameters<typeof c.newResponse>[0],
+      result.response
+    );
   }
   return c.text("Not Found", 404);
 });
@@ -86,7 +89,10 @@ app.all("/*", async (c) => {
     context,
   });
   if (result.matched) {
-    return c.newResponse(result.response.body, result.response);
+    return c.newResponse(
+      result.response.body as Parameters<typeof c.newResponse>[0],
+      result.response
+    );
   }
   return c.text("Not Found", 404);
 });

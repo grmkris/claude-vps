@@ -468,16 +468,10 @@ Send beautifully formatted emails using markdown.
 
 ## Quick Send
 
-\`\`\`bash
-POST http://localhost:33002/email/send
-Content-Type: application/json
-
-{
-  "to": "recipient@example.com",
-  "subject": "Your subject",
-  "body": "# Hello\\n\\nYour **markdown** content here."
-}
-\`\`\`
+Use the \`email_send\` MCP tool with:
+- **to**: recipient email address
+- **subject**: email subject line
+- **body**: markdown content (auto-converted to HTML)
 SKILLEOF
       chown -R coder:coder ${HOME_DIR}/.claude
     `,

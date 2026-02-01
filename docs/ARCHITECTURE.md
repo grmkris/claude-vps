@@ -326,11 +326,11 @@
 │  │  │ HTTP Server (Hono) - Port 33002                            │  │ │
 │  │  │                                                            │  │ │
 │  │  │  ┌────────────────┐  ┌────────────────┐                   │  │ │
-│  │  │  │ /email/*       │  │ /cron/*        │                   │  │ │
+│  │  │  │ /rpc/email/*   │  │ /rpc/cron/*    │                   │  │ │
 │  │  │  │  - receive     │  │  - trigger     │                   │  │ │
-│  │  │  │  - send        │  │                │                   │  │ │
-│  │  │  │  - list        │  └────────────────┘                   │  │ │
-│  │  │  │  - read        │                                        │  │ │
+│  │  │  │                │  │                │                   │  │ │
+│  │  │  │ (send/list/read│  └────────────────┘                   │  │ │
+│  │  │  │  via MCP tools)│                                        │  │ │
 │  │  │  └────────────────┘  ┌────────────────┐                   │  │ │
 │  │  │                      │ /sessions/*    │                   │  │ │
 │  │  │  ┌────────────────┐  │  - list        │                   │  │ │
@@ -545,17 +545,18 @@ LEGEND:
 │  LOCAL BOX-AGENT (port 33002 - X-Box-Secret token auth)              │
 │  ─────────────────────────────────────────────────────               │
 │                                                                      │
-│  /email                                                              │
-│    ├─ POST   /receive      Receive inbound email (from server)      │
-│    ├─ GET    /list         List inbox                               │
-│    ├─ GET    /:id          Read email                               │
-│    ├─ POST   /:id/read     Archive email                            │
-│    └─ POST   /send         Send email (proxies to server)           │
+│  /rpc/email                                                          │
+│    └─ POST   /receive      Receive inbound email (from server)      │
 │                                                                      │
-│  /cron                                                               │
+│  Email MCP Tools (via stdio, not HTTP):                              │
+│    - email_send   → routes to server /box/email/send                 │
+│    - email_list   → reads local ~/.inbox/                            │
+│    - email_read   → reads local ~/.inbox/{id}.json                   │
+│                                                                      │
+│  /rpc/cron                                                           │
 │    └─ POST   /trigger      Trigger cronjob execution                │
 │                                                                      │
-│  /sessions                                                           │
+│  /rpc/sessions                                                       │
 │    ├─ GET    /list         List sessions                            │
 │    └─ POST   /send         Send message to session                  │
 │                                                                      │

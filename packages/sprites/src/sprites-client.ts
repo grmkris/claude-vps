@@ -367,10 +367,6 @@ ENVEOF`
       spriteUrl: string;
     }
   ): string {
-    const envExports = Object.entries(config.envVars)
-      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
-      .join("\n");
-
     const envFileContent = Object.entries(config.envVars)
       .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
       .join("\n");
@@ -391,16 +387,10 @@ Send beautifully formatted emails using markdown.
 
 ## Quick Send
 
-\`\`\`bash
-POST http://localhost:33002/email/send
-Content-Type: application/json
-
-{
-  "to": "recipient@example.com",
-  "subject": "Your subject",
-  "body": "# Hello\\n\\nYour **markdown** content here."
-}
-\`\`\`
+Use the \`email_send\` MCP tool with:
+- **to**: recipient email address
+- **subject**: email subject line
+- **body**: markdown content (auto-converted to HTML)
 
 ## Markdown Formatting
 
@@ -433,10 +423,13 @@ Your email body supports full markdown:
 SKILLEOF
       `,
       SETUP_ENV_VARS: `
-        tee -a /home/sprite/.bashrc > /dev/null << 'ENVEOF'
-# Box environment variables
-${envExports}
-ENVEOF
+        # Source env file from bashrc (single source of truth)
+        grep -q '.bashrc.env' /home/sprite/.bashrc 2>/dev/null || \
+          echo 'source /home/sprite/.bashrc.env 2>/dev/null || true' >> /home/sprite/.bashrc
+
+        # Also add to .profile for login shells
+        grep -q '.bashrc.env' /home/sprite/.profile 2>/dev/null || \
+          echo 'source /home/sprite/.bashrc.env 2>/dev/null || true' >> /home/sprite/.profile
       `,
       SETUP_CREATE_ENV_FILE: `
         tee /home/sprite/.bashrc.env > /dev/null << 'ENVEOF'
@@ -533,6 +526,7 @@ MCPEOF
       `,
       SETUP_TAILSCALE: `
         set -euo pipefail
+        source /home/sprite/.bashrc.env
 
         # Skip if no auth key provided
         if [ -z "\${TAILSCALE_AUTHKEY:-}" ]; then
@@ -739,16 +733,10 @@ Send beautifully formatted emails using markdown.
 
 ## Quick Send
 
-\`\`\`bash
-POST http://localhost:33002/email/send
-Content-Type: application/json
-
-{
-  "to": "recipient@example.com",
-  "subject": "Your subject",
-  "body": "# Hello\\n\\nYour **markdown** content here."
-}
-\`\`\`
+Use the \`email_send\` MCP tool with:
+- **to**: recipient email address
+- **subject**: email subject line
+- **body**: markdown content (auto-converted to HTML)
 
 ## Markdown Formatting
 

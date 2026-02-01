@@ -27,7 +27,7 @@ Boxes deploy to actual Fly.io VMs. Requires `SPRITES_TOKEN` in `apps/server/.env
 2. Box deploys to `{subdomain}.sprites.dev`
 3. SSH: `ssh coder@{subdomain}.sprites.dev`
 4. Test Claude: `claude` (interactive session)
-5. Test email: POST to `https://{subdomain}.sprites.dev:33002/email/receive`
+5. Test email: Send email to `{subdomain}@yoda.fun` (triggers Claude session)
 
 ### Testing box-agent Changes
 
@@ -219,15 +219,15 @@ box-agent → POST `/box/email/send` → queue send → Resend API
 
 **HTTP Endpoints:**
 
-| Route                       | Method | Auth      | Purpose              |
-| --------------------------- | ------ | --------- | -------------------- |
-| `/`                         | GET    | -         | Scalar API docs      |
-| `/health`                   | GET    | -         | Health check         |
-| `/rpc/email/receive`        | POST   | Protected | Receive from server  |
-| `/rpc/session/list`         | GET    | Public    | List Claude sessions |
-| `/rpc/session/{id}/history` | GET    | Public    | Session messages     |
-| `/rpc/session/send`         | POST   | Protected | Send to Claude       |
-| `/rpc/cron/trigger`         | POST   | Protected | Trigger cronjob      |
+| Route                        | Method | Auth      | Purpose              |
+| ---------------------------- | ------ | --------- | -------------------- |
+| `/`                          | GET    | -         | Scalar API docs      |
+| `/health`                    | GET    | -         | Health check         |
+| `/rpc/email/receive`         | POST   | Protected | Receive from server  |
+| `/rpc/sessions/list`         | GET    | Public    | List Claude sessions |
+| `/rpc/sessions/{id}/history` | GET    | Public    | Session messages     |
+| `/rpc/sessions/send`         | POST   | Protected | Send to Claude       |
+| `/rpc/cron/trigger`          | POST   | Protected | Trigger cronjob      |
 
 **Authentication:**
 

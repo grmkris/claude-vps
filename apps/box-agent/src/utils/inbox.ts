@@ -74,6 +74,8 @@ File: ${filepath}
 
 Read the email and handle it appropriately.
 
-To reply: POST http://localhost:${env.BOX_AGENT_PORT}/rpc/email/send
-{"to": "${email.from.email}", "subject": "Re: ${email.subject || ""}", "body": "..."}`;
+To reply, use the email_send tool with:
+- to: "${email.from.email}"
+- subject: "Re: ${email.subject || ""}"
+- body: your reply message`;
 }

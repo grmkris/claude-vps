@@ -120,14 +120,12 @@ sequenceDiagram
 sequenceDiagram
     participant Claude
     participant MCP as MCP Server
-    participant Agent as box-agent :33002
     participant Server as Server :33000
     participant Queue as BullMQ
     participant Resend
 
     Claude->>MCP: email_send tool
-    MCP->>Agent: POST /rpc/email/send
-    Agent->>Server: POST /box/email/send (X-Box-Secret)
+    MCP->>Server: POST /box/email/send (boxApi ORPC)
     Server->>Queue: queueSendEmail()
     Queue->>Resend: Send via API
     Resend-->>Queue: Success
