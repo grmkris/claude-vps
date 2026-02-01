@@ -72,7 +72,6 @@ export function createInstallSkillWorker({
             { parentId }
           );
           event.set({ status: "skipped", reason: "no_top_source" });
-          event.emit();
           return { success: true };
         }
 
@@ -103,7 +102,6 @@ export function createInstallSkillWorker({
           exitCode: result.exitCode,
           status: "installed",
         });
-        event.emit();
 
         return { success: true };
       } catch (error) {
@@ -119,11 +117,12 @@ export function createInstallSkillWorker({
         );
 
         event.error(error instanceof Error ? error : new Error(String(error)));
-        event.emit();
 
         // Don't throw - skill failures shouldn't fail entire deployment
         // Return success with error noted
         return { success: false, error: errorMsg };
+      } finally {
+        event.emit();
       }
     },
     {

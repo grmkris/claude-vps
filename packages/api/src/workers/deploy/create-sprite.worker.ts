@@ -75,7 +75,6 @@ export function createCreateSpriteWorker({
           spriteUrl: sprite.url,
           status: "created",
         });
-        event.emit();
 
         return {
           success: true,
@@ -95,9 +94,9 @@ export function createCreateSpriteWorker({
         );
 
         event.error(error instanceof Error ? error : new Error(String(error)));
-        event.emit();
-
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

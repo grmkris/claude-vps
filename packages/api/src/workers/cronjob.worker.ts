@@ -36,7 +36,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
       const executionResult = await cronjobService.createExecution(cronjobId);
       if (executionResult.isErr()) {
         event.error(new Error(executionResult.error.message));
-        event.emit();
         throw new Error(executionResult.error.message);
       }
       const execution = executionResult.value;

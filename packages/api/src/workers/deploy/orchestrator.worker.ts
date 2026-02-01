@@ -261,20 +261,16 @@ export function createOrchestratorWorker({
           isResume,
           status: "flow_started",
         });
-        event.emit();
 
         return { success: true, spriteName, spriteUrl };
       } catch (error) {
         event.error(error instanceof Error ? error : new Error(String(error)));
-        event.emit();
         const message =
           error instanceof Error ? error.message : "Unknown error";
-        logger.error(
-          { boxId, error: message },
-          "ORCHESTRATOR: Deployment setup failed"
-        );
         await boxService.updateStatus(boxId, "error", message);
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

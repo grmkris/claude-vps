@@ -76,7 +76,6 @@ export function createSkillsGateWorker({
           failed: failures.length,
           status: failures.length > 0 ? "partial" : "passed",
         });
-        event.emit();
 
         return {
           success: true,
@@ -98,9 +97,9 @@ export function createSkillsGateWorker({
         );
 
         event.error(error instanceof Error ? error : new Error(String(error)));
-        event.emit();
-
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

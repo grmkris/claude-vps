@@ -69,7 +69,6 @@ export function createHealthCheckWorker({
         );
 
         event.set({ status: "healthy" });
-        event.emit();
 
         return { success: true };
       } catch (error) {
@@ -88,9 +87,9 @@ export function createHealthCheckWorker({
           status: "unhealthy",
           attemptsMade: job.attemptsMade,
         });
-        event.emit();
-
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

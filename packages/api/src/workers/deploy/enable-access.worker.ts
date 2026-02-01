@@ -63,7 +63,6 @@ export function createEnableAccessWorker({
         );
 
         event.set({ status: "public" });
-        event.emit();
 
         return { success: true };
       } catch (error) {
@@ -79,9 +78,9 @@ export function createEnableAccessWorker({
         );
 
         event.error(error instanceof Error ? error : new Error(String(error)));
-        event.emit();
-
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {
