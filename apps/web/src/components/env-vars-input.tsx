@@ -2,6 +2,7 @@
 
 import { Eye, EyeOff, Plus, Trash2, Variable } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,30 +29,86 @@ interface EnvVarsInputProps {
   onChange: (envVars: EnvVarInput[]) => void;
 }
 
+/** Parse pasted text into env var entries */
+function parseBulkEnvVars(text: string): EnvVarInput[] {
+  const lines = text.split(/[\n\r]+/).filter(Boolean);
+  const results: EnvVarInput[] = [];
+
+  for (const line of lines) {
+    // Skip comments
+    if (line.trim().startsWith("#")) continue;
+
+    // Parse KEY=value format
+    const eqIndex = line.indexOf("=");
+    if (eqIndex > 0) {
+      const key = line.slice(0, eqIndex).trim().toUpperCase();
+      const value = line.slice(eqIndex + 1).trim();
+      // Remove surrounding quotes if present
+      const cleanValue = value.replace(/^["']|["']$/g, "");
+      if (/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+        results.push({ key, type: "literal", value: cleanValue });
+      }
+    }
+  }
+
+  return results;
+}
+
 function EnvVarRow({
   envVar,
   index,
   credentials,
   onUpdate,
   onRemove,
+  onBulkAdd,
 }: {
   envVar: EnvVarInput;
   index: number;
   credentials: Array<{ key: string }>;
   onUpdate: (index: number, updated: EnvVarInput) => void;
   onRemove: (index: number) => void;
+  onBulkAdd: (newVars: EnvVarInput[]) => void;
 }) {
   const [showValue, setShowValue] = useState(false);
 
+  const handleKeyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData("text");
+    const parsed = parseBulkEnvVars(text);
+
+    if (parsed.length > 1) {
+      e.preventDefault();
+      // If current row is empty, replace it; otherwise add after
+      if (!envVar.key && !envVar.value) {
+        onUpdate(index, parsed[0]!);
+        onBulkAdd(parsed.slice(1));
+      } else {
+        onBulkAdd(parsed);
+      }
+      toast.success(`Added ${parsed.length} environment variables`);
+    }
+  };
+
+  const handleCredentialSelect = (credentialKey: string) => {
+    if (credentialKey) {
+      onUpdate(index, {
+        ...envVar,
+        credentialKey,
+        // Auto-fill name from credential if empty
+        key: envVar.key || credentialKey,
+      });
+    }
+  };
+
   return (
     <div className="flex gap-2 items-start">
-      <div className="flex-1 space-y-2">
+      <div className="w-[180px] shrink-0">
         <Input
           placeholder="KEY_NAME"
           value={envVar.key}
           onChange={(e) =>
             onUpdate(index, { ...envVar, key: e.target.value.toUpperCase() })
           }
+          onPaste={handleKeyPaste}
           className="font-mono h-9"
         />
       </div>
@@ -69,7 +126,7 @@ function EnvVarRow({
           })
         }
       >
-        <SelectTrigger className="w-32 h-9">
+        <SelectTrigger className="w-[120px] shrink-0 h-9">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -78,7 +135,7 @@ function EnvVarRow({
         </SelectContent>
       </Select>
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         {envVar.type === "literal" ? (
           <div className="relative">
             <Input
@@ -105,13 +162,11 @@ function EnvVarRow({
         ) : (
           <Select
             value={envVar.credentialKey ?? ""}
-            onValueChange={(credentialKey) =>
-              credentialKey && onUpdate(index, { ...envVar, credentialKey })
-            }
+            onValueChange={(v) => v && handleCredentialSelect(v)}
           >
             <SelectTrigger
               className={cn(
-                "h-9",
+                "h-9 font-mono",
                 !envVar.credentialKey && "text-muted-foreground"
               )}
             >
@@ -139,7 +194,7 @@ function EnvVarRow({
         variant="ghost"
         size="sm"
         onClick={() => onRemove(index)}
-        className="h-9 px-2"
+        className="h-9 px-2 shrink-0"
       >
         <Trash2 className="h-4 w-4 text-muted-foreground" />
       </Button>
@@ -162,6 +217,10 @@ export function EnvVarsInput({ value, onChange }: EnvVarsInputProps) {
 
   const removeEnvVar = (index: number) => {
     onChange(value.filter((_, i) => i !== index));
+  };
+
+  const bulkAddEnvVars = (newVars: EnvVarInput[]) => {
+    onChange([...value, ...newVars]);
   };
 
   return (
@@ -190,6 +249,7 @@ export function EnvVarsInput({ value, onChange }: EnvVarsInputProps) {
               credentials={credentials}
               onUpdate={updateEnvVar}
               onRemove={removeEnvVar}
+              onBulkAdd={bulkAddEnvVars}
             />
           ))}
         </div>
@@ -209,7 +269,7 @@ export function EnvVarsInput({ value, onChange }: EnvVarsInputProps) {
       <p className="text-xs text-muted-foreground">
         Variables are injected into the box at deploy time.{" "}
         <span className="text-primary">Credential</span> type references your
-        saved credentials.
+        saved credentials. Paste multiple KEY=value lines to bulk add.
       </p>
     </div>
   );
