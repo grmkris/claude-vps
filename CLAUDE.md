@@ -73,12 +73,14 @@ packages/
 
 ## API Architecture
 
-### Two-Tier Router Organization
+### Four API Layers
 
-| Level | Prefix  | Auth          | Example Endpoints  | Clients                      |
-| ----- | ------- | ------------- | ------------------ | ---------------------------- |
-| User  | `/rpc/` | Session       | box, secret, skill | Web UI (authenticated users) |
-| Box   | `/box/` | Per-box token | email/send         | box-agent (in sprites)       |
+| Layer           | Location           | Port  | Auth           | Purpose               | Clients        |
+| --------------- | ------------------ | ----- | -------------- | --------------------- | -------------- |
+| MCP             | box-agent (stdio)  | N/A   | N/A            | Claude ↔ tools bridge | Claude SDK     |
+| Box-Agent API   | box-agent `/rpc/*` | 33002 | X-Box-Secret   | External → box        | Server workers |
+| Server Box API  | server `/box/*`    | 33000 | X-Box-Secret   | Box → backend         | box-agent      |
+| Server User API | server `/rpc/*`    | 33000 | Session cookie | User → backend        | Web UI         |
 
 **Procedures** (`packages/api/src/`):
 
@@ -88,10 +90,12 @@ packages/
 
 **Routers** (`packages/api/src/routers/`):
 
-- `box.router.ts` - Create/list/delete boxes
-- `secret.router.ts` - User environment variables
-- `skill.router.ts` - Custom package bundles
-- `box-api.router.ts` - Box-to-server communication
+- `box.router.ts` - Create/list/delete boxes (User API)
+- `secret.router.ts` - User environment variables (User API)
+- `skill.router.ts` - Custom package bundles (User API)
+- `mcp.router.ts` - MCP registry catalog (User API)
+- `box-api.router.ts` - Email send, cronjobs, agent-config (Box API)
+- `box-ai.router.ts` - Image gen, TTS, STT (Box API)
 
 **Services** (`packages/api/src/services/`):
 
@@ -168,27 +172,9 @@ box-agent → POST `/box/email/send` → queue send → Resend API
 
 ## Email System
 
-**Inbound Flow:**
+**Inbound:** Webhook → `emailService.processInbound()` → queue delivery → POST to box-agent → spawn Claude session
 
-```
-Resend webhook → /webhooks/inbound-email
-  → emailService.processInbound(subdomain, emailData)
-  → Insert box_email table (status: "received")
-  → Queue delivery job
-  → Worker POSTs to {spriteUrl}/email/receive
-  → box-agent saves to ~/.inbox/{emailId}.json
-  → Spawns Claude AI session (async)
-```
-
-**Outbound Flow:**
-
-```
-box-agent → POST /box/email/send
-  → boxProcedure validates token
-  → emailService.sendFromBox()
-  → Queue send job
-  → Worker calls Resend API
-```
+**Outbound:** Claude MCP tool → box-agent → POST `/box/email/send` → queue → Resend API
 
 **Files:**
 
@@ -213,12 +199,17 @@ box-agent → POST /box/email/send
 
 ## Box-Agent Service
 
-**Purpose:** In-sprite HTTP server (port 33002) that:
+**Purpose:** In-sprite service (port 33002) providing:
 
-- Receives emails from main API
-- Stores emails as JSON in `~/.inbox/`
-- Spawns autonomous Claude AI sessions
-- Proxies outbound emails to main API
+- HTTP API for external access (server workers, webhooks)
+- MCP server for Claude AI sessions (stdio transport)
+- Email storage in `~/.inbox/`
+- Claude session management
+
+**Modes:**
+
+- `box-agent` (default) → HTTP server on port 33002
+- `box-agent mcp` → MCP server via stdio (used by Claude SDK)
 
 **Deployment:**
 
@@ -226,19 +217,67 @@ box-agent → POST /box/email/send
 - Started in background by entrypoint script
 - Source: `apps/box-agent/`
 
-**Key Endpoints:**
+**HTTP Endpoints:**
 
-- `POST /email/receive` - Receive from delivery worker (auth: `X-Box-Secret` header)
-- `POST /email/send` - Send via main API (proxies with `BOX_API_TOKEN`)
-- `GET /email/list` - List inbox
-- `GET /email/{id}` - Read email
-- `POST /email/{id}/read` - Archive email
+| Route                       | Method | Auth      | Purpose              |
+| --------------------------- | ------ | --------- | -------------------- |
+| `/`                         | GET    | -         | Scalar API docs      |
+| `/health`                   | GET    | -         | Health check         |
+| `/rpc/email/receive`        | POST   | Protected | Receive from server  |
+| `/rpc/email/send`           | POST   | Public    | Proxy to server      |
+| `/rpc/email/list`           | GET    | Public    | List inbox           |
+| `/rpc/email/{id}`           | GET    | Public    | Read email           |
+| `/rpc/session/list`         | GET    | Public    | List Claude sessions |
+| `/rpc/session/{id}/history` | GET    | Public    | Session messages     |
+| `/rpc/session/send`         | POST   | Protected | Send to Claude       |
+| `/rpc/cron/trigger`         | POST   | Protected | Trigger cronjob      |
 
 **Authentication:**
 
-- `BOX_AGENT_SECRET` env var - Validates inbound requests
-- `BOX_API_TOKEN` env var (same value) - Authenticates outbound requests
+- `BOX_AGENT_SECRET` env var - Validates inbound requests (Protected endpoints)
+- `BOX_API_TOKEN` env var (same value) - Authenticates outbound requests to server
 - Generated during deployment via `emailService.getOrCreateSettings(boxId)`
+
+---
+
+## MCP (Model Context Protocol)
+
+**Purpose:** Bridge between Claude AI sessions and box-agent capabilities via stdio transport.
+
+**How it works:**
+
+1. Claude SDK spawns `box-agent mcp` subprocess
+2. MCP server exposes tools via stdio JSON-RPC
+3. Claude calls tools → MCP routes to local or remote endpoints
+4. Results returned to Claude session
+
+**Tools Exposed (13 total):**
+
+| Category | Tools                                                                                  |
+| -------- | -------------------------------------------------------------------------------------- |
+| AI       | `generate_image`, `text_to_speech`, `speech_to_text`                                   |
+| Email    | `email_send`, `email_list`, `email_read`                                               |
+| Cronjob  | `cronjob_list`, `cronjob_create`, `cronjob_update`, `cronjob_delete`, `cronjob_toggle` |
+
+**Routing:**
+
+- Email tools → local box-agent (`localhost:33002/rpc/*`)
+- AI/Cronjob tools → main server (`BOX_API_URL/box/*`)
+
+**Configuration:**
+
+- Per-box MCP servers stored in `box_agent_config` table
+- Users configure via web UI (MCP registry browser)
+- Always includes `ai-tools` MCP server by default
+- Trigger types: `email`, `cron`, `webhook`, `manual`, `default`
+
+**Files:**
+
+- `apps/box-agent/src/mcp.ts` - MCP server, tool definitions
+- `apps/box-agent/src/utils/agent.ts` - Claude SDK integration
+- `packages/api/src/routers/mcp.router.ts` - MCP registry catalog endpoint
+- `packages/api/src/routers/box-agent-config.router.ts` - User config API
+- `packages/db/src/schema/box-agent-config/` - Config storage
 
 ---
 
@@ -315,8 +354,11 @@ box-agent → POST /box/email/send
 - `delete-box.worker.ts` - Delete sprites (1min timeout)
 - `email-delivery.worker.ts` - POST emails to box-agent (30s timeout)
 - `email-send.worker.ts` - Send via Resend (30s timeout)
+- `cronjob.worker.ts` - Trigger cronjobs on schedule
 
 **Registration:** `apps/server/src/server.ts` - Workers started on server boot
+
+**Cronjob flow:** Scheduler → worker wakes sprite → POST `/rpc/cron/trigger` → spawn Claude session
 
 ---
 
@@ -356,6 +398,15 @@ const { data } = orpc.box.list.useQuery();
 1. Create `packages/api/src/services/{name}.service.ts`
 2. Add to Services interface in `context.ts`
 3. Initialize in `apps/server/src/server.ts`
+
+## API Documentation (Scalar)
+
+OpenAPI documentation available via Scalar UI:
+
+- **Server:** http://localhost:33000/
+- **Box-agent:** http://localhost:33002/
+
+---
 
 ## Deployment
 
