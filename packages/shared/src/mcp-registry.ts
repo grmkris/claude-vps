@@ -15,7 +15,7 @@ export interface McpRegistryPackage {
   identifier: string;
   transport?: { type: string };
   environmentVariables?: McpEnvVar[];
-  runtimeArguments?: string[];
+  runtimeArguments?: unknown[];
 }
 
 export interface McpRegistryRemote {
@@ -51,6 +51,13 @@ export interface McpRegistryApiResponse {
   };
 }
 
+/** Simplified remote info for catalog display */
+export interface McpCatalogRemote {
+  type: string;
+  url: string;
+  hasRequiredHeaders: boolean;
+}
+
 /** Simplified server for catalog display */
 export interface McpCatalogServer {
   name: string;
@@ -63,17 +70,63 @@ export interface McpCatalogServer {
     identifier: string;
     envVars?: McpEnvVar[];
   };
+  primaryRemote?: McpCatalogRemote;
   hasRemote?: boolean;
 }
 
 export interface McpCatalogResponse {
   servers: McpCatalogServer[];
   hasMore: boolean;
+  nextCursor?: string;
 }
 
 /**
  * Transform raw API response to simplified catalog format
  */
+/** MCP server config for runtime - stdio (local command) */
+export interface McpServerConfigStdio {
+  type?: "stdio";
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+/** MCP server config for runtime - SSE (remote URL) */
+export interface McpServerConfigSse {
+  type: "sse";
+  url: string;
+  headers?: Record<string, string>;
+}
+
+/** MCP server config for runtime (matches box-agent-config schema) */
+export type McpServerConfig = McpServerConfigStdio | McpServerConfigSse;
+
+/**
+ * Convert a registry server to McpServerConfig
+ * Supports npm packages (npx -y <identifier>) and remote SSE servers (no auth)
+ */
+export function registryServerToConfig(
+  server: McpCatalogServer
+): McpServerConfig | null {
+  // Prefer npm package if available
+  if (server.primaryPackage?.registryType === "npm") {
+    return {
+      command: "npx",
+      args: ["-y", server.primaryPackage.identifier],
+    };
+  }
+
+  // Fallback to remote if no required headers
+  if (server.primaryRemote && !server.primaryRemote.hasRequiredHeaders) {
+    return {
+      type: "sse",
+      url: server.primaryRemote.url,
+    };
+  }
+
+  return null;
+}
+
 export function transformToMcpCatalog(
   raw: McpRegistryApiResponse
 ): McpCatalogResponse {
@@ -95,6 +148,17 @@ export function transformToMcpCatalog(
         }
       : undefined;
 
+    // Find first remote as primary
+    const firstRemote = server.remotes?.[0];
+    const primaryRemote = firstRemote
+      ? {
+          type: firstRemote.type,
+          url: firstRemote.url,
+          hasRequiredHeaders:
+            firstRemote.headers?.some((h) => h.isRequired) ?? false,
+        }
+      : undefined;
+
     return {
       name: server.name,
       title: server.title,
@@ -102,6 +166,7 @@ export function transformToMcpCatalog(
       publisher: publisherMeta?.publisher,
       keywords: publisherMeta?.keywords,
       primaryPackage,
+      primaryRemote,
       hasRemote: (server.remotes?.length ?? 0) > 0,
     };
   });

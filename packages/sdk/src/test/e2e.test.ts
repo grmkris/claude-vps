@@ -1,3 +1,4 @@
+import { createLogger } from "@vps-claude/logger";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { createClient } from "../index";
@@ -7,6 +8,8 @@ import {
   TEST_CONFIG,
   type TestSetup,
 } from "./setup";
+
+const logger = createLogger({ appName: "sdk-e2e-test", level: "info" });
 
 describe("SDK E2E Tests", () => {
   let setup: TestSetup;
@@ -64,7 +67,7 @@ describe("SDK E2E Tests", () => {
   describe("Session Authentication", () => {
     test("can list boxes with session cookie", async () => {
       if (!setup.sessionCookie) {
-        console.log("Skipping session test - no session cookie available");
+        logger.info("Skipping session test - no session cookie available");
         return;
       }
 
@@ -90,7 +93,7 @@ describe("SDK E2E Tests", () => {
 
     test("read-only API key cannot create box", async () => {
       if (!setup.sessionCookie) {
-        console.log("Skipping - no session cookie");
+        logger.info("Skipping - no session cookie");
         return;
       }
 
@@ -130,7 +133,7 @@ describe("SDK E2E Tests", () => {
 
     test("read-only API key cannot create secret", async () => {
       if (!setup.sessionCookie) {
-        console.log("Skipping - no session cookie");
+        logger.info("Skipping - no session cookie");
         return;
       }
 

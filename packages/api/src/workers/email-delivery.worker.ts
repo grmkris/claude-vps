@@ -20,6 +20,7 @@ interface EmailDeliveryWorkerDeps {
 interface EmailSendWorkerDeps {
   emailService: EmailService;
   sendEmail: (params: {
+    from: string;
     to: string;
     subject: string;
     body: string;
@@ -97,7 +98,7 @@ export function createEmailSendWorker({ deps }: { deps: EmailSendWorkerDeps }) {
   const worker = new Worker<SendEmailJobData>(
     WORKER_CONFIG.sendEmail.name,
     async (job: Job<SendEmailJobData>) => {
-      const { to, subject, body, inReplyTo } = job.data;
+      const { fromEmail, to, subject, body, inReplyTo } = job.data;
       const event = createWideEvent(logger, {
         worker: "EMAIL_SEND",
         jobId: job.id,
@@ -107,6 +108,7 @@ export function createEmailSendWorker({ deps }: { deps: EmailSendWorkerDeps }) {
 
       try {
         await sendEmail({
+          from: fromEmail,
           to,
           subject,
           body,

@@ -23,6 +23,7 @@ export type EmailServiceError =
 interface EmailServiceDeps {
   db: Database;
   queueClient: QueueClient;
+  agentsDomain: string;
 }
 
 export interface InboundEmailData {
@@ -40,7 +41,7 @@ function generateAgentSecret(): string {
 }
 
 export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
-  const { db, queueClient } = deps;
+  const { db, queueClient, agentsDomain } = deps;
 
   const getSettings = async (
     boxId: BoxId
@@ -85,8 +86,17 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
     body: string,
     inReplyTo?: { messageId: string; from: string; subject: string }
   ): Promise<Result<void, EmailServiceError>> => {
+    // Fetch box to get subdomain for "from" address
+    const boxRecord = await db.query.box.findFirst({
+      where: eq(box.id, boxId),
+      columns: { subdomain: true, name: true },
+    });
+
+    const fromEmail = `${boxRecord?.name ?? "Agent"} <${boxRecord?.subdomain ?? "agent"}@${agentsDomain}>`;
+
     await queueClient.sendEmailQueue.add("send", {
       boxId,
+      fromEmail,
       to,
       subject,
       body,

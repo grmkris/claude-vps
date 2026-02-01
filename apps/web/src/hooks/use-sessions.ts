@@ -39,3 +39,15 @@ export function useSendMessage(boxId: BoxId) {
     },
   });
 }
+
+export function useSessionHistory(
+  boxId: BoxId | undefined,
+  sessionId: string | null
+) {
+  return useQuery({
+    ...orpc.boxDetails.sessionHistory.queryOptions({
+      input: { id: boxId!, sessionId: sessionId! },
+    }),
+    enabled: Boolean(boxId && sessionId),
+  });
+}

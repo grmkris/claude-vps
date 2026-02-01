@@ -19,7 +19,11 @@ describe("EmailService", () => {
   beforeAll(async () => {
     testEnv = await createTestSetup();
     emailService = createEmailService({
-      deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
+      deps: {
+        db: testEnv.db,
+        queueClient: testEnv.deps.queue,
+        agentsDomain: "test.local",
+      },
     });
     boxService = createBoxService({
       deps: { db: testEnv.db, queueClient: testEnv.deps.queue },

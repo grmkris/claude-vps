@@ -11,7 +11,7 @@ import { boxFsRouter } from "./box-fs.router";
 import { boxRouter } from "./box.router";
 import { credentialRouter } from "./credential.router";
 import { cronjobRouter } from "./cronjob.router";
-import { mcpRouter } from "./mcp.router";
+import { mcpRouter } from "./mcp-registry.router";
 import { HealthCheckOutput, PrivateDataOutput } from "./schemas";
 import { skillRouter } from "./skill.router";
 
@@ -58,6 +58,13 @@ export type McpRouterType = typeof mcpRouter;
 export type BoxFsRouterType = typeof boxFsRouter;
 export type BoxDetailsRouterType = typeof boxDetailsRouter;
 export type CronjobRouterType = typeof cronjobRouter;
+export type BoxApiRouterType = typeof boxApiRouter;
+export type BoxAiRouterType = typeof boxAiRouter;
+
+// Box API client type (for box-agent calling /box/* endpoints)
+export type BoxApiClient = RouterClient<BoxApiRouterType> & {
+  ai: RouterClient<BoxAiRouterType>;
+};
 
 // Combined client type for SDK - includes all routers
 export type AppRouterClient = RouterClient<AppRouter> & {

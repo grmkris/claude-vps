@@ -9,6 +9,22 @@ import { env } from "../env";
 import { logger } from "../logger";
 import { getSession, saveSession } from "./sessions";
 
+// MCP server config types
+interface McpServerConfigStdio {
+  type?: "stdio";
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+interface McpServerConfigSse {
+  type: "sse";
+  url: string;
+  headers?: Record<string, string>;
+}
+
+type McpServerConfig = McpServerConfigStdio | McpServerConfigSse;
+
 // Agent config from API
 interface AgentConfig {
   model: string | null;
@@ -21,10 +37,7 @@ interface AgentConfig {
   maxTurns: number | null;
   maxBudgetUsd: string | null;
   persistSession: boolean | null;
-  mcpServers: Record<
-    string,
-    { command: string; args?: string[]; env?: Record<string, string> }
-  > | null;
+  mcpServers: Record<string, McpServerConfig> | null;
   agents: Record<string, unknown> | null;
 }
 
@@ -128,6 +141,7 @@ function buildSessionOptions(config: AgentConfig) {
     disallowedTools: config.disallowedTools ?? undefined,
     maxTurns: config.maxTurns ?? undefined,
     systemPrompt: config.appendSystemPrompt ?? undefined,
+    mcpServers: config.mcpServers ?? undefined,
   };
 }
 

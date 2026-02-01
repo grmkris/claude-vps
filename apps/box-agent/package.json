@@ -10,15 +10,20 @@
     "typecheck": "tsgo --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "mcp:inspect": "bunx --bun @modelcontextprotocol/inspector http://localhost:33002/mcp"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.19",
+    "@hono/mcp": "^0.1.3",
     "@modelcontextprotocol/sdk": "^1.13.0",
+    "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
+    "@vps-claude/api": "workspace:*",
     "@vps-claude/logger": "workspace:*",
+    "@vps-claude/shared": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

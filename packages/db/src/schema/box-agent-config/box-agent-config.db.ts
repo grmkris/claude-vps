@@ -26,11 +26,20 @@ export const triggerTypeEnum = pgEnum("trigger_type", [
   "default",
 ]);
 
-export interface McpServerConfig {
+export interface McpServerConfigStdio {
+  type?: "stdio";
   command: string;
   args?: string[];
   env?: Record<string, string>;
 }
+
+export interface McpServerConfigSse {
+  type: "sse";
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export type McpServerConfig = McpServerConfigStdio | McpServerConfigSse;
 
 export interface AgentDefinition {
   name: string;

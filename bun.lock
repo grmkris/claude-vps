@@ -5,8 +5,8 @@
     "": {
       "name": "vps-claude",
       "dependencies": {
-        "vps-claude": ".",
         "dotenv": "catalog:",
+        "vps-claude": ".",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -26,11 +26,15 @@
       "version": "0.1.0",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.19",
+        "@hono/mcp": "^0.1.3",
         "@modelcontextprotocol/sdk": "^1.13.0",
+        "@orpc/client": "catalog:",
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
         "@orpc/zod": "catalog:",
+        "@vps-claude/api": "workspace:*",
         "@vps-claude/logger": "workspace:*",
+        "@vps-claude/shared": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
         "hono": "catalog:",
@@ -469,6 +473,8 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.10", "", {}, "sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ=="],
 
     "@fly/sprites": ["@fly/sprites@0.0.1", "", {}, "sha512-1s+dIVi/pTMP4Aj4Mkg+4LoZ/+a0Kp6l9piPRxvpgEKm11b/eRiZgJwVytwAHeI/vtg2fuwcFExjtXOEfny/TA=="],
+
+    "@hono/mcp": ["@hono/mcp@0.1.5", "", { "peerDependencies": { "@modelcontextprotocol/sdk": "^1.12.0", "hono": ">=4.0.0" } }, "sha512-q6Yurx9VUwVEpqnwVXtzIYaq4kgQgWWq9lYLM7NFS2W0sg1RzL+RdKh6jO4/dGyvBLKrahPd2v+NC6rr0XWBvQ=="],
 
     "@hono/node-server": ["@hono/node-server@1.19.9", "", { "peerDependencies": { "hono": "^4" } }, "sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw=="],
 

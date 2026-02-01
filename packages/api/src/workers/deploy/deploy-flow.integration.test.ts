@@ -86,7 +86,11 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     });
 
     emailService = createEmailService({
-      deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
+      deps: {
+        db: testEnv.db,
+        queueClient: testEnv.deps.queue,
+        agentsDomain: "test.local",
+      },
     });
 
     // Create all deploy flow workers

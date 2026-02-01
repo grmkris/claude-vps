@@ -1,220 +1,217 @@
-# VPS-Claude
+# VPS Claude
 
-> AI-powered development environments as a service
-
-VPS-Claude is a platform that creates isolated development environments ("boxes") with built-in Claude AI integration. Each box runs on Sprites (Fly.io) and comes pre-configured with VS Code, and an AI agent that can autonomously process emails and help with development tasks.
-
-## What is VPS-Claude?
-
-Traditional development environments require manual setup, configuration, and maintenance. VPS-Claude automates this by deploying fully-configured VMs on-demand, each with:
-
-- **Claude Code CLI**: Pre-installed CLI for AI-assisted development
-- **Email-to-AI**: Inbound emails trigger autonomous Claude AI sessions that can read code, make changes, and respond
-- **Custom Skills**: Install package bundles (apt/npm/pip) and configuration files
-- **User Secrets**: Environment variables injected across all your boxes
-- **Isolated Environments**: Each box runs as its own VM with persistent storage
-- **Auto-Sleep**: Boxes automatically sleep when idle and wake on demand
-
-Boxes are deployed via Sprites (Fly.io) API and accessible through unique URLs.
-
-## How It Works
-
-```
-1. User creates box via web UI
-   | (name, password, skills)
-
-2. Deployment worker creates VM
-   | (Sprites API)
-
-3. Sprite starts with environment
-   | (agent-app :3000, box-agent :33002)
-
-4. User accesses via HTTPS
-   | (https://{subdomain}.sprites.dev)
-
-5. Email arrives -> AI processes -> responds
-   | (webhook -> box-agent -> Claude session -> reply)
-```
+Deploy autonomous Claude AI agents in isolated VMs with email, cronjobs, and MCP tools.
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph External["External World"]
+        Resend[Resend Email]
+        User[Web UI]
+        Scheduler[BullMQ Scheduler]
+    end
+
+    subgraph Server["Main Server :33000"]
+        Webhook["/webhooks/inbound-email"]
+        UserAPI["/rpc/* User API"]
+        BoxAPI["/box/* Box API"]
+        Workers[BullMQ Workers]
+    end
+
+    subgraph Sprite["Sprite VM"]
+        subgraph BoxAgent["box-agent :33002"]
+            HTTP["/rpc/* HTTP API"]
+            MCP["MCP Server (stdio)"]
+        end
+        Claude[Claude AI Session]
+    end
+
+    Resend -->|webhook| Webhook
+    User -->|session cookie| UserAPI
+    Webhook --> Workers
+    Scheduler --> Workers
+    Workers -->|X-Box-Secret| HTTP
+    Claude <-->|stdio| MCP
+    MCP -->|local| HTTP
+    MCP -->|X-Box-Secret| BoxAPI
+    HTTP -->|X-Box-Secret| BoxAPI
 ```
-+--------------+     +---------------+     +----------------+
-|   Web UI     |---->|  API Server   |---->|  Sprites API   |
-|  (Next.js)   |     |    (Hono)     |     |   (Fly.io)     |
-+--------------+     +-------+-------+     +--------+-------+
-                             |                      |
-                     +-------v--------+     +-------v--------+
-                     | BullMQ Queue   |     |   Box Fleet    |
-                     |   (Workers)    |     |   (Sprites)    |
-                     +----------------+     +--------+-------+
-                                                    |
-                                            +-------v-------+
-                                            |  Box-Agent    |
-                                            |   (Email)     |
-                                            +-------+-------+
-                                            +-------v-------+
-                                            |  agent-app    |
-                                            |  (Next.js)    |
-                                            +---------------+
-```
 
-**Core Components:**
-
-- **apps/web**: Next.js frontend for box management
-- **apps/server**: Hono API server with ORPC endpoints
-- **apps/box-agent**: In-VM service handling email -> AI integration
-- **packages/api**: Routers, services, and BullMQ workers
-- **packages/sprites**: Sprites (Fly.io) client for VM deployment
-- **packages/db**: Drizzle ORM schema (PostgreSQL)
-- **packages/queue**: BullMQ job definitions
-- **packages/email**: Resend email client
-
-## Features
-
-### Platform Features
-
-- **One-Click Deployment**: Create boxes with custom skills and secrets
-- **Email Integration**: Receive emails in-box, process with Claude AI
-- **Skills System**: Pre-install packages and configuration files
-- **User Secrets**: Inject environment variables across all boxes
-- **Status Tracking**: Monitor deployment and health
-- **Auto-Sleep/Wake**: Sprites automatically manage VM lifecycle
-
-### Tech Stack
-
-- **TypeScript** - Type safety across the entire stack
-- **Next.js** - Full-stack React framework
-- **TailwindCSS** + **shadcn/ui** - UI components
-- **Hono** - Lightweight, performant API server
-- **ORPC** - End-to-end type-safe APIs
-- **Bun** - Runtime and package manager
-- **Drizzle** - TypeScript ORM
-- **PostgreSQL** - Relational database
-- **Redis** - BullMQ job queue
-- **Better-Auth** - Authentication
-- **Turborepo** - Monorepo build system
-- **Sprites (Fly.io)** - VM deployment
-
-## Getting Started
-
-### Prerequisites
-
-- Bun runtime
-- Sprites token from https://sprites.dev (for box deployment)
-- Docker (for local PostgreSQL only)
-
-### Installation
+## Quick Start
 
 ```bash
-# Install dependencies
-bun install
-
-# Start PostgreSQL via docker-compose
-bun run db:start
-
-# Apply database schema
-bun run db:generate
-bun run db:push
+# Start dependencies
+bun run db:start   # Postgres + Redis
 
 # Start development servers
-bun run dev
+bun run dev        # Server (33000) + Web (33001)
 ```
 
-**Development URLs:**
+## Communication Interfaces
 
-- Web UI: http://localhost:33001
-- API Server: http://localhost:33000
-- Drizzle Studio: `bun run db:studio`
+### Session Triggers
 
-### Environment Variables
+All triggers converge at `runWithSession()` which fetches config, creates/resumes Claude session, and streams responses.
 
-Copy `.env.example` to `.env` in `apps/server/` and `apps/web/`:
+```mermaid
+flowchart TB
+    subgraph Triggers["Session Triggers"]
+        EmailTrigger[Email Arrives]
+        CronTrigger[Cron Fires]
+        ManualTrigger[User Chat]
+        WebhookTrigger[Webhook POST]
+    end
 
-**Critical variables:**
+    subgraph Processing["Processing"]
+        RunSession[runWithSession]
+        FetchConfig[Fetch agent-config]
+        CreateResume[Create/Resume Session]
+    end
 
-- `DATABASE_URL` - PostgreSQL connection
-- `REDIS_URL` - Redis connection (BullMQ)
-- `SPRITES_TOKEN` - Sprites API token from https://sprites.dev
+    subgraph Claude["Claude Session"]
+        MCPTools[MCP Tools Available]
+        Response[Stream Response]
+    end
 
-See `.env.example` files for complete list.
+    EmailTrigger -->|triggerType: email| RunSession
+    CronTrigger -->|triggerType: cron| RunSession
+    ManualTrigger -->|triggerType: manual| RunSession
+    WebhookTrigger -->|triggerType: webhook| RunSession
+
+    RunSession --> FetchConfig
+    FetchConfig --> CreateResume
+    CreateResume --> MCPTools
+    MCPTools --> Response
+```
+
+| Trigger | Entry Point               | contextType | Status Tracking            |
+| ------- | ------------------------- | ----------- | -------------------------- |
+| Email   | Webhook → delivery worker | `email`     | box_email.status           |
+| Cron    | BullMQ scheduler          | `cron`      | boxCronjobExecution.status |
+| Manual  | UI → /rpc/sessions/send   | `chat`      | Session ID only            |
+| Webhook | POST /rpc/webhook/trigger | `webhook`   | (future)                   |
+
+### Email Inbound
+
+```mermaid
+sequenceDiagram
+    participant Resend
+    participant Server as Server :33000
+    participant Queue as BullMQ
+    participant Worker as email-delivery worker
+    participant Agent as box-agent :33002
+    participant Claude
+
+    Resend->>Server: POST /webhooks/inbound-email
+    Server->>Server: emailService.processInbound()
+    Server->>Server: Insert box_email (status: received)
+    Server->>Queue: queueDelivery(emailId)
+    Queue->>Worker: Process job
+    Worker->>Agent: POST /rpc/email/receive
+    Agent->>Agent: Write ~/.inbox/{emailId}.json
+    Agent->>Claude: runWithSession(triggerType: email)
+    Claude-->>Agent: Stream response
+```
+
+### Email Outbound
+
+```mermaid
+sequenceDiagram
+    participant Claude
+    participant MCP as MCP Server
+    participant Agent as box-agent :33002
+    participant Server as Server :33000
+    participant Queue as BullMQ
+    participant Resend
+
+    Claude->>MCP: email_send tool
+    MCP->>Agent: POST /rpc/email/send
+    Agent->>Server: POST /box/email/send (X-Box-Secret)
+    Server->>Queue: queueSendEmail()
+    Queue->>Resend: Send via API
+    Resend-->>Queue: Success
+```
+
+### Cronjobs
+
+```mermaid
+sequenceDiagram
+    participant Scheduler as BullMQ Scheduler
+    participant Worker as cronjob worker
+    participant Agent as box-agent :33002
+    participant Claude
+
+    Scheduler->>Worker: Cron fires
+    Worker->>Worker: Update execution (waking_box)
+    Worker->>Agent: GET /health (wake sprite)
+    Worker->>Agent: POST /rpc/cron/trigger (X-Box-Secret)
+    Agent->>Claude: runWithSession(triggerType: cron)
+    Claude-->>Agent: Stream response
+    Agent-->>Worker: Success
+    Worker->>Worker: Update execution (completed)
+```
+
+### MCP Tool Routing
+
+```mermaid
+flowchart LR
+    Claude[Claude AI] -->|stdio| MCP[MCP Server]
+
+    subgraph Local["Local (box-agent)"]
+        Email[email_send/list/read]
+    end
+
+    subgraph Remote["Remote (Server /box/*)"]
+        AI[generate_image<br>text_to_speech<br>speech_to_text]
+        Cron[cronjob_list/create<br>update/delete/toggle]
+    end
+
+    MCP --> Email
+    MCP --> AI
+    MCP --> Cron
+```
+
+| Category | Tools                                                | Target               |
+| -------- | ---------------------------------------------------- | -------------------- |
+| Email    | `email_send`, `email_list`, `email_read`             | Local box-agent      |
+| AI       | `generate_image`, `text_to_speech`, `speech_to_text` | Server /box/ai/\*    |
+| Cronjob  | `cronjob_list/create/update/delete/toggle`           | Server /box/cronjobs |
+
+## API Layers
+
+| Layer           | Location           | Port  | Auth           | Purpose               |
+| --------------- | ------------------ | ----- | -------------- | --------------------- |
+| MCP             | box-agent (stdio)  | N/A   | N/A            | Claude ↔ tools bridge |
+| Box-Agent API   | box-agent `/rpc/*` | 33002 | X-Box-Secret   | External → box        |
+| Server Box API  | server `/box/*`    | 33000 | X-Box-Secret   | Box → backend         |
+| Server User API | server `/rpc/*`    | 33000 | Session cookie | User → backend        |
+
+## API Documentation
+
+OpenAPI docs via Scalar UI:
+
+- **Server:** http://localhost:33000/
+- **Box-agent:** http://localhost:33002/
 
 ## Project Structure
 
 ```
-vps-claude/
-+-- apps/
-|   +-- web/           # Next.js frontend (port 33001)
-|   +-- server/        # Hono API server (port 33000)
-|   +-- box-agent/     # In-VM agent (email, AI sessions)
-+-- packages/
-    +-- api/           # ORPC routers, services, workers
-    +-- auth/          # better-auth configuration
-    +-- db/            # Drizzle schema + client
-    +-- sprites/       # Sprites (Fly.io) client
-    +-- queue/         # BullMQ job definitions
-    +-- email/         # Email client (Resend)
-    +-- logger/        # Pino logger factory
-    +-- redis/         # Redis client factory
-    +-- shared/        # TypeIDs, SERVICE_URLS, constants
-    +-- config/        # Shared tsconfig
+apps/
+  server/       → Hono API on port 33000
+  web/          → Next.js on port 33001
+  box-agent/    → In-container agent (runs inside deployed boxes)
+
+packages/
+  api/          → ORPC routers, services, workers (BullMQ)
+  auth/         → better-auth config
+  db/           → Drizzle schema + client (PostgreSQL)
+  sprites/      → Sprites (Fly.io) client for VM deployment
+  queue/        → BullMQ queue definitions
+  email/        → Email client (Resend)
+  shared/       → TypeIDs, constants, schemas
 ```
 
-## Available Scripts
+## Development
 
-```bash
-# Development
-bun run dev              # Start all apps (web + server)
-bun run dev:web          # Start web only
-bun run dev:server       # Start server only
-
-# Build
-bun run build            # Build all apps
-bun run typecheck        # TypeScript check across monorepo
-
-# Code Quality
-bun run check            # Biome lint + format
-bun run fix              # Auto-fix lint issues
-bun run fix:unsafe       # Auto-fix including unsafe fixes
-
-# Testing
-bun run test             # Run tests
-bun run test:watch       # Run tests in watch mode
-
-# Database
-bun run db:start         # Start Postgres via docker-compose
-bun run db:stop          # Stop Postgres
-bun run db:clean         # Remove Postgres data
-bun run db:generate      # Generate migrations
-bun run db:studio        # Open Drizzle Studio
-```
-
-## Documentation
-
-For detailed documentation on architecture, API structure, and implementation patterns, see:
-
-- **[CLAUDE.md](./CLAUDE.md)** - Comprehensive architecture guide
-  - Box lifecycle (creation -> deployment -> running)
-  - Email system architecture
-  - Box-agent internals
-  - Skills system
-  - Two-tier API authentication
-  - Database schema
-  - Workers & background jobs
-
-## Contributing
-
-This project uses [Ultracite](https://github.com/biomejs/ultracite) for code quality:
-
-```bash
-bun x ultracite check    # Check for issues
-bun x ultracite fix      # Auto-fix issues
-```
-
-## License
-
-MIT
-
----
-
-**Built with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack)**
+See [CLAUDE.md](./CLAUDE.md) for detailed development reference.

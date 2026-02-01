@@ -1,6 +1,6 @@
 "use client";
 
-import { Key } from "lucide-react";
+import { Key, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -47,6 +47,10 @@ export default function UserMenu() {
           <DropdownMenuItem render={<Link href="/settings/api-keys" />}>
             <Key className="mr-2 h-4 w-4" />
             API Keys
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/settings/credentials" />}>
+            <KeyRound className="mr-2 h-4 w-4" />
+            Credentials
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

@@ -1,9 +1,10 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Check, Loader2, Search, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -14,14 +15,41 @@ interface SkillSelectorProps {
   onChange: (skills: string[]) => void;
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export function SkillSelector({ value, onChange }: SkillSelectorProps) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
 
   const {
-    data: catalog,
+    data,
     isLoading,
     error,
-  } = useQuery(orpc.skill.catalog.queryOptions({}));
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["skills-catalog", debouncedSearch],
+    queryFn: async ({ pageParam }) => {
+      return orpc.skill.catalog.call({
+        search: debouncedSearch || undefined,
+        offset: pageParam,
+        limit: 30,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.hasMore ? allPages.length * 30 : undefined,
+  });
 
   const toggleSkill = (skillId: string) => {
     if (value.includes(skillId)) {
@@ -31,12 +59,7 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
     }
   };
 
-  const filteredSkills =
-    catalog?.skills.filter(
-      (skill) =>
-        skill.name.toLowerCase().includes(search.toLowerCase()) ||
-        skill.description?.toLowerCase().includes(search.toLowerCase())
-    ) ?? [];
+  const allSkills = data?.pages.flatMap((page) => page.skills) ?? [];
 
   if (error) {
     return (
@@ -75,18 +98,18 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredSkills.length === 0 ? (
+        ) : allSkills.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {search ? "No skills match your search" : "No skills available"}
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredSkills.map((skill) => {
+            {allSkills.map((skill, index) => {
               const isSelected = value.includes(skill.id);
               return (
                 <button
                   type="button"
-                  key={skill.id}
+                  key={`${skill.id}-${index}`}
                   onClick={() => toggleSkill(skill.id)}
                   className={cn(
                     "w-full px-4 py-3 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -121,6 +144,22 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
                 </button>
               );
             })}
+            {hasNextPage && (
+              <div className="p-3 text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Load more
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

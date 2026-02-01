@@ -2,6 +2,7 @@ import type {
   BoxAgentConfigResponseSchema,
   Database,
   InsertBoxAgentConfigSchema,
+  McpServerConfig,
   SelectBoxAgentConfigSchema,
   SelectBoxSchema,
   TriggerType,
@@ -10,7 +11,12 @@ import type {
 import type { QueueClient } from "@vps-claude/queue";
 import type { SpritesClient } from "@vps-claude/sprites";
 
-import { box, boxAgentConfig, boxEmailSettings } from "@vps-claude/db";
+import {
+  box,
+  boxAgentConfig,
+  boxCronjob,
+  boxEmailSettings,
+} from "@vps-claude/db";
 import {
   type BoxAgentConfigId,
   type BoxId,
@@ -70,6 +76,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: string;
         skills?: string[];
         envVars?: Record<string, string>;
+        mcpServers?: Record<string, McpServerConfig>;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
@@ -109,6 +116,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         boxId: created.id,
         triggerType: "default",
         name: "Default",
+        mcpServers: input.mcpServers ?? null,
       });
 
       // Set env vars if provided (before queuing deploy)
@@ -270,6 +278,23 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
       }
 
+      // Clean up BullMQ cronjob jobs before CASCADE delete
+      const cronjobs = await db.query.boxCronjob.findMany({
+        where: eq(boxCronjob.boxId, id),
+      });
+
+      for (const cronjob of cronjobs) {
+        if (cronjob.bullmqJobKey) {
+          try {
+            await queueClient.triggerCronjobQueue.removeRepeatableByKey(
+              cronjob.bullmqJobKey
+            );
+          } catch {
+            // Ignore if job doesn't exist
+          }
+        }
+      }
+
       await db.delete(box).where(eq(box.id, id));
 
       if (boxRecord.spriteName) {
@@ -331,11 +356,6 @@ You can read/write files, run commands, and interact with the system.
 When handling emails, read the content and respond appropriately.`;
 
       // Default MCP servers - always include ai-tools
-      type McpServerConfig = {
-        command: string;
-        args?: string[];
-        env?: Record<string, string>;
-      };
       const defaultMcpServers: Record<string, McpServerConfig> = {
         "ai-tools": {
           command: "/usr/local/bin/box-agent",

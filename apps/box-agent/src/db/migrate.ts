@@ -1,3 +1,4 @@
+import { logger } from "../logger";
 import { sqlite } from "./client";
 
 // Create sessions table directly (migrations don't work in compiled binary)
@@ -14,4 +15,4 @@ sqlite.run(`
   )
 `);
 
-console.log("Database migrations complete");
+logger.info("Database migrations complete");
