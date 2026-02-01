@@ -15,47 +15,63 @@ const baseParams: DeployFlowParams = {
   completedSkillIds: [],
 };
 
-function countSetupStepsInChain(
-  flow: ReturnType<typeof buildDeployFlow>
-): number {
+type FlowJob = ReturnType<typeof buildDeployFlow>;
+
+/**
+ * Recursively collect all SETUP_* step keys from the flow DAG.
+ * Handles both sequential chain and Phase 1 parallel jobs.
+ */
+function collectAllSetupStepKeys(job: FlowJob, keys: string[] = []): string[] {
+  // Check if this is a setup step (not a gate)
+  if (job.name.startsWith("SETUP_")) {
+    // Extract step key from job name (format: SETUP_XXX-boxId)
+    const stepKey = job.name.split("-")[0] ?? "";
+    if (stepKey.startsWith("SETUP_")) {
+      keys.push(stepKey);
+    }
+  }
+
+  // Recurse into children
+  if (job.children) {
+    for (const child of job.children) {
+      collectAllSetupStepKeys(child, keys);
+    }
+  }
+
+  return keys;
+}
+
+function countSetupStepsInChain(flow: FlowJob): number {
   // Navigate: finalize -> health-check -> enable-access -> setup chain
   const healthCheck = flow.children?.[0];
   const enableAccess = healthCheck?.children?.[0];
-  const setupChain = enableAccess?.children?.find((c) =>
-    c.name.startsWith("SETUP_")
+  const setupChainOrGate = enableAccess?.children?.find(
+    (c) => c.name.startsWith("SETUP_") || c.name.startsWith("phase1-gate-")
   );
 
-  if (!setupChain) return 0;
+  if (!setupChainOrGate) return 0;
 
-  let count = 1;
-  let current: typeof setupChain | undefined = setupChain;
-  while (current?.children?.length) {
-    count++;
-    current = current.children[0];
-  }
-  return count;
+  return collectAllSetupStepKeys(setupChainOrGate).length;
 }
 
-function getSetupStepKeysInChain(
-  flow: ReturnType<typeof buildDeployFlow>
-): string[] {
+function getSetupStepKeysInChain(flow: FlowJob): string[] {
   const healthCheck = flow.children?.[0];
   const enableAccess = healthCheck?.children?.[0];
-  const setupChain = enableAccess?.children?.find((c) =>
-    c.name.startsWith("SETUP_")
+  const setupChainOrGate = enableAccess?.children?.find(
+    (c) => c.name.startsWith("SETUP_") || c.name.startsWith("phase1-gate-")
   );
 
-  if (!setupChain) return [];
+  if (!setupChainOrGate) return [];
 
-  const keys: string[] = [];
-  let current: typeof setupChain | undefined = setupChain;
-  while (current) {
-    // Extract step key from job name (format: SETUP_XXX-boxId)
-    const stepKey = current.name.split("-")[0] ?? "";
-    keys.push(stepKey);
-    current = current.children?.[0];
-  }
-  return keys;
+  // Collect all keys recursively
+  const keys = collectAllSetupStepKeys(setupChainOrGate);
+
+  // Sort by SETUP_STEP_KEYS order (reversed for BullMQ children-first execution)
+  return keys.sort((a, b) => {
+    const idxA = SETUP_STEP_KEYS.indexOf(a as (typeof SETUP_STEP_KEYS)[number]);
+    const idxB = SETUP_STEP_KEYS.indexOf(b as (typeof SETUP_STEP_KEYS)[number]);
+    return idxB - idxA; // Reverse order (last step first)
+  });
 }
 
 function getSkillsInGate(flow: ReturnType<typeof buildDeployFlow>): string[] {
@@ -220,9 +236,9 @@ describe("buildDeployFlow", () => {
       // Should have (total - 5 completed) remaining setup steps
       expect(countSetupStepsInChain(flow)).toBe(SETUP_STEP_KEYS.length - 5);
 
-      // First step in chain should be step 6
+      // First remaining step should be step 6 (SETUP_INSTALL_CLAUDE)
       const stepKeys = getSetupStepKeysInChain(flow);
-      expect(stepKeys[stepKeys.length - 1]).toBe("SETUP_BOX_AGENT_SERVICE");
+      expect(stepKeys[stepKeys.length - 1]).toBe("SETUP_INSTALL_CLAUDE");
 
       // Skill should still be included
       const skills = getSkillsInGate(flow);
