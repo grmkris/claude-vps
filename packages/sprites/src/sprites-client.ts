@@ -531,6 +531,28 @@ MCPSCRIPT
 }
 MCPEOF
       `,
+      SETUP_TAILSCALE: `
+        set -euo pipefail
+
+        # Skip if no auth key provided
+        if [ -z "\${TAILSCALE_AUTHKEY:-}" ]; then
+          echo "Skipping Tailscale: TAILSCALE_AUTHKEY not set"
+          exit 0
+        fi
+
+        # Install via apt (safer than curl | sh)
+        curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+        curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null
+        sudo apt-get update -qq && sudo apt-get install -y -qq tailscale
+
+        # Start daemon
+        sudo systemctl enable --now tailscaled
+
+        # Join network (--reset for idempotency on redeploys)
+        sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --ssh --hostname="$BOX_SUBDOMAIN" --reset
+
+        echo "Tailscale connected: $(tailscale ip -4)"
+      `,
     };
 
     return commands[stepKey] ?? "";
