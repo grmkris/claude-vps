@@ -10,14 +10,21 @@
 import type { BoxApiClient } from "@vps-claude/api/routers/index";
 
 import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
+import { OpenAPILink } from "@orpc/openapi-client/fetch";
+import { boxAiRouter, boxApiRouter } from "@vps-claude/api/routers/index";
 
 import { env } from "./env";
+
+// Combined router defined locally to avoid TS7056 type explosion
+const combinedBoxRouter = {
+  ...boxApiRouter,
+  ai: boxAiRouter,
+};
 
 // Base URL without /box suffix - routes include /box in path
 const baseUrl = env.BOX_API_URL.replace(/\/box$/, "");
 
-const link = new RPCLink({
+const link = new OpenAPILink(combinedBoxRouter, {
   url: baseUrl,
   headers: () => ({
     "X-Box-Secret": env.BOX_API_TOKEN,
