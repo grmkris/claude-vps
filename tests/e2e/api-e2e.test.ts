@@ -127,7 +127,7 @@ describe.skipIf(SKIP_TEST)("API E2E - Email Flow", () => {
     console.log("SDK client created");
 
     // 4. Create inboundemail client for sending test emails
-    inbound = new Inbound(INBOUND_API_KEY!);
+    inbound = new Inbound({ apiKey: INBOUND_API_KEY! });
     console.log("Inbound email client created");
 
     // 5. Create box via SDK

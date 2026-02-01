@@ -10,8 +10,6 @@ import type {
 import type { QueueClient } from "@vps-claude/queue";
 import type { SpritesClient } from "@vps-claude/sprites";
 
-import type { BoxEnvVarService } from "./box-env-var.service";
-
 import { box, boxAgentConfig, boxEmailSettings } from "@vps-claude/db";
 import {
   type BoxAgentConfigId,
@@ -25,6 +23,8 @@ import {
 } from "@vps-claude/shared/services.schema";
 import { and, eq } from "drizzle-orm";
 import { type Result, err, ok } from "neverthrow";
+
+import type { BoxEnvVarService } from "./box-env-var.service";
 
 export type BoxServiceError =
   | { type: "NOT_FOUND"; message: string }

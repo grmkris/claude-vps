@@ -2,8 +2,8 @@ import type { WideEvent } from "@vps-claude/logger";
 
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { wideEventMiddleware } from "@vps-claude/logger";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { wideEventMiddleware } from "@vps-claude/logger";
 import { Hono } from "hono";
 
 import { env } from "./env";
