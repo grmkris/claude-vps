@@ -1,5 +1,6 @@
 import type { Auth } from "@vps-claude/auth";
 import type { WideEvent } from "@vps-claude/logger";
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { SpritesClient } from "@vps-claude/sprites";
 import type { Context as HonoContext } from "hono";
 
@@ -23,6 +24,8 @@ export interface Services {
   cronjobService: CronjobService;
   deployStepService: DeployStepService;
   emailService: EmailService;
+  providerFactory: ProviderFactory;
+  /** @deprecated Use providerFactory instead */
   spritesClient: SpritesClient;
 }
 

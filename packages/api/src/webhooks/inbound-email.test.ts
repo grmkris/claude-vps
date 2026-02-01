@@ -49,6 +49,7 @@ describe("inbound-email webhook", () => {
         credentialService: {} as never,
         apiKeyService: {} as never,
         aiService: {} as never,
+        providerFactory: {} as never,
         spritesClient: {} as never,
       },
       auth: {} as never,
