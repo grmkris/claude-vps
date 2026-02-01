@@ -76,9 +76,8 @@ export function createProviderFactory(options: ProviderFactoryOptions) {
         }
         return createDockerProvider({ ...dockerOptions, logger });
       }
-
       default:
-        throw new Error(`Unknown provider type: ${type}`);
+        throw new Error(`Unknown provider type`);
     }
   }
 
