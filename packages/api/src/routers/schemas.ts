@@ -147,6 +147,16 @@ export const BoxSessionSendOutput = z.object({
   contextId: z.string(),
 });
 
+export const BoxSessionMessageSchema = z.object({
+  type: z.enum(["user", "assistant"]),
+  content: z.string(),
+  timestamp: z.string(),
+});
+
+export const BoxSessionHistoryOutput = z.object({
+  messages: z.array(BoxSessionMessageSchema),
+});
+
 // === Cronjobs ===
 export const CronjobListOutput = z.object({
   cronjobs: z.array(SelectBoxCronjobSchema),

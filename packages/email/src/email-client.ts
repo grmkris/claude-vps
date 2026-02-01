@@ -139,6 +139,7 @@ const emailTemplates = {
 } as const;
 
 export interface RawEmailParams {
+  from?: string;
   to: string;
   subject: string;
   text: string;
@@ -192,7 +193,7 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
       );
 
       const result = await inbound.emails.send({
-        from,
+        from: params.from ?? from,
         to: params.to,
         subject: params.subject,
         text: params.text,

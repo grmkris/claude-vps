@@ -46,6 +46,7 @@ export type DeliverEmailJobData = z.infer<typeof DeliverEmailJobData>;
 
 export const SendEmailJobData = z.object({
   boxId: BoxId,
+  fromEmail: z.string(),
   to: z.string().email(),
   subject: z.string(),
   body: z.string(),

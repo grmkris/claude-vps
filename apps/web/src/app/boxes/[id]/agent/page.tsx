@@ -9,7 +9,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBox } from "@/hooks/use-boxes";
-import { useBoxSessions, useSendMessage } from "@/hooks/use-sessions";
+import {
+  useBoxSessions,
+  useSendMessage,
+  useSessionHistory,
+} from "@/hooks/use-sessions";
 
 import { AgentConfigPanel } from "../components/agent-config-panel";
 
@@ -69,6 +73,7 @@ function SessionsPanel({ boxId }: { boxId: BoxId }) {
   const { data: sessionsData, isLoading } = useBoxSessions(boxId);
   const sendMessage = useSendMessage(boxId);
   const [message, setMessage] = useState("");
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
 
   const sessions = sessionsData?.sessions ?? [];
 
@@ -116,31 +121,105 @@ function SessionsPanel({ boxId }: { boxId: BoxId }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {sessions.map((session) => (
-            <div
-              key={`${session.contextType}-${session.contextId}`}
-              className="rounded-lg border border-border bg-card p-4"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
-                    {session.contextType}
-                  </span>
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {session.contextId}
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {formatRelativeTime(session.updatedAt)}
-                </span>
+          {sessions.map((session) => {
+            const isExpanded = expandedSession === session.sessionId;
+            return (
+              <div
+                key={`${session.contextType}-${session.contextId}`}
+                className="rounded-lg border border-border bg-card overflow-hidden"
+              >
+                <button
+                  type="button"
+                  className="w-full p-4 text-left hover:bg-secondary/50 transition-colors"
+                  onClick={() =>
+                    setExpandedSession(isExpanded ? null : session.sessionId)
+                  }
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
+                        {session.contextType}
+                      </span>
+                      <span className="font-mono text-sm text-muted-foreground truncate max-w-[200px]">
+                        {session.contextId}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelativeTime(session.updatedAt)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Session: {session.sessionId.slice(0, 16)}...
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <SessionHistory boxId={boxId} sessionId={session.sessionId} />
+                )}
               </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Session: {session.sessionId.slice(0, 16)}...
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+    </div>
+  );
+}
+
+function SessionHistory({
+  boxId,
+  sessionId,
+}: {
+  boxId: BoxId;
+  sessionId: string;
+}) {
+  const { data, isLoading } = useSessionHistory(boxId, sessionId);
+
+  if (isLoading) {
+    return (
+      <div className="px-4 pb-4 border-t border-border pt-3">
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
+
+  const messages = data?.messages ?? [];
+
+  if (messages.length === 0) {
+    return (
+      <div className="px-4 pb-4 border-t border-border pt-3">
+        <p className="text-sm text-muted-foreground">No messages found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 pb-4 border-t border-border pt-3 space-y-3 max-h-96 overflow-y-auto">
+      {messages.map((msg, i) => (
+        <div
+          key={`${msg.timestamp}-${i}`}
+          className={`rounded-lg p-3 ${
+            msg.type === "user"
+              ? "bg-primary/10 border border-primary/20"
+              : "bg-secondary/50"
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className={`text-xs font-medium ${
+                msg.type === "user" ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              {msg.type === "user" ? "User" : "Claude"}
+            </span>
+            {msg.timestamp && (
+              <span className="text-xs text-muted-foreground">
+                {new Date(msg.timestamp).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+        </div>
+      ))}
     </div>
   );
 }

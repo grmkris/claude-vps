@@ -27,7 +27,11 @@ describe("inbound-email webhook", () => {
       deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
     });
     emailService = createEmailService({
-      deps: { db: testEnv.db, queueClient: testEnv.deps.queue },
+      deps: {
+        db: testEnv.db,
+        queueClient: testEnv.deps.queue,
+        agentsDomain: AGENTS_DOMAIN,
+      },
     });
     const deployStepService = createDeployStepService({
       deps: { db: testEnv.db },

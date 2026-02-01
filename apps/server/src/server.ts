@@ -104,7 +104,13 @@ const boxService = createBoxService({
 });
 const cronjobService = createCronjobService({ deps: { db, queueClient } });
 const deployStepService = createDeployStepService({ deps: { db } });
-const emailService = createEmailService({ deps: { db, queueClient } });
+const emailService = createEmailService({
+  deps: {
+    db,
+    queueClient,
+    agentsDomain: SERVICE_URLS[env.APP_ENV].agentsDomain,
+  },
+});
 const credentialService = createCredentialService({ deps: { db } });
 
 const services = {
@@ -179,6 +185,7 @@ const emailSendWorker = createEmailSendWorker({
       const text = markdownToPlainText(params.body);
 
       await emailClient.sendRawEmail({
+        from: params.from,
         to: params.to,
         subject: params.subject,
         text,

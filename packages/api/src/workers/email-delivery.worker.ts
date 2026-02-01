@@ -20,6 +20,7 @@ interface EmailDeliveryWorkerDeps {
 interface EmailSendWorkerDeps {
   emailService: EmailService;
   sendEmail: (params: {
+    from: string;
     to: string;
     subject: string;
     body: string;
@@ -110,11 +111,12 @@ export function createEmailSendWorker({ deps }: { deps: EmailSendWorkerDeps }) {
   const worker = new Worker<SendEmailJobData>(
     WORKER_CONFIG.sendEmail.name,
     async (job: Job<SendEmailJobData>) => {
-      const { to, subject, body, inReplyTo } = job.data;
+      const { fromEmail, to, subject, body, inReplyTo } = job.data;
 
-      logger.info({ to, subject }, "Sending email");
+      logger.info({ from: fromEmail, to, subject }, "Sending email");
 
       await sendEmail({
+        from: fromEmail,
         to,
         subject,
         body,

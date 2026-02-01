@@ -11,6 +11,7 @@ import {
   BoxEmailListOutput,
   BoxExecOutput,
   BoxProxyOutput,
+  BoxSessionHistoryOutput,
   BoxSessionListOutput,
   BoxSessionSendOutput,
 } from "./schemas";
@@ -328,6 +329,52 @@ export const boxDetailsRouter = {
       const data = (await response.json()) as {
         success: boolean;
         contextId: string;
+      };
+      return data;
+    }),
+
+  sessionHistory: protectedProcedure
+    .route({ method: "GET", path: "/box/:id/sessions/:sessionId/history" })
+    .input(z.object({ id: BoxId, sessionId: z.string() }))
+    .output(BoxSessionHistoryOutput)
+    .handler(async ({ context, input }) => {
+      const boxResult = await context.boxService.getById(input.id);
+      if (boxResult.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: boxResult.error.message,
+        });
+      }
+      if (
+        !boxResult.value ||
+        boxResult.value.userId !== context.session.user.id
+      ) {
+        throw new ORPCError("NOT_FOUND", { message: "Box not found" });
+      }
+      if (boxResult.value.status !== "running" || !boxResult.value.spriteUrl) {
+        throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
+      }
+
+      const response = await fetch(
+        `${boxResult.value.spriteUrl}/rpc/sessions/${input.sessionId}/history`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(30000),
+        }
+      );
+
+      if (!response.ok) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: `Box agent returned ${response.status}`,
+        });
+      }
+
+      const data = (await response.json()) as {
+        messages: Array<{
+          type: "user" | "assistant";
+          content: string;
+          timestamp: string;
+        }>;
       };
       return data;
     }),
