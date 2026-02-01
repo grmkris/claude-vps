@@ -2,7 +2,7 @@ import type { FlowJob } from "@vps-claude/queue";
 
 import { DEPLOY_QUEUES } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
-import { SETUP_STEP_KEYS } from "@vps-claude/sprites";
+import { SETUP_STEP_KEYS,type SetupStepKey } from "@vps-claude/sprites";
 
 export interface SkillWithSource {
   skillId: string;
@@ -157,14 +157,29 @@ interface SetupChainParams {
 }
 
 /**
- * Build sequential setup step chain
+ * Steps that can run in parallel (no dependencies on each other)
+ * These are downloads, directory creation, and cloning - all independent operations
+ */
+const PARALLEL_PHASE1_STEPS = [
+  "SETUP_DOWNLOAD_AGENT",
+  "SETUP_CREATE_DIRS",
+  "SETUP_INSTALL_NGINX",
+  "SETUP_CLONE_AGENT_APP",
+] as const;
+
+/**
+ * Build setup step chain with Phase 1 parallelization
  *
- * Creates nested children where:
- * - First incomplete step is the deepest leaf (executes FIRST)
- * - Last step is the root (executes LAST)
+ * Structure:
+ * - Phase 1: 4 independent steps run in PARALLEL (download, dirs, nginx, clone)
+ * - Phase 2+: Remaining steps run SEQUENTIALLY (depend on Phase 1 results)
  *
- * This ensures sequential execution in BullMQ flow order.
- * Skips already completed steps for resumable deployments.
+ * BullMQ flow execution order (children first):
+ * 1. Phase 1 parallel jobs complete
+ * 2. Phase 1 gate aggregates
+ * 3. Sequential chain executes one by one
+ *
+ * This provides ~30-60s savings vs fully sequential execution.
  */
 function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
   const { baseData, envVars, boxAgentBinaryUrl, completedStepKeys, makeJobId } =
@@ -181,14 +196,10 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
     return undefined;
   }
 
-  let chain: FlowJob | undefined;
-
-  // Iterate through remaining steps in order
-  // Each step becomes a child of the previous (deeper = runs first)
-  for (const stepKey of stepsToRun) {
+  // Helper to create a step job
+  const createStepJob = (stepKey: SetupStepKey, children?: FlowJob[]): FlowJob => {
     const stepOrder = SETUP_STEP_KEYS.indexOf(stepKey) + 1;
-
-    const job: FlowJob = {
+    return {
       name: `${stepKey}-${boxId}`,
       queueName: DEPLOY_QUEUES.setupStep,
       data: {
@@ -206,19 +217,68 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
         backoff: WORKER_CONFIG.setupStep.backoff,
         jobId: makeJobId(stepKey),
       },
+      ...(children && children.length > 0 ? { children } : {}),
     };
+  };
 
-    // Previous chain becomes child of current job
-    // This creates: STEP_10 → STEP_9 → ... → STEP_5 (if 1-4 completed)
-    // But executes: STEP_5 first (deepest child)
-    if (chain) {
-      job.children = [chain];
-    }
+  // Split steps into Phase 1 (parallel) and Phase 2+ (sequential)
+  const phase1Steps = stepsToRun.filter((key) =>
+    PARALLEL_PHASE1_STEPS.includes(key as (typeof PARALLEL_PHASE1_STEPS)[number])
+  );
+  const sequentialSteps = stepsToRun.filter(
+    (key) => !PARALLEL_PHASE1_STEPS.includes(key as (typeof PARALLEL_PHASE1_STEPS)[number])
+  );
 
-    chain = job;
+  // Build Phase 1 parallel jobs (if any)
+  let phase1Gate: FlowJob | undefined;
+  if (phase1Steps.length > 0) {
+    const phase1Jobs = phase1Steps.map((stepKey) => createStepJob(stepKey));
+
+    // Gate job that waits for all Phase 1 jobs
+    phase1Gate = {
+      name: `phase1-gate-${boxId}`,
+      queueName: DEPLOY_QUEUES.setupStep,
+      data: {
+        boxId,
+        deploymentAttempt,
+        spriteName,
+        spriteUrl,
+        stepKey: "PHASE1_GATE",
+        stepOrder: 0, // Meta step, not tracked in UI
+        envVars,
+        boxAgentBinaryUrl,
+        isGate: true, // Worker will skip execution for gate jobs
+      },
+      opts: {
+        jobId: makeJobId("phase1-gate"),
+      },
+      children: phase1Jobs,
+    };
   }
 
-  return chain;
+  // Build sequential chain for Phase 2+ steps
+  let sequentialChain: FlowJob | undefined;
+  if (sequentialSteps.length > 0) {
+    // Build chain from last to first (BullMQ children-first execution)
+    for (const stepKey of sequentialSteps) {
+      const job = createStepJob(stepKey, sequentialChain ? [sequentialChain] : undefined);
+      sequentialChain = job;
+    }
+  }
+
+  // Wire Phase 1 gate as child of first sequential step (if both exist)
+  if (sequentialChain && phase1Gate) {
+    // Find the deepest job in sequential chain and add phase1Gate as sibling child
+    let deepest = sequentialChain;
+    while (deepest.children && deepest.children.length > 0) {
+      deepest = deepest.children[0]!;
+    }
+    deepest.children = [phase1Gate];
+    return sequentialChain;
+  }
+
+  // Only Phase 1 or only sequential
+  return sequentialChain ?? phase1Gate;
 }
 
 interface SkillsGateParams {
