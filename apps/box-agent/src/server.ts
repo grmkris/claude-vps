@@ -1,3 +1,4 @@
+import { StreamableHTTPTransport } from "@hono/mcp";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
@@ -5,6 +6,7 @@ import { Hono } from "hono";
 
 import { env } from "./env";
 import { logger } from "./logger";
+import { createMcpServer } from "./mcp";
 import { cronRouter } from "./routers/cron.router";
 import { emailRouter } from "./routers/email.router";
 import { sessionRouter } from "./routers/session.router";
@@ -24,6 +26,18 @@ const apiHandler = new OpenAPIHandler(appRouter, {
 });
 
 const app = new Hono();
+
+// MCP server for HTTP transport (inspector, remote access)
+const mcpServer = createMcpServer();
+const mcpTransport = new StreamableHTTPTransport();
+
+// MCP endpoint - must be before other routes
+app.all("/mcp", async (c) => {
+  if (!mcpServer.isConnected()) {
+    await mcpServer.connect(mcpTransport);
+  }
+  return mcpTransport.handleRequest(c);
+});
 
 // Health endpoint
 app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));

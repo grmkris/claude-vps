@@ -10,7 +10,12 @@ import type {
 import type { QueueClient } from "@vps-claude/queue";
 import type { SpritesClient } from "@vps-claude/sprites";
 
-import { box, boxAgentConfig, boxEmailSettings } from "@vps-claude/db";
+import {
+  box,
+  boxAgentConfig,
+  boxCronjob,
+  boxEmailSettings,
+} from "@vps-claude/db";
 import {
   type BoxAgentConfigId,
   type BoxId,
@@ -70,6 +75,10 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: string;
         skills?: string[];
         envVars?: Record<string, string>;
+        mcpServers?: Record<
+          string,
+          { command: string; args?: string[]; env?: Record<string, string> }
+        >;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
@@ -109,6 +118,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         boxId: created.id,
         triggerType: "default",
         name: "Default",
+        mcpServers: input.mcpServers ?? null,
       });
 
       // Set env vars if provided (before queuing deploy)
@@ -268,6 +278,23 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
       if (boxRecord.userId !== userId) {
         return err({ type: "NOT_FOUND", message: "Box not found" });
+      }
+
+      // Clean up BullMQ cronjob jobs before CASCADE delete
+      const cronjobs = await db.query.boxCronjob.findMany({
+        where: eq(boxCronjob.boxId, id),
+      });
+
+      for (const cronjob of cronjobs) {
+        if (cronjob.bullmqJobKey) {
+          try {
+            await queueClient.triggerCronjobQueue.removeRepeatableByKey(
+              cronjob.bullmqJobKey
+            );
+          } catch {
+            // Ignore if job doesn't exist
+          }
+        }
       }
 
       await db.delete(box).where(eq(box.id, id));
