@@ -31,23 +31,26 @@ export const BASE_DEPLOY_STEPS = [
 export const SETUP_SUBSTEPS = [
   { key: "SETUP_DOWNLOAD_AGENT", order: 1, name: "Downloading box-agent" },
   { key: "SETUP_CREATE_DIRS", order: 2, name: "Creating directories" },
-  { key: "SETUP_ENV_VARS", order: 3, name: "Setting env vars" },
-  { key: "SETUP_CREATE_ENV_FILE", order: 4, name: "Creating env file" },
+  { key: "SETUP_EMAIL_SKILL", order: 3, name: "Setting up email skill" },
+  { key: "SETUP_ENV_VARS", order: 4, name: "Setting env vars" },
+  { key: "SETUP_CREATE_ENV_FILE", order: 5, name: "Creating env file" },
+  { key: "SETUP_INSTALL_CLAUDE", order: 6, name: "Installing Claude CLI" },
   {
     key: "SETUP_BOX_AGENT_SERVICE",
-    order: 5,
+    order: 7,
     name: "Creating box-agent service",
   },
-  { key: "SETUP_INSTALL_NGINX", order: 6, name: "Installing nginx" },
-  { key: "SETUP_NGINX_SERVICE", order: 7, name: "Creating nginx service" },
-  { key: "SETUP_CLONE_AGENT_APP", order: 8, name: "Cloning agent-app" },
-  { key: "SETUP_INSTALL_AGENT_APP", order: 9, name: "Installing agent-app" },
+  { key: "SETUP_INSTALL_NGINX", order: 8, name: "Installing nginx" },
+  { key: "SETUP_NGINX_SERVICE", order: 9, name: "Creating nginx service" },
+  { key: "SETUP_CLONE_AGENT_APP", order: 10, name: "Cloning agent-app" },
+  { key: "SETUP_INSTALL_AGENT_APP", order: 11, name: "Installing agent-app" },
   {
     key: "SETUP_AGENT_APP_SERVICE",
-    order: 10,
+    order: 12,
     name: "Creating agent-app service",
   },
-  { key: "SETUP_MCP_SETTINGS", order: 11, name: "Configuring MCP settings" },
+  { key: "SETUP_MCP_SETTINGS", order: 13, name: "Configuring MCP settings" },
+  { key: "SETUP_TAILSCALE", order: 14, name: "Setting up Tailscale" },
 ] as const;
 
 interface DeployStepServiceDeps {
