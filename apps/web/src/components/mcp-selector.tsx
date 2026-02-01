@@ -1,14 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   type McpCatalogServer,
   type McpServerConfig,
   registryServerToConfig,
 } from "@vps-claude/shared/mcp-registry";
 import { Check, Loader2, Search, Server } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -19,14 +20,40 @@ interface McpSelectorProps {
   onChange: (servers: Record<string, McpServerConfig>) => void;
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export function McpSelector({ value, onChange }: McpSelectorProps) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
 
   const {
-    data: catalog,
+    data,
     isLoading,
     error,
-  } = useQuery(orpc.mcp.catalog.queryOptions({}));
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["mcp-catalog", debouncedSearch],
+    queryFn: async ({ pageParam }) => {
+      return orpc.mcp.catalog.call({
+        search: debouncedSearch || undefined,
+        cursor: pageParam,
+        limit: 30,
+      });
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
 
   const toggleServer = (server: McpCatalogServer) => {
     const serverName = server.name;
@@ -42,17 +69,7 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
   };
 
   const selectedCount = Object.keys(value).length;
-
-  const filteredServers =
-    catalog?.servers.filter(
-      (server) =>
-        server.name.toLowerCase().includes(search.toLowerCase()) ||
-        server.title?.toLowerCase().includes(search.toLowerCase()) ||
-        server.description?.toLowerCase().includes(search.toLowerCase()) ||
-        server.keywords?.some((k) =>
-          k.toLowerCase().includes(search.toLowerCase())
-        )
-    ) ?? [];
+  const allServers = data?.pages.flatMap((page) => page.servers) ?? [];
 
   if (error) {
     return (
@@ -91,7 +108,7 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredServers.length === 0 ? (
+        ) : allServers.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {search
               ? "No MCP servers match your search"
@@ -99,19 +116,20 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredServers.map((server) => {
+            {allServers.map((server, index) => {
               const isSelected = !!value[server.name];
               const displayName = server.title || server.name.split("/").pop();
               const hasValidConfig = !!registryServerToConfig(server);
               return (
                 <button
                   type="button"
-                  key={server.name}
+                  key={`${server.name}-${index}`}
                   onClick={() => toggleServer(server)}
                   disabled={!hasValidConfig}
                   className={cn(
                     "w-full px-4 py-3 text-left transition-colors hover:bg-secondary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                    isSelected && "bg-primary/5"
+                    isSelected && "bg-primary/5",
+                    !hasValidConfig && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -159,6 +177,22 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
                 </button>
               );
             })}
+            {hasNextPage && (
+              <div className="p-3 text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Load more
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -166,7 +200,7 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
       <p className="text-xs text-muted-foreground">
         MCP servers from the{" "}
         <a
-          href="https://modelcontextprotocol.io"
+          href="https://modelcontextprotocol.io/registry/about"
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline"

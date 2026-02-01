@@ -69,6 +69,7 @@ export interface McpCatalogServer {
 export interface McpCatalogResponse {
   servers: McpCatalogServer[];
   hasMore: boolean;
+  nextCursor?: string;
 }
 
 /**

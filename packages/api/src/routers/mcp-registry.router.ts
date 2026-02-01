@@ -98,16 +98,28 @@ const McpCatalogServerSchema = z.object({
 const McpCatalogResponseSchema = z.object({
   servers: z.array(McpCatalogServerSchema),
   hasMore: z.boolean(),
+  nextCursor: z.string().optional(),
 });
 
 export const mcpRouter = {
   catalog: publicProcedure
     .route({ method: "GET", path: "/mcp/catalog" })
+    .input(
+      z.object({
+        search: z.string().optional(),
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(100).optional(),
+      })
+    )
     .output(McpCatalogResponseSchema)
-    .handler(async () => {
-      const res = await fetch(
-        "https://registry.modelcontextprotocol.io/v0.1/servers?limit=100"
-      );
+    .handler(async ({ input }) => {
+      const params = new URLSearchParams();
+      params.set("limit", String(input.limit ?? 30));
+      if (input.search) params.set("search", input.search);
+      if (input.cursor) params.set("cursor", input.cursor);
+
+      const url = `https://registry.modelcontextprotocol.io/v0.1/servers?${params}`;
+      const res = await fetch(url);
       if (!res.ok) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
           message: "Failed to fetch MCP registry",
@@ -120,6 +132,10 @@ export const mcpRouter = {
           message: "Invalid MCP registry response",
         });
       }
-      return transformToMcpCatalog(parsed.data);
+      const catalog = transformToMcpCatalog(parsed.data);
+      return {
+        ...catalog,
+        nextCursor: parsed.data.metadata?.nextCursor,
+      };
     }),
 };
