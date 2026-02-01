@@ -1,6 +1,6 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type FinalizeJobData,
   type DeployJobResult,
@@ -34,35 +34,29 @@ export function createFinalizeWorker({ deps }: { deps: FinalizeWorkerDeps }) {
     DEPLOY_QUEUES.finalize,
     async (job: Job<FinalizeJobData>): Promise<DeployJobResult> => {
       const { boxId, deploymentAttempt, spriteName, spriteUrl } = job.data;
-
-      logger.info(
-        { boxId, spriteName, spriteUrl, attempt: deploymentAttempt },
-        "FINALIZE: Marking box as running"
-      );
+      const event = createWideEvent(logger, {
+        worker: "FINALIZE",
+        jobId: job.id,
+        boxId,
+        attempt: deploymentAttempt,
+      });
 
       try {
         // Mark box as running - deployment complete!
         await boxService.updateStatus(boxId, "running");
 
-        logger.info(
-          { boxId, spriteName },
-          "FINALIZE: Box deployment completed successfully"
-        );
-
+        event.set({ spriteName, spriteUrl, status: "running" });
         return { success: true, spriteName, spriteUrl };
-      } catch (error) {
-        const errorMsg =
-          error instanceof Error ? error.message : "Unknown error";
-
-        logger.error(
-          { boxId, error: errorMsg },
-          "FINALIZE: Failed to mark box as running"
-        );
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
 
         // Mark box as error since finalization failed
         await boxService.updateStatus(boxId, "error", errorMsg);
 
-        throw error;
+        event.error(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      } finally {
+        event.emit();
       }
     },
     {
@@ -73,13 +67,6 @@ export function createFinalizeWorker({ deps }: { deps: FinalizeWorkerDeps }) {
   );
 
   worker.on("failed", async (job, err) => {
-    logger.error({
-      msg: "FINALIZE job failed",
-      jobId: job?.id,
-      boxId: job?.data.boxId,
-      error: err.message,
-    });
-
     // Ensure box is marked as error on permanent failure
     if (job?.data.boxId) {
       try {

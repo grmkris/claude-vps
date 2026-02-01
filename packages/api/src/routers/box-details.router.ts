@@ -22,6 +22,7 @@ export const boxDetailsRouter = {
     .input(z.object({ id: BoxId }))
     .output(BoxByIdOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "box.details.byId", boxId: input.id });
       const result = await context.boxService.getById(input.id);
       return result.match(
         (box) => {
@@ -43,6 +44,10 @@ export const boxDetailsRouter = {
     .input(z.object({ id: BoxId }))
     .output(BoxDeployProgressOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.details.deployProgress",
+        boxId: input.id,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -79,6 +84,10 @@ export const boxDetailsRouter = {
     )
     .output(BoxDeployStepsOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.details.deploySteps",
+        boxId: input.id,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -119,6 +128,11 @@ export const boxDetailsRouter = {
     )
     .output(BoxProxyOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.details.getProxyDetails",
+        boxId: input.id,
+        port: input.port,
+      });
       const result = await context.boxService.getById(input.id);
       return result.match(
         (box) => {
@@ -158,6 +172,11 @@ export const boxDetailsRouter = {
     )
     .output(BoxEmailListOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.details.emails",
+        boxId: input.id,
+        status: input.status,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -196,6 +215,7 @@ export const boxDetailsRouter = {
     )
     .output(BoxExecOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "box.details.exec", boxId: input.id });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -223,6 +243,7 @@ export const boxDetailsRouter = {
     .input(z.object({ id: BoxId }))
     .output(BoxSessionListOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "box.details.sessions", boxId: input.id });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -278,6 +299,11 @@ export const boxDetailsRouter = {
     )
     .output(BoxSessionSendOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.details.sessionSend",
+        boxId: input.id,
+        contextType: input.contextType,
+      });
       const boxResult = await context.boxService.getById(input.id);
       if (boxResult.isErr()) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {

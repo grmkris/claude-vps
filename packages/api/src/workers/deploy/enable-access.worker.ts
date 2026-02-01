@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type EnableAccessJobData,
   type DeployJobResult,
@@ -34,10 +34,13 @@ export function createEnableAccessWorker({
     async (job: Job<EnableAccessJobData>): Promise<DeployJobResult> => {
       const { boxId, deploymentAttempt, spriteName } = job.data;
 
-      logger.info(
-        { boxId, spriteName, attempt: deploymentAttempt },
-        "ENABLE_PUBLIC_ACCESS: Starting"
-      );
+      const event = createWideEvent(logger, {
+        worker: "ENABLE_ACCESS",
+        jobId: job.id,
+        boxId,
+        spriteName,
+        attempt: deploymentAttempt,
+      });
 
       try {
         // Update step status to running
@@ -59,7 +62,7 @@ export function createEnableAccessWorker({
           "completed"
         );
 
-        logger.info({ boxId, spriteName }, "ENABLE_PUBLIC_ACCESS: Completed");
+        event.set({ status: "public" });
 
         return { success: true };
       } catch (error) {
@@ -74,12 +77,10 @@ export function createEnableAccessWorker({
           { errorMessage: errorMsg }
         );
 
-        logger.error(
-          { boxId, error: errorMsg },
-          "ENABLE_PUBLIC_ACCESS: Failed"
-        );
-
+        event.error(error instanceof Error ? error : new Error(String(error)));
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

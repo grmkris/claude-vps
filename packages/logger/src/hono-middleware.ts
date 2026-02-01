@@ -8,6 +8,8 @@ import { createWideEvent } from "./wide-event";
 export function wideEventMiddleware(opts: {
   logger: Logger;
   skipPaths?: string[];
+  serviceName?: string;
+  serviceVersion?: string;
 }): MiddlewareHandler {
   return async (c, next) => {
     const path = c.req.path;
@@ -16,6 +18,12 @@ export function wideEventMiddleware(opts: {
     const requestId = crypto.randomUUID().slice(0, 8);
     // Cast to PinoLogger - our Logger interface is a compatible subset
     const event = createWideEvent(opts.logger as unknown as PinoLogger, {
+      main: true,
+      service: {
+        name: opts.serviceName || "api",
+        env: process.env.APP_ENV || "dev",
+        ...(opts.serviceVersion && { version: opts.serviceVersion }),
+      },
       requestId,
       method: c.req.method,
       path,

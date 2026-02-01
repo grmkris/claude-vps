@@ -23,8 +23,23 @@ export function createWideEvent(
     error(err, extra) {
       hasError = true;
       const error = typeof err === "string" ? new Error(err) : err;
-      context.error = { message: error.message, name: error.name };
-      if (extra) Object.assign(context, extra);
+
+      // Extract slug from extra if provided
+      const slug = extra?.slug as string | undefined;
+
+      context.error = {
+        message: error.message,
+        type: error.name,
+        ...(slug && { slug }),
+        // First 5 lines of stack trace
+        stack: error.stack?.split("\n").slice(0, 5).join("\n"),
+      };
+
+      // Merge remaining extra (excluding slug which goes in error)
+      if (extra) {
+        const { slug: _, ...rest } = extra;
+        Object.assign(context, rest);
+      }
       return event;
     },
 

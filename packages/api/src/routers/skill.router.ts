@@ -27,7 +27,9 @@ export const skillRouter = {
       })
     )
     .output(SkillsShResponse)
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "skill.catalog" });
+
       const params = new URLSearchParams();
       params.set("limit", String(input.limit ?? 30));
       if (input.search) params.set("search", input.search);

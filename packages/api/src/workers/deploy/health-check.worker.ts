@@ -1,7 +1,7 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 import type { SpritesClient } from "@vps-claude/sprites";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type HealthCheckJobData,
   type DeployJobResult,
@@ -34,10 +34,13 @@ export function createHealthCheckWorker({
     async (job: Job<HealthCheckJobData>): Promise<DeployJobResult> => {
       const { boxId, deploymentAttempt, spriteName, spriteUrl } = job.data;
 
-      logger.info(
-        { boxId, spriteName, spriteUrl, attempt: deploymentAttempt },
-        "HEALTH_CHECK: Starting"
-      );
+      const event = createWideEvent(logger, {
+        worker: "HEALTH_CHECK",
+        jobId: job.id,
+        boxId,
+        spriteName,
+        attempt: deploymentAttempt,
+      });
 
       try {
         // Update step status to running
@@ -65,7 +68,7 @@ export function createHealthCheckWorker({
           "completed"
         );
 
-        logger.info({ boxId, spriteName }, "HEALTH_CHECK: Passed");
+        event.set({ status: "healthy" });
 
         return { success: true };
       } catch (error) {
@@ -80,12 +83,13 @@ export function createHealthCheckWorker({
           { errorMessage: errorMsg }
         );
 
-        logger.warn(
-          { boxId, error: errorMsg, attemptsMade: job.attemptsMade },
-          "HEALTH_CHECK: Failed, will retry if attempts remain"
-        );
-
+        event.error(error instanceof Error ? error : new Error(String(error)), {
+          status: "unhealthy",
+          attemptsMade: job.attemptsMade,
+        });
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

@@ -1,6 +1,6 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type Job,
   type TriggerCronjobJobData,
@@ -25,19 +25,21 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
     WORKER_CONFIG.triggerCronjob.name,
     async (job: Job<TriggerCronjobJobData>) => {
       const { cronjobId, boxId } = job.data;
-
-      logger.info({ cronjobId, boxId }, "Processing cronjob trigger");
+      const event = createWideEvent(logger, {
+        worker: "CRONJOB_TRIGGER",
+        jobId: job.id,
+        cronjobId,
+        boxId,
+      });
 
       // Create execution record
       const executionResult = await cronjobService.createExecution(cronjobId);
       if (executionResult.isErr()) {
-        logger.error(
-          { cronjobId, error: executionResult.error.message },
-          "Failed to create execution record"
-        );
+        event.error(new Error(executionResult.error.message));
         throw new Error(executionResult.error.message);
       }
       const execution = executionResult.value;
+      event.set({ executionId: execution.id });
       const startTime = Date.now();
 
       try {
@@ -50,13 +52,13 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
 
         // Skip if disabled
         if (!cronjob.enabled) {
-          logger.info({ cronjobId }, "Cronjob disabled, skipping");
           await cronjobService.updateExecution(execution.id, {
             status: "completed",
             completedAt: new Date(),
             durationMs: Date.now() - startTime,
             result: "Skipped: cronjob disabled",
           });
+          event.set({ status: "skipped", reason: "disabled" });
           return { success: true, skipped: true };
         }
 
@@ -84,7 +86,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         });
 
         // Check if sprite is awake, wake it if needed
-        logger.info({ cronjobId, spriteUrl }, "Waking sprite if needed");
         try {
           const healthResponse = await fetch(`${spriteUrl}/health`, {
             method: "GET",
@@ -93,16 +94,10 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
             ),
           });
           if (!healthResponse.ok) {
-            logger.warn(
-              { cronjobId, status: healthResponse.status },
-              "Health check returned non-OK status"
-            );
+            event.set({ healthCheckStatus: healthResponse.status });
           }
-        } catch (error) {
-          logger.warn(
-            { cronjobId, error },
-            "Failed to wake sprite, will try trigger anyway"
-          );
+        } catch {
+          event.set({ healthCheckFailed: true });
         }
 
         // Update status to running
@@ -147,18 +142,12 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         // Update lastRunAt
         await cronjobService.updateLastRunAt(cronjobId);
 
-        logger.info(
-          { cronjobId, executionId: execution.id, durationMs },
-          "Cronjob completed"
-        );
-
+        event.set({ status: "completed" });
         return { success: true };
-      } catch (error) {
+      } catch (err) {
         const durationMs = Date.now() - startTime;
         const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-
-        logger.error({ cronjobId, error: errorMessage }, "Cronjob failed");
+          err instanceof Error ? err.message : "Unknown error";
 
         await cronjobService.updateExecution(execution.id, {
           status: "failed",
@@ -167,7 +156,10 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           errorMessage,
         });
 
-        throw error;
+        event.error(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      } finally {
+        event.emit();
       }
     },
     {
@@ -175,14 +167,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
       concurrency: WORKER_CONFIG.triggerCronjob.concurrency,
     }
   );
-
-  worker.on("failed", (job, err) => {
-    logger.error({
-      msg: "Cronjob trigger job failed",
-      jobId: job?.id,
-      error: err.message,
-    });
-  });
 
   return worker;
 }

@@ -1,6 +1,6 @@
-import type { Logger } from "@vps-claude/logger";
 import type { Redis } from "@vps-claude/redis";
 
+import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
   type SkillsGateJobData,
   type DeployJobResult,
@@ -39,50 +39,21 @@ export function createSkillsGateWorker({
     async (job: Job<SkillsGateJobData>): Promise<DeployJobResult> => {
       const { boxId, deploymentAttempt } = job.data;
 
-      logger.info(
-        { boxId, attempt: deploymentAttempt, jobId: job.id },
-        "SKILLS_GATE: Starting - checking skill installation results"
-      );
+      const event = createWideEvent(logger, {
+        worker: "SKILLS_GATE",
+        jobId: job.id,
+        boxId,
+        attempt: deploymentAttempt,
+      });
 
       try {
         // Get child job results (skill installations)
-        logger.info({ boxId }, "SKILLS_GATE: Getting children values...");
         const childResults = await job.getChildrenValues<DeployJobResult>();
-        logger.info(
-          { boxId, childCount: Object.keys(childResults).length, childResults },
-          "SKILLS_GATE: Got children values"
-        );
 
         // Count successes and failures
         const results = Object.entries(childResults);
         const failures = results.filter(([, r]) => r && !r.success);
         const successes = results.filter(([, r]) => r && r.success);
-
-        if (failures.length > 0) {
-          const failedSkills = failures
-            .map(([key, r]) => {
-              // Extract skill ID from job key (format: "skill-{skillId}-{boxId}")
-              const match = key.match(/skill-([^-]+)-/);
-              return match ? `${match[1]}: ${r?.error}` : r?.error;
-            })
-            .join(", ");
-
-          logger.warn(
-            {
-              boxId,
-              totalSkills: results.length,
-              succeeded: successes.length,
-              failed: failures.length,
-              failedSkills,
-            },
-            "SKILLS_GATE: Some skills failed to install"
-          );
-        } else {
-          logger.info(
-            { boxId, totalSkills: results.length },
-            "SKILLS_GATE: All skills installed successfully"
-          );
-        }
 
         // Mark INSTALL_SKILLS step as completed (even with partial failures)
         await deployStepService.updateStepStatus(
@@ -99,6 +70,13 @@ export function createSkillsGateWorker({
           }
         );
 
+        event.set({
+          totalSkills: results.length,
+          succeeded: successes.length,
+          failed: failures.length,
+          status: failures.length > 0 ? "partial" : "passed",
+        });
+
         return {
           success: true,
           error:
@@ -110,11 +88,6 @@ export function createSkillsGateWorker({
         const errorMsg =
           error instanceof Error ? error.message : "Unknown error";
 
-        logger.error(
-          { boxId, error: errorMsg },
-          "SKILLS_GATE: Failed to process skill results"
-        );
-
         await deployStepService.updateStepStatus(
           boxId,
           deploymentAttempt,
@@ -123,7 +96,10 @@ export function createSkillsGateWorker({
           { errorMessage: errorMsg }
         );
 
+        event.error(error instanceof Error ? error : new Error(String(error)));
         throw error;
+      } finally {
+        event.emit();
       }
     },
     {

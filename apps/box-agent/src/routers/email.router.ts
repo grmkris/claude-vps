@@ -15,7 +15,12 @@ export const emailRouter = {
     .route({ method: "POST", path: "/email/receive" })
     .input(InboundEmailSchema)
     .output(z.object({ success: z.boolean(), filepath: z.string() }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "email.receive",
+        emailId: input.messageId,
+        from: input.from.email,
+      });
       const filepath = await writeEmailToInbox(input);
       const prompt = buildEmailPrompt(input, filepath);
 

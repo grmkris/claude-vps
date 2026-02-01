@@ -16,6 +16,7 @@ export const credentialRouter = {
   list: protectedProcedure
     .output(CredentialListOutput)
     .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "credential.list" });
       const result = await context.credentialService.list(
         context.session.user.id
       );
@@ -33,6 +34,7 @@ export const credentialRouter = {
     .input(z.object({ key: keySchema, value: z.string().min(1).max(10000) }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "credential.set", key: input.key });
       const result = await context.credentialService.set(
         context.session.user.id,
         input.key,
@@ -50,6 +52,7 @@ export const credentialRouter = {
     .input(z.object({ key: z.string().min(1) }))
     .output(SuccessOutput)
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({ op: "credential.delete", key: input.key });
       const result = await context.credentialService.delete(
         context.session.user.id,
         input.key

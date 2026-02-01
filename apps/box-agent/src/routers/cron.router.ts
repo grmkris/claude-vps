@@ -17,10 +17,12 @@ export const cronRouter = {
     .output(
       z.object({ success: z.boolean(), sessionId: z.string().optional() })
     )
-    .handler(async ({ input }) => {
-      logger.info(
-        `Triggering cronjob ${input.cronjobName} (${input.cronjobId})`
-      );
+    .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "cron.trigger",
+        cronjobId: input.cronjobId,
+        cronjobName: input.cronjobName,
+      });
 
       // Run Claude session with the cronjob prompt
       runWithSession({

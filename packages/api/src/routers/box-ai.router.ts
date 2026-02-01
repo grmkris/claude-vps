@@ -33,6 +33,10 @@ export const boxAiRouter = {
       })
     )
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.ai.generateImage",
+        promptLen: input.prompt.length,
+      });
       const boxResult = await context.emailService.getBoxByAgentSecret(
         context.boxToken!
       );
@@ -82,6 +86,11 @@ export const boxAiRouter = {
       })
     )
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.ai.textToSpeech",
+        textLen: input.text.length,
+        voice: input.voice,
+      });
       const boxResult = await context.emailService.getBoxByAgentSecret(
         context.boxToken!
       );
@@ -130,6 +139,10 @@ export const boxAiRouter = {
       })
     )
     .handler(async ({ context, input }) => {
+      context.wideEvent?.set({
+        op: "box.ai.speechToText",
+        language: input.language,
+      });
       const boxResult = await context.emailService.getBoxByAgentSecret(
         context.boxToken!
       );

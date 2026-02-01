@@ -1,7 +1,10 @@
+import type { WideEvent } from "@vps-claude/logger";
+
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { wideEventMiddleware } from "@vps-claude/logger";
 import { Hono } from "hono";
 
 import { env } from "./env";
@@ -25,7 +28,21 @@ const apiHandler = new OpenAPIHandler(appRouter, {
   ],
 });
 
-const app = new Hono();
+type HonoVariables = {
+  requestId: string;
+  wideEvent: WideEvent;
+};
+
+const app = new Hono<{ Variables: HonoVariables }>();
+
+// Wide event middleware for structured logging
+app.use(
+  wideEventMiddleware({
+    logger,
+    skipPaths: ["/", "/health"],
+    serviceName: "box-agent",
+  })
+);
 
 // MCP server for HTTP transport (inspector, remote access)
 const mcpServer = createMcpServer();
@@ -44,7 +61,10 @@ app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));
 
 // ORPC handler for API routes at /rpc
 app.all("/rpc/*", async (c) => {
-  const context = { boxSecretHeader: c.req.header("X-Box-Secret") };
+  const context = {
+    boxSecretHeader: c.req.header("X-Box-Secret"),
+    wideEvent: c.get("wideEvent"),
+  };
   const result = await apiHandler.handle(c.req.raw, {
     prefix: "/rpc",
     context,
@@ -57,7 +77,10 @@ app.all("/rpc/*", async (c) => {
 
 // Scalar docs at root (catch-all)
 app.all("/*", async (c) => {
-  const context = { boxSecretHeader: c.req.header("X-Box-Secret") };
+  const context = {
+    boxSecretHeader: c.req.header("X-Box-Secret"),
+    wideEvent: c.get("wideEvent"),
+  };
   const result = await apiHandler.handle(c.req.raw, {
     prefix: "/",
     context,
