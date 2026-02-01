@@ -539,8 +539,23 @@ MCPEOF
         curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null
         sudo apt-get update -qq && sudo apt-get install -y -qq tailscale
 
-        # Start daemon
-        sudo systemctl enable --now tailscaled
+        # Create wrapper script for tailscaled daemon
+        cat > /usr/local/bin/start-tailscaled.sh << 'TSEOF'
+#!/bin/bash
+exec /usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock
+TSEOF
+        chmod +x /usr/local/bin/start-tailscaled.sh
+        sudo mkdir -p /var/lib/tailscale /run/tailscale
+
+        # Register as sprite-env service
+        sprite-env services remove tailscaled 2>/dev/null || true
+        sprite-env services create tailscaled --cmd /usr/local/bin/start-tailscaled.sh --no-stream
+
+        # Wait for daemon socket
+        for i in {1..30}; do
+          [ -S /run/tailscale/tailscaled.sock ] && break
+          sleep 0.5
+        done
 
         # Join network (--reset for idempotency on redeploys)
         sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --ssh --hostname="$BOX_SUBDOMAIN" --reset
