@@ -1,4 +1,7 @@
-import { transformToMcpCatalog } from "@vps-claude/shared";
+import {
+  registryServerToConfig,
+  transformToMcpCatalog,
+} from "@vps-claude/shared";
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 
@@ -154,6 +157,67 @@ describe("MCP Registry Search & Pagination", () => {
     // No overlap between pages
     for (const name of page2Names) {
       expect(page1Names.has(name)).toBe(false);
+    }
+  });
+});
+
+describe("Remote MCP Server Support", () => {
+  test("remote server without headers generates SSE config", async () => {
+    // Linear is a known remote-only server with OAuth (no headers required)
+    const res = await fetch(
+      "https://registry.modelcontextprotocol.io/v0.1/servers?search=linear&limit=5"
+    );
+    expect(res.ok).toBe(true);
+
+    const json = await res.json();
+    const parsed = McpRegistryApiResponseSchema.safeParse(json);
+    expect(parsed.success).toBe(true);
+
+    const linearEntry = parsed.data?.servers.find(
+      (s) => s.server.name === "app.linear/linear"
+    );
+    expect(linearEntry).toBeDefined();
+    expect(linearEntry?.server.remotes?.length).toBeGreaterThan(0);
+
+    // Transform and verify
+    const catalog = transformToMcpCatalog({ servers: [linearEntry!] });
+    const linearServer = catalog.servers[0];
+    expect(linearServer).toBeDefined();
+    expect(linearServer?.primaryRemote).toBeDefined();
+    expect(linearServer?.primaryRemote?.hasRequiredHeaders).toBe(false);
+
+    // Should generate valid SSE config
+    const config = registryServerToConfig(linearServer!);
+    expect(config).not.toBeNull();
+    expect(config).toHaveProperty("type", "sse");
+    expect(config).toHaveProperty("url");
+  });
+
+  test("remote server with required headers is disabled", async () => {
+    // Find a server with required auth headers
+    const res = await fetch(
+      "https://registry.modelcontextprotocol.io/v0.1/servers?limit=100"
+    );
+    const json = await res.json();
+    const parsed = McpRegistryApiResponseSchema.safeParse(json);
+    expect(parsed.success).toBe(true);
+
+    // Find server with required headers (like contabo or openai-tools)
+    const serverWithAuth = parsed.data?.servers.find((s) =>
+      s.server.remotes?.[0]?.headers?.some((h) => h.isRequired)
+    );
+
+    if (serverWithAuth) {
+      const catalog = transformToMcpCatalog({ servers: [serverWithAuth] });
+      const catalogServer = catalog.servers[0];
+      expect(catalogServer?.primaryRemote?.hasRequiredHeaders).toBe(true);
+
+      // Should NOT generate config (auth not supported)
+      const config = registryServerToConfig(catalogServer!);
+      // If no npm package, config should be null
+      if (!catalogServer?.primaryPackage) {
+        expect(config).toBeNull();
+      }
     }
   });
 });
