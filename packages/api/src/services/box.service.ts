@@ -2,6 +2,7 @@ import type {
   BoxAgentConfigResponseSchema,
   Database,
   InsertBoxAgentConfigSchema,
+  McpServerConfig,
   SelectBoxAgentConfigSchema,
   SelectBoxSchema,
   TriggerType,
@@ -75,10 +76,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         name: string;
         skills?: string[];
         envVars?: Record<string, string>;
-        mcpServers?: Record<
-          string,
-          { command: string; args?: string[]; env?: Record<string, string> }
-        >;
+        mcpServers?: Record<string, McpServerConfig>;
       }
     ): Promise<Result<SelectBoxSchema, BoxServiceError>> {
       const existingByName = await db.query.box.findFirst({
@@ -358,11 +356,6 @@ You can read/write files, run commands, and interact with the system.
 When handling emails, read the content and respond appropriately.`;
 
       // Default MCP servers - always include ai-tools
-      type McpServerConfig = {
-        command: string;
-        args?: string[];
-        env?: Record<string, string>;
-      };
       const defaultMcpServers: Record<string, McpServerConfig> = {
         "ai-tools": {
           command: "/usr/local/bin/box-agent",

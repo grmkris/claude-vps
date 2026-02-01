@@ -41,6 +41,17 @@ const PERMISSION_MODES = [
   { value: "default", label: "Default (prompt for permissions)" },
 ];
 
+// Type guard for stdio config
+function isStdioConfig(
+  config: McpServerConfig
+): config is {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+} {
+  return "command" in config;
+}
+
 function McpServerDialog({
   existingName,
   existingConfig,
@@ -54,13 +65,15 @@ function McpServerDialog({
 }) {
   const [open, setOpen] = useState(!!existingName);
   const [name, setName] = useState(existingName ?? "");
-  const [command, setCommand] = useState(existingConfig?.command ?? "");
-  const [args, setArgs] = useState(existingConfig?.args?.join(", ") ?? "");
+  const existingStdio =
+    existingConfig && isStdioConfig(existingConfig) ? existingConfig : null;
+  const [command, setCommand] = useState(existingStdio?.command ?? "");
+  const [args, setArgs] = useState(existingStdio?.args?.join(", ") ?? "");
 
   const handleSave = () => {
     onSave(name, {
       command,
-      args: args ? args.split(",").map((a) => a.trim()) : undefined,
+      args: args ? args.split(",").map((a: string) => a.trim()) : undefined,
     });
     setOpen(false);
     onClose();
@@ -173,7 +186,7 @@ function McpServerCard({
             )}
           </div>
           <span className="text-xs text-muted-foreground font-mono">
-            {config.command}
+            {isStdioConfig(config) ? config.command : config.url}
           </span>
         </div>
       </div>

@@ -8,11 +8,23 @@ export const TRIGGER_TYPES = triggerTypeEnum.enumValues;
 export const TriggerType = z.enum(TRIGGER_TYPES);
 export type TriggerType = z.infer<typeof TriggerType>;
 
-export const McpServerConfigSchema = z.object({
+export const McpServerConfigStdioSchema = z.object({
+  type: z.literal("stdio").optional(),
   command: z.string(),
   args: z.array(z.string()).optional(),
   env: z.record(z.string(), z.string()).optional(),
 });
+
+export const McpServerConfigSseSchema = z.object({
+  type: z.literal("sse"),
+  url: z.string(),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+
+export const McpServerConfigSchema = z.union([
+  McpServerConfigStdioSchema,
+  McpServerConfigSseSchema,
+]);
 export type McpServerConfigSchema = z.infer<typeof McpServerConfigSchema>;
 
 export const AgentDefinitionSchema = z.object({

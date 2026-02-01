@@ -79,6 +79,12 @@ const McpCatalogEnvVarOutputSchema = z.object({
   isSecret: z.boolean().optional(),
 });
 
+const McpCatalogRemoteOutputSchema = z.object({
+  type: z.string(),
+  url: z.string(),
+  hasRequiredHeaders: z.boolean(),
+});
+
 const McpCatalogServerSchema = z.object({
   name: z.string(),
   title: z.string().optional(),
@@ -92,6 +98,7 @@ const McpCatalogServerSchema = z.object({
       envVars: z.array(McpCatalogEnvVarOutputSchema).optional(),
     })
     .optional(),
+  primaryRemote: McpCatalogRemoteOutputSchema.optional(),
   hasRemote: z.boolean().optional(),
 });
 

@@ -153,9 +153,9 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
                             {server.primaryPackage.registryType}
                           </span>
                         )}
-                        {server.hasRemote && (
+                        {!server.primaryPackage && server.primaryRemote && (
                           <span className="shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300">
-                            remote
+                            {server.primaryRemote.type}
                           </span>
                         )}
                       </div>
@@ -170,6 +170,12 @@ export function McpSelector({ value, onChange }: McpSelectorProps) {
                               .filter((v) => v.isRequired)
                               .map((v) => v.name)
                               .join(", ") || "optional env vars"}
+                          </p>
+                        )}
+                      {!hasValidConfig &&
+                        server.primaryRemote?.hasRequiredHeaders && (
+                          <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                            Requires auth headers (not yet supported)
                           </p>
                         )}
                     </div>

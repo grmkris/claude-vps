@@ -1,6 +1,6 @@
 "use client";
 
-import type { BoxId } from "@vps-claude/shared";
+import type { BoxId, McpServerConfig } from "@vps-claude/shared";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,11 +17,7 @@ export function useAgentConfig(boxId: BoxId) {
   });
 }
 
-export type McpServerConfig = {
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-};
+export type { McpServerConfig };
 
 export function useUpdateAgentConfig() {
   const queryClient = useQueryClient();
