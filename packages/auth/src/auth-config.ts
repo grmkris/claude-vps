@@ -8,7 +8,7 @@ import {
 } from "@vps-claude/shared/services.schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { apiKey, emailOTP } from "better-auth/plugins";
+import { apiKey, emailOTP, openAPI } from "better-auth/plugins";
 
 // API Key permission types
 export const API_KEY_PERMISSIONS = {
@@ -65,6 +65,7 @@ export const createAuth = (config: AuthConfig) => {
       },
     },
     plugins: [
+      openAPI(),
       emailOTP({
         sendVerificationOTP: async (data) => {
           const baseUrl = SERVICE_URLS[config.appEnv].web;

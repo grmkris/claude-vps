@@ -107,6 +107,31 @@ export function createApi({
   app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
   app.get("/health", (c) => c.text("OK"));
 
+  // Combined API docs at root (Scalar via CDN)
+  app.get("/", (c) => {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <title>VPS Claude API</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+    <script>
+      Scalar.createApiReference('#app', {
+        sources: [
+          { url: '/spec.json', title: 'API' },
+          { url: '/api/auth/open-api/generate-schema', title: 'Auth' },
+        ],
+      })
+    </script>
+  </body>
+</html>`;
+    return c.html(html);
+  });
+
   // SSE streaming endpoint for Claude sessions (before ORPC handler)
   app.post("/rpc/box/:id/sessions/stream", async (c) => {
     const wideEvent = c.get("wideEvent");
