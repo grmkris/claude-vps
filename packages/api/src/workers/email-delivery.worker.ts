@@ -40,19 +40,19 @@ export function createEmailDeliveryWorker({
   const worker = new Worker<DeliverEmailJobData>(
     WORKER_CONFIG.deliverEmail.name,
     async (job: Job<DeliverEmailJobData>) => {
-      const { emailId, spriteUrl, agentSecret, email } = job.data;
+      const { emailId, instanceUrl, agentSecret, email } = job.data;
       const event = createWideEvent(logger, {
         worker: "EMAIL_DELIVERY",
         jobId: job.id,
         emailId,
-        spriteUrl,
+        instanceUrl,
       });
 
       try {
         // Sprites: box-agent accessible via sprite's public URL
-        const boxAgentUrl = `${spriteUrl}/rpc/email/receive`;
+        const boxAgentUrl = `${instanceUrl}/rpc/email/receive`;
 
-        logger.info({ emailId, spriteUrl }, "Delivering email to box");
+        logger.info({ emailId, instanceUrl }, "Delivering email to box");
 
         const response = await fetch(boxAgentUrl, {
           method: "POST",

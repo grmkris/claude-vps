@@ -75,7 +75,7 @@ describe("inbound-email webhook", () => {
     await boxService.updateStatus(createdBox.id, "running");
     await testEnv.db
       .update(boxTable)
-      .set({ spriteUrl: `https://${createdBox.subdomain}.sprites.dev` })
+      .set({ instanceUrl: `https://${createdBox.subdomain}.sprites.dev` })
       .where(eq(boxTable.id, createdBox.id));
 
     await testEnv.db.insert(boxEmailSettings).values({

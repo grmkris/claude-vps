@@ -33,7 +33,7 @@ export function createFinalizeWorker({ deps }: { deps: FinalizeWorkerDeps }) {
   const worker = new Worker<FinalizeJobData, DeployJobResult>(
     DEPLOY_QUEUES.finalize,
     async (job: Job<FinalizeJobData>): Promise<DeployJobResult> => {
-      const { boxId, deploymentAttempt, spriteName, spriteUrl } = job.data;
+      const { boxId, deploymentAttempt, instanceName, instanceUrl } = job.data;
       const event = createWideEvent(logger, {
         worker: "FINALIZE",
         jobId: job.id,
@@ -45,8 +45,8 @@ export function createFinalizeWorker({ deps }: { deps: FinalizeWorkerDeps }) {
         // Mark box as running - deployment complete!
         await boxService.updateStatus(boxId, "running");
 
-        event.set({ spriteName, spriteUrl, status: "running" });
-        return { success: true, spriteName, spriteUrl };
+        event.set({ instanceName, instanceUrl, status: "running" });
+        return { success: true, instanceName, instanceUrl };
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
 

@@ -1,6 +1,6 @@
 {
-  "id": "83f04efa-5fc7-4e64-a56f-f1f371635873",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "a19e47b5-d5fa-4ecc-ba6e-eab75d1b289b",
+  "prevId": "83f04efa-5fc7-4e64-a56f-f1f371635873",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -587,18 +587,6 @@
         },
         "instance_url": {
           "name": "instance_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sprite_name": {
-          "name": "sprite_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sprite_url": {
-          "name": "sprite_url",
           "type": "text",
           "primaryKey": false,
           "notNull": false

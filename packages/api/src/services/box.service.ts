@@ -184,8 +184,9 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           name,
           subdomain,
           status: "running",
-          spriteUrl: SERVICE_URLS[appEnv].boxAgent,
-          spriteName: null,
+          instanceUrl: SERVICE_URLS[appEnv].boxAgent,
+          instanceName: null,
+          provider: "sprites",
           userId,
         })
         .returning();
@@ -297,7 +298,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 
       await db.delete(box).where(eq(box.id, id));
 
-      if (boxRecord.spriteName) {
+      if (boxRecord.instanceName) {
         await queueClient.deleteQueue.add("delete", {
           boxId: id,
           userId: boxRecord.userId,
@@ -322,12 +323,24 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       return ok(undefined);
     },
 
-    async setSpriteInfo(
+    async setInstanceInfo(
       id: BoxId,
-      spriteName: string,
-      spriteUrl: string
+      info: {
+        instanceName: string;
+        instanceUrl: string;
+        provider?: "sprites" | "docker";
+        providerHostId?: string;
+      }
     ): Promise<Result<void, BoxServiceError>> {
-      await db.update(box).set({ spriteName, spriteUrl }).where(eq(box.id, id));
+      await db
+        .update(box)
+        .set({
+          instanceName: info.instanceName,
+          instanceUrl: info.instanceUrl,
+          provider: info.provider ?? "sprites",
+          providerHostId: info.providerHostId ?? null,
+        })
+        .where(eq(box.id, id));
       return ok(undefined);
     },
 

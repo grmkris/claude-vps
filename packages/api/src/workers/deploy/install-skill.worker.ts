@@ -1,5 +1,5 @@
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { Redis } from "@vps-claude/redis";
-import type { SpritesClient } from "@vps-claude/sprites";
 
 import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
@@ -11,11 +11,13 @@ import {
 } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 
+import type { BoxService } from "../../services/box.service";
 import type { DeployStepService } from "../../services/deploy-step.service";
 
 interface InstallSkillWorkerDeps {
+  boxService: BoxService;
   deployStepService: DeployStepService;
-  spritesClient: SpritesClient;
+  providerFactory: ProviderFactory;
   redis: Redis;
   logger: Logger;
 }
@@ -25,12 +27,13 @@ export function createInstallSkillWorker({
 }: {
   deps: InstallSkillWorkerDeps;
 }) {
-  const { deployStepService, spritesClient, redis, logger } = deps;
+  const { boxService, deployStepService, providerFactory, redis, logger } =
+    deps;
 
   const worker = new Worker<InstallSkillJobData, DeployJobResult>(
     DEPLOY_QUEUES.installSkill,
     async (job: Job<InstallSkillJobData>): Promise<DeployJobResult> => {
-      const { boxId, deploymentAttempt, spriteName, skillId, topSource } =
+      const { boxId, deploymentAttempt, instanceName, skillId, topSource } =
         job.data;
 
       const stepKey = `SKILL_${skillId}`;
@@ -39,7 +42,7 @@ export function createInstallSkillWorker({
         worker: "INSTALL_SKILL",
         jobId: job.id,
         boxId,
-        spriteName,
+        instanceName,
         skillId,
         attempt: deploymentAttempt,
       });
@@ -75,12 +78,19 @@ export function createInstallSkillWorker({
           return { success: true };
         }
 
+        // Get box to determine provider type
+        const boxResult = await boxService.getById(boxId);
+        if (boxResult.isErr() || !boxResult.value) {
+          throw new Error("Box not found");
+        }
+
         // Install skill via CLI
         // topSource is the GitHub repo path, e.g. "remotion-dev/skills"
         // --yes --global skips interactive prompts, echo "" | handles any remaining prompts
         const skillsRepoUrl = `https://github.com/${topSource}`;
         const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId} --yes --global`;
-        const result = await spritesClient.execShell(spriteName, cmd);
+        const provider = providerFactory.getProviderForBox(boxResult.value);
+        const result = await provider.execShell(instanceName, cmd);
 
         if (result.exitCode !== 0) {
           throw new Error(

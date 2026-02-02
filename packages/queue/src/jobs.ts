@@ -23,7 +23,7 @@ export type DeleteBoxJobData = z.infer<typeof DeleteBoxJobData>;
 export const DeliverEmailJobData = z.object({
   emailId: BoxEmailId,
   boxId: BoxId,
-  spriteUrl: z.string(),
+  instanceUrl: z.string(),
   agentSecret: z.string(),
   email: z.object({
     id: z.string(),

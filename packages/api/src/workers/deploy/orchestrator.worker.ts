@@ -1,5 +1,5 @@
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { Redis } from "@vps-claude/redis";
-import type { SpritesClient } from "@vps-claude/sprites";
 
 import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
@@ -29,7 +29,7 @@ interface OrchestratorWorkerDeps {
   boxEnvVarService: BoxEnvVarService;
   deployStepService: DeployStepService;
   emailService: EmailService;
-  spritesClient: SpritesClient;
+  providerFactory: ProviderFactory;
   redis: Redis;
   logger: Logger;
   serverUrl: string;
@@ -59,7 +59,7 @@ export function createOrchestratorWorker({
     boxEnvVarService,
     deployStepService,
     emailService,
-    spritesClient,
+    providerFactory,
     redis,
     logger,
     serverUrl,
@@ -122,22 +122,22 @@ export function createOrchestratorWorker({
           serverUrl,
         });
 
-        // 4. Get or create sprite (synchronous - we need spriteName/spriteUrl for flow)
-        let spriteName = box.spriteName;
-        let spriteUrl = box.spriteUrl;
+        // 4. Get or create instance (synchronous - we need instanceName/instanceUrl for flow)
+        let instanceName = box.instanceName;
+        let instanceUrl = box.instanceUrl;
 
         const createSpriteStep = await deployStepService.getStepByKey(
           boxId,
           attempt,
           "CREATE_SPRITE"
         );
-        const needsCreateSprite =
+        const needsCreateInstance =
           !createSpriteStep.isOk() ||
           !createSpriteStep.value ||
           createSpriteStep.value.status !== "completed";
 
-        if (needsCreateSprite) {
-          logger.info({ boxId }, "ORCHESTRATOR: Creating sprite");
+        if (needsCreateInstance) {
+          logger.info({ boxId }, "ORCHESTRATOR: Creating instance");
 
           await deployStepService.updateStepStatus(
             boxId,
@@ -147,16 +147,22 @@ export function createOrchestratorWorker({
           );
 
           try {
-            const sprite = await spritesClient.createSprite({
+            // Use provider abstraction (defaults to sprites)
+            const provider = providerFactory.getProviderForBox(box);
+            const result = await provider.createInstance({
               name: subdomain,
               userId,
               subdomain,
               envVars: {}, // Env vars injected during setup steps
             });
-            spriteName = sprite.spriteName;
-            spriteUrl = sprite.url;
+            instanceName = result.instanceName;
+            instanceUrl = result.url;
 
-            await boxService.setSpriteInfo(boxId, spriteName, spriteUrl);
+            await boxService.setInstanceInfo(boxId, {
+              instanceName,
+              instanceUrl,
+              provider: box.provider ?? "sprites",
+            });
             await deployStepService.updateStepStatus(
               boxId,
               attempt,
@@ -165,8 +171,8 @@ export function createOrchestratorWorker({
             );
 
             logger.info(
-              { boxId, spriteName, spriteUrl },
-              "ORCHESTRATOR: Sprite created"
+              { boxId, instanceName, instanceUrl },
+              "ORCHESTRATOR: Instance created"
             );
           } catch (error) {
             const errorMsg =
@@ -182,13 +188,13 @@ export function createOrchestratorWorker({
           }
         } else {
           logger.info(
-            { boxId, spriteName },
-            "ORCHESTRATOR: Sprite already created, skipping"
+            { boxId, instanceName },
+            "ORCHESTRATOR: Instance already created, skipping"
           );
         }
 
-        if (!spriteName || !spriteUrl) {
-          throw new Error("Sprite name or URL not available");
+        if (!instanceName || !instanceUrl) {
+          throw new Error("Instance name or URL not available");
         }
 
         // 5. Mark SETUP_SERVICES as running (will be completed by last setup step)
@@ -241,8 +247,8 @@ export function createOrchestratorWorker({
         const flow = buildDeployFlow({
           boxId,
           deploymentAttempt: attempt,
-          spriteName,
-          spriteUrl,
+          instanceName,
+          instanceUrl,
           envVars,
           boxAgentBinaryUrl,
           skillsWithSources,
@@ -262,7 +268,7 @@ export function createOrchestratorWorker({
           status: "flow_started",
         });
 
-        return { success: true, spriteName, spriteUrl };
+        return { success: true, instanceName, instanceUrl };
       } catch (error) {
         event.error(error instanceof Error ? error : new Error(String(error)));
         const message =

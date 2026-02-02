@@ -12,8 +12,8 @@ export interface SkillWithSource {
 export interface DeployFlowParams {
   boxId: string;
   deploymentAttempt: number;
-  spriteName: string;
-  spriteUrl: string;
+  instanceName: string;
+  instanceUrl: string;
   envVars: Record<string, string>;
   boxAgentBinaryUrl: string;
   skillsWithSources: SkillWithSource[];
@@ -26,8 +26,8 @@ export interface DeployFlowParams {
 interface BaseJobData {
   boxId: string;
   deploymentAttempt: number;
-  spriteName: string;
-  spriteUrl: string;
+  instanceName: string;
+  instanceUrl: string;
 }
 
 /**
@@ -63,8 +63,8 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
   const {
     boxId,
     deploymentAttempt,
-    spriteName,
-    spriteUrl,
+    instanceName,
+    instanceUrl,
     envVars,
     boxAgentBinaryUrl,
     skillsWithSources,
@@ -80,8 +80,8 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
   const baseData: BaseJobData = {
     boxId,
     deploymentAttempt,
-    spriteName,
-    spriteUrl,
+    instanceName,
+    instanceUrl,
   };
 
   // Build setup step chain (sequential execution via nested children)
@@ -139,7 +139,7 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
           {
             name: `enable-access-${boxId}`,
             queueName: DEPLOY_QUEUES.enableAccess,
-            data: { boxId, deploymentAttempt, spriteName },
+            data: { boxId, deploymentAttempt, instanceName },
             opts: {
               attempts: WORKER_CONFIG.enableAccess.attempts,
               backoff: WORKER_CONFIG.enableAccess.backoff,
@@ -189,7 +189,7 @@ const PARALLEL_PHASE1_STEPS = [
 function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
   const { baseData, envVars, boxAgentBinaryUrl, completedStepKeys, makeJobId } =
     params;
-  const { boxId, deploymentAttempt, spriteName, spriteUrl } = baseData;
+  const { boxId, deploymentAttempt, instanceName, instanceUrl } = baseData;
 
   // Filter out completed steps
   const stepsToRun = SETUP_STEP_KEYS.filter(
@@ -213,8 +213,8 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
       data: {
         boxId,
         deploymentAttempt,
-        spriteName,
-        spriteUrl,
+        instanceName,
+        instanceUrl,
         stepKey,
         stepOrder,
         envVars,
@@ -308,7 +308,7 @@ interface SkillsGateParams {
  */
 function buildSkillsGate(params: SkillsGateParams): FlowJob | undefined {
   const { baseData, skillsWithSources, makeJobId } = params;
-  const { boxId, deploymentAttempt, spriteName, spriteUrl } = baseData;
+  const { boxId, deploymentAttempt, instanceName, instanceUrl } = baseData;
 
   if (skillsWithSources.length === 0) {
     return undefined;
@@ -321,7 +321,7 @@ function buildSkillsGate(params: SkillsGateParams): FlowJob | undefined {
       data: {
         boxId,
         deploymentAttempt,
-        spriteName,
+        instanceName,
         skillId,
         topSource, // Pre-resolved from skills.sh API
       },
@@ -337,7 +337,7 @@ function buildSkillsGate(params: SkillsGateParams): FlowJob | undefined {
   return {
     name: `skills-gate-${boxId}`,
     queueName: DEPLOY_QUEUES.skillsGate,
-    data: { boxId, deploymentAttempt, spriteName, spriteUrl },
+    data: { boxId, deploymentAttempt, instanceName, instanceUrl },
     opts: {
       jobId: makeJobId("skills-gate"),
     },

@@ -67,9 +67,9 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         if (boxResult.isErr()) {
           throw new Error(boxResult.error.message);
         }
-        const { spriteUrl } = boxResult.value;
+        const { instanceUrl } = boxResult.value;
 
-        if (!spriteUrl) {
+        if (!instanceUrl) {
           throw new Error("Box not running (no sprite URL)");
         }
 
@@ -87,7 +87,7 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
 
         // Check if sprite is awake, wake it if needed
         try {
-          const healthResponse = await fetch(`${spriteUrl}/health`, {
+          const healthResponse = await fetch(`${instanceUrl}/health`, {
             method: "GET",
             signal: AbortSignal.timeout(
               WORKER_CONFIG.triggerCronjob.wakeTimeout
@@ -106,7 +106,7 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         });
 
         // Trigger the cronjob via box-agent
-        const triggerUrl = `${spriteUrl}/rpc/cron/trigger`;
+        const triggerUrl = `${instanceUrl}/rpc/cron/trigger`;
         logger.info({ cronjobId, triggerUrl }, "Triggering cronjob");
 
         const response = await fetch(triggerUrl, {

@@ -14,7 +14,7 @@ const SPRITES_TOKEN = process.env.SPRITES_TOKEN;
 describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
   let testEnv: TestSetup;
   let spritesClient: SpritesClient;
-  let spriteName: string;
+  let instanceName: string;
   let boxId: BoxId;
 
   beforeAll(async () => {
@@ -32,7 +32,7 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
       subdomain: `fs-test-${suffix}`,
       envVars: {},
     });
-    spriteName = result.spriteName;
+    instanceName = result.spriteName;
 
     // Wait for sprite to be ready
     await new Promise((r) => setTimeout(r, 10_000));
@@ -52,21 +52,21 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
       .update(boxTable)
       .set({
         status: "running",
-        spriteName,
-        spriteUrl: `https://${spriteName}.sprites.dev`,
+        instanceName,
+        instanceUrl: `https://${instanceName}.sprites.dev`,
       })
       .where(eq(boxTable.id, boxId));
   }, 60_000);
 
   afterAll(async () => {
-    if (spriteName) {
-      await spritesClient.deleteSprite(spriteName);
+    if (instanceName) {
+      await spritesClient.deleteSprite(instanceName);
     }
     await testEnv.close();
   }, 30_000);
 
   test("list: returns directory entries for /home/sprite", async () => {
-    const entries = await spritesClient.listDir(spriteName, "/home/sprite");
+    const entries = await spritesClient.listDir(instanceName, "/home/sprite");
     expect(Array.isArray(entries)).toBe(true);
     // Should have some default files/dirs
     expect(entries.length).toBeGreaterThanOrEqual(0);
@@ -84,7 +84,7 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
   test("list: throws error for non-existent directory", async () => {
     expect.assertions(1);
     try {
-      await spritesClient.listDir(spriteName, "/nonexistent/path/here");
+      await spritesClient.listDir(instanceName, "/nonexistent/path/here");
     } catch (error) {
       expect(error).toBeDefined();
     }
@@ -94,10 +94,10 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     const content = "Hello from integration test";
     const path = "/home/sprite/test-file.txt";
 
-    await spritesClient.writeFile(spriteName, path, content);
+    await spritesClient.writeFile(instanceName, path, content);
 
     // Verify by reading back
-    const buffer = await spritesClient.readFile(spriteName, path);
+    const buffer = await spritesClient.readFile(instanceName, path);
     expect(buffer.toString()).toBe(content);
   }, 15_000);
 
@@ -105,9 +105,9 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     const content = "Base64 test content";
     const path = "/home/sprite/base64-test.txt";
 
-    await spritesClient.writeFile(spriteName, path, content);
+    await spritesClient.writeFile(instanceName, path, content);
 
-    const buffer = await spritesClient.readFile(spriteName, path);
+    const buffer = await spritesClient.readFile(instanceName, path);
     const base64 = buffer.toString("base64");
     const decoded = Buffer.from(base64, "base64").toString();
 
@@ -118,9 +118,9 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     const content = "Size test - exactly 30 bytes!!";
     const path = "/home/sprite/size-test.txt";
 
-    await spritesClient.writeFile(spriteName, path, content);
+    await spritesClient.writeFile(instanceName, path, content);
 
-    const buffer = await spritesClient.readFile(spriteName, path);
+    const buffer = await spritesClient.readFile(instanceName, path);
     expect(buffer.length).toBe(content.length);
   }, 15_000);
 
@@ -129,9 +129,9 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     const filename = "list-test-file.txt";
     const path = `/home/sprite/${filename}`;
 
-    await spritesClient.writeFile(spriteName, path, content);
+    await spritesClient.writeFile(instanceName, path, content);
 
-    const entries = await spritesClient.listDir(spriteName, "/home/sprite");
+    const entries = await spritesClient.listDir(instanceName, "/home/sprite");
     const names = entries.map((e) => e.name);
 
     expect(names).toContain(filename);
@@ -141,14 +141,14 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     const content = "Nested content";
     const path = "/home/sprite/nested/deep/dir/file.txt";
 
-    await spritesClient.writeFile(spriteName, path, content, { mkdir: true });
+    await spritesClient.writeFile(instanceName, path, content, { mkdir: true });
 
-    const buffer = await spritesClient.readFile(spriteName, path);
+    const buffer = await spritesClient.readFile(instanceName, path);
     expect(buffer.toString()).toBe(content);
 
     // Verify intermediate directory exists
     const entries = await spritesClient.listDir(
-      spriteName,
+      instanceName,
       "/home/sprite/nested/deep"
     );
     const names = entries.map((e) => e.name);
@@ -159,7 +159,7 @@ describe.skipIf(!SPRITES_TOKEN)("boxFsRouter integration", () => {
     expect.assertions(1);
     try {
       await spritesClient.readFile(
-        spriteName,
+        instanceName,
         "/home/sprite/does-not-exist.txt"
       );
     } catch (error) {

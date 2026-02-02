@@ -643,7 +643,7 @@ TSEOF
       spriteName,
       boxAgentBinaryUrl,
       envVars,
-      spriteUrl,
+      spriteUrl: _spriteUrl,
       onProgress,
       resumeFromStep,
     } = config;

@@ -55,10 +55,10 @@ export function createBoxEnvVarService({
 
     const boxRecord = await db.query.box.findFirst({
       where: eq(box.id, boxId),
-      columns: { spriteName: true, status: true },
+      columns: { instanceName: true, status: true },
     });
 
-    if (!boxRecord?.spriteName || boxRecord.status !== "running") {
+    if (!boxRecord?.instanceName || boxRecord.status !== "running") {
       return;
     }
 
@@ -85,7 +85,7 @@ export function createBoxEnvVarService({
 
     // Push to sprite - don't fail if this errors, DB update already succeeded
     await spritesClient
-      .updateEnvVars(boxRecord.spriteName, resolvedVars)
+      .updateEnvVars(boxRecord.instanceName, resolvedVars)
       .catch(() => {});
   }
 

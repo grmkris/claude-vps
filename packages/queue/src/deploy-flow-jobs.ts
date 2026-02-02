@@ -46,8 +46,8 @@ export type CreateSpriteJobData = z.infer<typeof CreateSpriteJobData>;
 export const SetupStepJobData = z.object({
   boxId: BoxId,
   deploymentAttempt: z.number().int().min(1),
-  spriteName: z.string(),
-  spriteUrl: z.string(),
+  instanceName: z.string(),
+  instanceUrl: z.string(),
   stepKey: z.string(),
   stepOrder: z.number().int().min(1),
   envVars: z.record(z.string(), z.string()),
@@ -61,8 +61,8 @@ export type SetupStepJobData = z.infer<typeof SetupStepJobData>;
 export const HealthCheckJobData = z.object({
   boxId: BoxId,
   deploymentAttempt: z.number().int().min(1),
-  spriteName: z.string(),
-  spriteUrl: z.string(),
+  instanceName: z.string(),
+  instanceUrl: z.string(),
 });
 export type HealthCheckJobData = z.infer<typeof HealthCheckJobData>;
 
@@ -72,7 +72,7 @@ export type HealthCheckJobData = z.infer<typeof HealthCheckJobData>;
 export const InstallSkillJobData = z.object({
   boxId: BoxId,
   deploymentAttempt: z.number().int().min(1),
-  spriteName: z.string(),
+  instanceName: z.string(),
   skillId: z.string(),
   topSource: z.string().optional(),
 });
@@ -84,7 +84,7 @@ export type InstallSkillJobData = z.infer<typeof InstallSkillJobData>;
 export const EnableAccessJobData = z.object({
   boxId: BoxId,
   deploymentAttempt: z.number().int().min(1),
-  spriteName: z.string(),
+  instanceName: z.string(),
 });
 export type EnableAccessJobData = z.infer<typeof EnableAccessJobData>;
 
@@ -94,8 +94,8 @@ export type EnableAccessJobData = z.infer<typeof EnableAccessJobData>;
 export const FinalizeJobData = z.object({
   boxId: BoxId,
   deploymentAttempt: z.number().int().min(1),
-  spriteName: z.string(),
-  spriteUrl: z.string(),
+  instanceName: z.string(),
+  instanceUrl: z.string(),
 });
 export type FinalizeJobData = z.infer<typeof FinalizeJobData>;
 
@@ -105,8 +105,8 @@ export type FinalizeJobData = z.infer<typeof FinalizeJobData>;
 export const SkillsGateJobData = z.object({
   boxId: BoxId,
   deploymentAttempt: z.number().int().min(1),
-  spriteName: z.string(),
-  spriteUrl: z.string(),
+  instanceName: z.string(),
+  instanceUrl: z.string(),
 });
 export type SkillsGateJobData = z.infer<typeof SkillsGateJobData>;
 
@@ -117,6 +117,6 @@ export interface DeployJobResult {
   success: boolean;
   error?: string;
   /** Sprite info returned from CREATE_SPRITE */
-  spriteName?: string;
-  spriteUrl?: string;
+  instanceName?: string;
+  instanceUrl?: string;
 }

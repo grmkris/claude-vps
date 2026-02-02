@@ -130,13 +130,13 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
 
   const queueDelivery = async (
     emailRecord: BoxEmail,
-    spriteUrl: string,
+    instanceUrl: string,
     agentSecret: string
   ): Promise<Result<void, EmailServiceError>> => {
     await queueClient.deliverEmailQueue.add("deliver", {
       emailId: emailRecord.id,
       boxId: emailRecord.boxId,
-      spriteUrl,
+      instanceUrl,
       agentSecret,
       email: {
         id: emailRecord.id,
@@ -250,10 +250,10 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
         return err({ type: "BOX_NOT_RUNNING", message: "Box is not running" });
       }
 
-      if (!boxResult.spriteUrl) {
+      if (!boxResult.instanceUrl) {
         return err({
           type: "BOX_NOT_RUNNING",
-          message: "Box not ready (no sprite URL)",
+          message: "Box not ready (no instance URL)",
         });
       }
 
@@ -273,7 +273,7 @@ export function createEmailService({ deps }: { deps: EmailServiceDeps }) {
 
       const queueResult = await queueDelivery(
         emailResult.value,
-        boxResult.spriteUrl,
+        boxResult.instanceUrl,
         settings.agentSecret
       );
       if (queueResult.isErr()) return err(queueResult.error);

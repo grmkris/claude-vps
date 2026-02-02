@@ -111,12 +111,12 @@ export default function BoxLayout({ children }: { children: React.ReactNode }) {
                 <StatusDot status={box.status} showLabel />
               </div>
 
-              {box.spriteUrl && (
+              {box.instanceUrl && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono text-muted-foreground">
-                    {box.spriteUrl.replace("https://", "")}
+                    {box.instanceUrl.replace("https://", "")}
                   </span>
-                  <CopyButton text={box.spriteUrl} />
+                  <CopyButton text={box.instanceUrl} />
                 </div>
               )}
               {box.tailscaleIp && (
@@ -129,10 +129,10 @@ export default function BoxLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            {isRunning && box.spriteUrl && (
+            {isRunning && box.instanceUrl && (
               <Button
                 variant="secondary"
-                onClick={() => window.open(box.spriteUrl!, "_blank")}
+                onClick={() => window.open(box.instanceUrl!, "_blank")}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open

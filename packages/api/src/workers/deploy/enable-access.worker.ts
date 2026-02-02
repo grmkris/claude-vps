@@ -1,5 +1,5 @@
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { Redis } from "@vps-claude/redis";
-import type { SpritesClient } from "@vps-claude/sprites";
 
 import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
@@ -17,7 +17,7 @@ import type { DeployStepService } from "../../services/deploy-step.service";
 interface EnableAccessWorkerDeps {
   boxService: BoxService;
   deployStepService: DeployStepService;
-  spritesClient: SpritesClient;
+  providerFactory: ProviderFactory;
   redis: Redis;
   logger: Logger;
 }
@@ -27,18 +27,19 @@ export function createEnableAccessWorker({
 }: {
   deps: EnableAccessWorkerDeps;
 }) {
-  const { boxService, deployStepService, spritesClient, redis, logger } = deps;
+  const { boxService, deployStepService, providerFactory, redis, logger } =
+    deps;
 
   const worker = new Worker<EnableAccessJobData, DeployJobResult>(
     DEPLOY_QUEUES.enableAccess,
     async (job: Job<EnableAccessJobData>): Promise<DeployJobResult> => {
-      const { boxId, deploymentAttempt, spriteName } = job.data;
+      const { boxId, deploymentAttempt, instanceName } = job.data;
 
       const event = createWideEvent(logger, {
         worker: "ENABLE_ACCESS",
         jobId: job.id,
         boxId,
-        spriteName,
+        instanceName,
         attempt: deploymentAttempt,
       });
 
@@ -51,8 +52,17 @@ export function createEnableAccessWorker({
           "running"
         );
 
-        // Set URL auth to public
-        await spritesClient.setUrlAuth(spriteName, "public");
+        // Get box to determine provider type
+        const boxResult = await boxService.getById(boxId);
+        if (boxResult.isErr() || !boxResult.value) {
+          throw new Error("Box not found");
+        }
+
+        // Set URL auth to public via provider (if supported)
+        const provider = providerFactory.getProviderForBox(boxResult.value);
+        if (provider.setUrlAuth) {
+          await provider.setUrlAuth(instanceName, "public");
+        }
 
         // Mark step as completed
         await deployStepService.updateStepStatus(

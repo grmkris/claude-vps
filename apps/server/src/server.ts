@@ -139,7 +139,7 @@ const { worker: orchestratorWorker, flowProducer } = createOrchestratorWorker({
     boxEnvVarService,
     deployStepService,
     emailService,
-    spritesClient,
+    providerFactory,
     redis,
     logger,
     serverUrl: env.SERVER_URL ?? SERVICE_URLS[env.APP_ENV].api,
@@ -149,19 +149,19 @@ const { worker: orchestratorWorker, flowProducer } = createOrchestratorWorker({
 
 // Deploy flow workers (execute steps from FlowProducer DAG)
 const setupStepWorker = createSetupStepWorker({
-  deps: { boxService, deployStepService, spritesClient, redis, logger },
+  deps: { boxService, deployStepService, providerFactory, redis, logger },
 });
 
 const healthCheckWorker = createHealthCheckWorker({
-  deps: { boxService, deployStepService, spritesClient, redis, logger },
+  deps: { boxService, deployStepService, providerFactory, redis, logger },
 });
 
 const installSkillWorker = createInstallSkillWorker({
-  deps: { deployStepService, spritesClient, redis, logger },
+  deps: { boxService, deployStepService, providerFactory, redis, logger },
 });
 
 const enableAccessWorker = createEnableAccessWorker({
-  deps: { boxService, deployStepService, spritesClient, redis, logger },
+  deps: { boxService, deployStepService, providerFactory, redis, logger },
 });
 
 const finalizeWorker = createFinalizeWorker({
@@ -173,7 +173,7 @@ const skillsGateWorker = createSkillsGateWorker({
 });
 
 const deleteWorker = createDeleteWorker({
-  deps: { boxService, spritesClient, redis, logger },
+  deps: { boxService, providerFactory, redis, logger },
 });
 
 const emailDeliveryWorker = createEmailDeliveryWorker({

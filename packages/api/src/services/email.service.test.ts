@@ -45,11 +45,11 @@ describe("EmailService", () => {
     );
     const createdBox = createResult._unsafeUnwrap();
 
-    // Set box to running with spriteUrl
+    // Set box to running with instanceUrl
     await boxService.updateStatus(createdBox.id, "running");
     await testEnv.db
       .update(box)
-      .set({ spriteUrl: `https://${createdBox.subdomain}.sprites.dev` })
+      .set({ instanceUrl: `https://${createdBox.subdomain}.sprites.dev` })
       .where(eq(box.id, createdBox.id));
 
     // Create email settings (enabled by default)

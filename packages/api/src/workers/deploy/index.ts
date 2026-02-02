@@ -1,5 +1,4 @@
 export { createOrchestratorWorker } from "./orchestrator.worker";
-export { createCreateSpriteWorker } from "./create-sprite.worker";
 export { createSetupStepWorker } from "./setup-step.worker";
 export { createHealthCheckWorker } from "./health-check.worker";
 export { createInstallSkillWorker } from "./install-skill.worker";

@@ -28,12 +28,15 @@ export const boxSessionsRouter = {
       ) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (boxResult.value.status !== "running" || !boxResult.value.spriteUrl) {
+      if (
+        boxResult.value.status !== "running" ||
+        !boxResult.value.instanceUrl
+      ) {
         throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
       }
 
       const response = await fetch(
-        `${boxResult.value.spriteUrl}/rpc/sessions/list`,
+        `${boxResult.value.instanceUrl}/rpc/sessions/list`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -88,7 +91,10 @@ export const boxSessionsRouter = {
       ) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (boxResult.value.status !== "running" || !boxResult.value.spriteUrl) {
+      if (
+        boxResult.value.status !== "running" ||
+        !boxResult.value.instanceUrl
+      ) {
         throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
       }
 
@@ -102,7 +108,7 @@ export const boxSessionsRouter = {
       }
 
       const response = await fetch(
-        `${boxResult.value.spriteUrl}/rpc/sessions/send`,
+        `${boxResult.value.instanceUrl}/rpc/sessions/send`,
         {
           method: "POST",
           headers: {
@@ -148,12 +154,15 @@ export const boxSessionsRouter = {
       ) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (boxResult.value.status !== "running" || !boxResult.value.spriteUrl) {
+      if (
+        boxResult.value.status !== "running" ||
+        !boxResult.value.instanceUrl
+      ) {
         throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
       }
 
       const response = await fetch(
-        `${boxResult.value.spriteUrl}/rpc/sessions/${input.sessionId}/history`,
+        `${boxResult.value.instanceUrl}/rpc/sessions/${input.sessionId}/history`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },

@@ -137,14 +137,14 @@ export const boxDetailsRouter = {
             throw new ORPCError("NOT_FOUND", { message: "Box not found" });
           }
 
-          if (!box.spriteName || box.status !== "running") {
+          if (!box.instanceName || box.status !== "running") {
             throw new ORPCError("BAD_REQUEST", {
               message: "Box is not running",
             });
           }
 
           return {
-            proxyUrl: context.spritesClient.getProxyUrl(box.spriteName),
+            proxyUrl: context.spritesClient.getProxyUrl(box.instanceName),
             token: context.spritesClient.getToken(),
             host: "localhost",
             port: input.port,
@@ -225,12 +225,15 @@ export const boxDetailsRouter = {
       ) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (boxResult.value.status !== "running" || !boxResult.value.spriteName) {
+      if (
+        boxResult.value.status !== "running" ||
+        !boxResult.value.instanceName
+      ) {
         throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
       }
 
       return context.spritesClient.execShell(
-        boxResult.value.spriteName,
+        boxResult.value.instanceName,
         input.command
       );
     }),

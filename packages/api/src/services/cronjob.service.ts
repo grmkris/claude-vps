@@ -387,7 +387,7 @@ export function createCronjobService({ deps }: { deps: CronjobServiceDeps }) {
     async getBoxForCronjob(
       cronjobId: BoxCronjobId
     ): Promise<
-      Result<{ boxId: BoxId; spriteUrl: string | null }, CronjobServiceError>
+      Result<{ boxId: BoxId; instanceUrl: string | null }, CronjobServiceError>
     > {
       const cronjobRecord = await db.query.boxCronjob.findFirst({
         where: eq(boxCronjob.id, cronjobId),
@@ -407,7 +407,7 @@ export function createCronjobService({ deps }: { deps: CronjobServiceDeps }) {
 
       return ok({
         boxId: boxRecord.id,
-        spriteUrl: boxRecord.spriteUrl,
+        instanceUrl: boxRecord.instanceUrl,
       });
     },
   };

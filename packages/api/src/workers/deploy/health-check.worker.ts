@@ -1,5 +1,5 @@
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { Redis } from "@vps-claude/redis";
-import type { SpritesClient } from "@vps-claude/sprites";
 
 import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
@@ -17,7 +17,7 @@ import type { DeployStepService } from "../../services/deploy-step.service";
 interface HealthCheckWorkerDeps {
   boxService: BoxService;
   deployStepService: DeployStepService;
-  spritesClient: SpritesClient;
+  providerFactory: ProviderFactory;
   redis: Redis;
   logger: Logger;
 }
@@ -27,18 +27,19 @@ export function createHealthCheckWorker({
 }: {
   deps: HealthCheckWorkerDeps;
 }) {
-  const { boxService, deployStepService, spritesClient, redis, logger } = deps;
+  const { boxService, deployStepService, providerFactory, redis, logger } =
+    deps;
 
   const worker = new Worker<HealthCheckJobData, DeployJobResult>(
     DEPLOY_QUEUES.healthCheck,
     async (job: Job<HealthCheckJobData>): Promise<DeployJobResult> => {
-      const { boxId, deploymentAttempt, spriteName, spriteUrl } = job.data;
+      const { boxId, deploymentAttempt, instanceName, instanceUrl } = job.data;
 
       const event = createWideEvent(logger, {
         worker: "HEALTH_CHECK",
         jobId: job.id,
         boxId,
-        spriteName,
+        instanceName,
         attempt: deploymentAttempt,
       });
 
@@ -51,8 +52,15 @@ export function createHealthCheckWorker({
           "running"
         );
 
-        // Check health via sprites client
-        const healthy = await spritesClient.checkHealth(spriteName, spriteUrl);
+        // Get box to determine provider type
+        const boxResult = await boxService.getById(boxId);
+        if (boxResult.isErr() || !boxResult.value) {
+          throw new Error("Box not found");
+        }
+
+        // Check health via provider abstraction
+        const provider = providerFactory.getProviderForBox(boxResult.value);
+        const healthy = await provider.checkHealth(instanceName, instanceUrl);
 
         if (!healthy) {
           throw new Error(

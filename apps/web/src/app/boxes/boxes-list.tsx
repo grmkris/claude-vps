@@ -43,7 +43,7 @@ import {
 } from "@/hooks/use-boxes";
 
 function isDevBox(box: BoxType): boolean {
-  return box.spriteUrl?.startsWith("http://localhost") ?? false;
+  return box.instanceUrl?.startsWith("http://localhost") ?? false;
 }
 
 function BoxCard({ box }: { box: BoxType }) {
@@ -51,7 +51,7 @@ function BoxCard({ box }: { box: BoxType }) {
   const deleteMutation = useDeleteBox();
 
   const canRetry = box.status === "error"; // Only show retry for failed boxes
-  const canOpen = box.status === "running" && box.spriteUrl;
+  const canOpen = box.status === "running" && box.instanceUrl;
 
   const handleDeploy = () => {
     deployMutation.mutate({ id: box.id });
@@ -71,9 +71,9 @@ function BoxCard({ box }: { box: BoxType }) {
             <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
               {box.name}
             </h3>
-            {box.spriteUrl ? (
+            {box.instanceUrl ? (
               <p className="text-sm font-mono text-muted-foreground">
-                {box.spriteUrl.replace("https://", "")}
+                {box.instanceUrl.replace("https://", "")}
               </p>
             ) : (
               <p className="text-sm font-mono text-muted-foreground">
@@ -92,9 +92,9 @@ function BoxCard({ box }: { box: BoxType }) {
             <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {canOpen && box.spriteUrl && (
+            {canOpen && box.instanceUrl && (
               <DropdownMenuItem
-                onClick={() => window.open(box.spriteUrl!, "_blank")}
+                onClick={() => window.open(box.instanceUrl!, "_blank")}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Open
@@ -138,11 +138,11 @@ function BoxCard({ box }: { box: BoxType }) {
             {deployMutation.isPending ? "Retrying..." : "Retry"}
           </Button>
         )}
-        {canOpen && box.spriteUrl && (
+        {canOpen && box.instanceUrl && (
           <Button
             variant="secondary"
             className="flex-1"
-            onClick={() => window.open(box.spriteUrl!, "_blank")}
+            onClick={() => window.open(box.instanceUrl!, "_blank")}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
             Open

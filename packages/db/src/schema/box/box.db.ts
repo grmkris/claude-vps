@@ -39,9 +39,7 @@ export const box = pgTable(
     instanceName: text("instance_name"),
     instanceUrl: text("instance_url"),
 
-    // Legacy Sprites-specific fields (kept for backwards compatibility)
-    spriteName: text("sprite_name"),
-    spriteUrl: text("sprite_url"),
+    // Sprites-specific fields
     lastCheckpointId: text("last_checkpoint_id"),
     passwordHash: text("password_hash"),
     errorMessage: text("error_message"),

@@ -1,5 +1,5 @@
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { Redis } from "@vps-claude/redis";
-import type { SpritesClient } from "@vps-claude/sprites";
 
 import { createWideEvent, type Logger } from "@vps-claude/logger";
 import { type DeleteBoxJobData, Worker, type Job } from "@vps-claude/queue";
@@ -9,13 +9,13 @@ import type { BoxService } from "../services/box.service";
 
 interface DeleteWorkerDeps {
   boxService: BoxService;
-  spritesClient: SpritesClient;
+  providerFactory: ProviderFactory;
   redis: Redis;
   logger: Logger;
 }
 
 export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
-  const { boxService, spritesClient, redis, logger } = deps;
+  const { boxService, providerFactory, redis, logger } = deps;
 
   const worker = new Worker<DeleteBoxJobData>(
     WORKER_CONFIG.deleteBox.name,
@@ -33,13 +33,16 @@ export function createDeleteWorker({ deps }: { deps: DeleteWorkerDeps }) {
           throw new Error(boxResult.error.message);
         }
         const box = boxResult.value;
-        if (!box?.spriteName) {
-          event.set({ status: "skipped", reason: "no_sprite_name" });
+
+        const instanceName = box?.instanceName;
+        if (!instanceName) {
+          event.set({ status: "skipped", reason: "no_instance_name" });
           return { success: true };
         }
 
-        event.set({ spriteName: box.spriteName });
-        await spritesClient.deleteSprite(box.spriteName);
+        event.set({ instanceName });
+        const provider = providerFactory.getProviderForBox(box);
+        await provider.deleteInstance(instanceName);
 
         event.set({ status: "deleted" });
         return { success: true };

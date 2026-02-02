@@ -6,8 +6,8 @@ import { buildDeployFlow, type DeployFlowParams } from "./flow-builder";
 const baseParams: DeployFlowParams = {
   boxId: "box_test123",
   deploymentAttempt: 1,
-  spriteName: "test-sprite",
-  spriteUrl: "https://test.sprites.dev",
+  instanceName: "test-sprite",
+  instanceUrl: "https://test.sprites.dev",
   envVars: { TEST: "value" },
   boxAgentBinaryUrl: "https://example.com/box-agent",
   skillsWithSources: [],

@@ -1,5 +1,5 @@
+import type { ProviderFactory } from "@vps-claude/providers";
 import type { Redis } from "@vps-claude/redis";
-import type { SpritesClient } from "@vps-claude/sprites";
 
 import { createWideEvent, type Logger } from "@vps-claude/logger";
 import {
@@ -20,13 +20,14 @@ const LAST_SETUP_STEP = "SETUP_AGENT_APP_SERVICE" as const;
 interface SetupStepWorkerDeps {
   boxService: BoxService;
   deployStepService: DeployStepService;
-  spritesClient: SpritesClient;
+  providerFactory: ProviderFactory;
   redis: Redis;
   logger: Logger;
 }
 
 export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
-  const { boxService, deployStepService, spritesClient, redis, logger } = deps;
+  const { boxService, deployStepService, providerFactory, redis, logger } =
+    deps;
 
   const worker = new Worker<SetupStepJobData, DeployJobResult>(
     DEPLOY_QUEUES.setupStep,
@@ -34,8 +35,8 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
       const {
         boxId,
         deploymentAttempt,
-        spriteName,
-        spriteUrl,
+        instanceName,
+        instanceUrl,
         stepKey,
         envVars,
         boxAgentBinaryUrl,
@@ -45,7 +46,7 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
         worker: "SETUP_STEP",
         jobId: job.id,
         boxId,
-        spriteName,
+        instanceName,
         stepKey,
         attempt: deploymentAttempt,
       });
@@ -68,13 +69,20 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
           { parentId }
         );
 
-        // Run the setup step
-        const result = await spritesClient.runSetupStep({
-          spriteName,
+        // Get box to determine provider type
+        const boxResult = await boxService.getById(boxId);
+        if (boxResult.isErr() || !boxResult.value) {
+          throw new Error("Box not found");
+        }
+
+        // Run the setup step via provider abstraction
+        const provider = providerFactory.getProviderForBox(boxResult.value);
+        const result = await provider.runSetupStep({
+          instanceName: instanceName, // instanceName is instanceName in job data
           stepKey,
           boxAgentBinaryUrl,
           envVars,
-          spriteUrl,
+          instanceUrl: instanceUrl, // instanceUrl is instanceUrl in job data
         });
 
         // Capture Tailscale IP if this is the Tailscale step

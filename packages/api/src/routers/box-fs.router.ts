@@ -31,13 +31,13 @@ export const boxFsRouter = {
       if (!box || box.userId !== context.session.user.id) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (box.status !== "running" || !box.spriteName) {
+      if (box.status !== "running" || !box.instanceName) {
         throw new ORPCError("BAD_REQUEST", { message: "Box is not running" });
       }
 
       try {
         const entries = await context.spritesClient.listDir(
-          box.spriteName,
+          box.instanceName,
           input.path
         );
         return { entries, currentPath: input.path };
@@ -74,13 +74,13 @@ export const boxFsRouter = {
       if (!box || box.userId !== context.session.user.id) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (box.status !== "running" || !box.spriteName) {
+      if (box.status !== "running" || !box.instanceName) {
         throw new ORPCError("BAD_REQUEST", { message: "Box is not running" });
       }
 
       try {
         const buffer = await context.spritesClient.readFile(
-          box.spriteName,
+          box.instanceName,
           input.path
         );
         // Limit to 5MB
@@ -130,7 +130,7 @@ export const boxFsRouter = {
       if (!box || box.userId !== context.session.user.id) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
       }
-      if (box.status !== "running" || !box.spriteName) {
+      if (box.status !== "running" || !box.instanceName) {
         throw new ORPCError("BAD_REQUEST", { message: "Box is not running" });
       }
 
@@ -144,7 +144,7 @@ export const boxFsRouter = {
 
       try {
         await context.spritesClient.writeFile(
-          box.spriteName,
+          box.instanceName,
           input.path,
           buffer,
           {

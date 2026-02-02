@@ -1,4 +1,8 @@
 import { createLogger } from "@vps-claude/logger";
+import {
+  createProviderFactory,
+  type ProviderFactory,
+} from "@vps-claude/providers";
 import { createSpritesClient, type SpritesClient } from "@vps-claude/sprites";
 import { createTestSetup, type TestSetup } from "@vps-claude/test-utils";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
@@ -37,6 +41,7 @@ const BOX_AGENT_BINARY_URL =
 describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
   let testEnv: TestSetup;
   let spritesClient: SpritesClient;
+  let providerFactory: ProviderFactory;
 
   // Services
   let boxService: BoxService;
@@ -65,6 +70,10 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     testEnv = await createTestSetup();
     spritesClient = createSpritesClient({
       token: SPRITES_TOKEN!,
+      logger,
+    });
+    providerFactory = createProviderFactory({
+      spritesClient,
       logger,
     });
 
@@ -97,7 +106,7 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     const baseDeps = {
       boxService,
       deployStepService,
-      spritesClient,
+      providerFactory,
       redis: testEnv.deps.redis,
       logger,
     };
@@ -119,8 +128,9 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     healthCheckWorker = createHealthCheckWorker({ deps: baseDeps });
     installSkillWorker = createInstallSkillWorker({
       deps: {
+        boxService,
         deployStepService,
-        spritesClient,
+        providerFactory,
         redis: testEnv.deps.redis,
         logger,
       },
@@ -154,12 +164,12 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     await skillsGateWorker.close();
 
     // Cleanup all created sprites
-    for (const spriteName of createdSpriteNames) {
+    for (const instanceName of createdSpriteNames) {
       try {
-        await spritesClient.deleteSprite(spriteName);
-        logger.info({ spriteName }, "Cleaned up test sprite");
+        await spritesClient.deleteSprite(instanceName);
+        logger.info({ instanceName }, "Cleaned up test sprite");
       } catch (error) {
-        logger.warn({ spriteName, error }, "Failed to cleanup sprite");
+        logger.warn({ instanceName, error }, "Failed to cleanup sprite");
       }
     }
 
@@ -204,17 +214,17 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
         {
           elapsed: `${elapsed / 1000}s`,
           status: finalBox.status,
-          spriteName: finalBox.spriteName,
+          instanceName: finalBox.instanceName,
         },
         "Polling box status"
       );
 
       // Track sprite for cleanup
       if (
-        finalBox.spriteName &&
-        !createdSpriteNames.includes(finalBox.spriteName)
+        finalBox.instanceName &&
+        !createdSpriteNames.includes(finalBox.instanceName)
       ) {
-        createdSpriteNames.push(finalBox.spriteName);
+        createdSpriteNames.push(finalBox.instanceName);
       }
 
       if (finalBox.status === "running" || finalBox.status === "error") {
@@ -224,14 +234,14 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
 
     // 3. Verify final state
     expect(finalBox.status).toBe("running");
-    expect(finalBox.spriteName).toBeDefined();
-    expect(finalBox.spriteUrl).toBeDefined();
+    expect(finalBox.instanceName).toBeDefined();
+    expect(finalBox.instanceUrl).toBeDefined();
 
     logger.info(
       {
         boxId: finalBox.id,
-        spriteName: finalBox.spriteName,
-        spriteUrl: finalBox.spriteUrl,
+        instanceName: finalBox.instanceName,
+        instanceUrl: finalBox.instanceUrl,
         status: finalBox.status,
       },
       "Box deployment completed"
@@ -263,34 +273,20 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     expect(accessStep).toBeDefined();
     expect(accessStep?.status).toBe("completed");
 
-    // 7. Verify MCP settings file exists and has correct content
+    // 7. Verify MCP settings via claude mcp list
+    // Setup uses: claude mcp add -s user -t http ai-tools http://localhost:33002/mcp
     logger.info("Verifying MCP settings...");
-    const settingsResult = await spritesClient.execShell(
-      finalBox.spriteName!,
-      "cat /home/sprite/.claude/settings.json"
+    const mcpListResult = await spritesClient.execShell(
+      finalBox.instanceName!,
+      "source /home/sprite/.bashrc.env && /home/sprite/.local/bin/claude mcp list"
     );
-    expect(settingsResult.exitCode).toBe(0);
-    const settings = JSON.parse(settingsResult.stdout);
-    expect(settings.mcpServers).toBeDefined();
-    expect(settings.mcpServers["ai-tools"]).toBeDefined();
-    expect(settings.mcpServers["ai-tools"].command).toBe(
-      "/home/sprite/start-mcp.sh"
-    );
-    logger.info("MCP settings.json verified");
+    expect(mcpListResult.exitCode).toBe(0);
+    expect(mcpListResult.stdout).toContain("ai-tools");
+    logger.info("MCP settings verified");
 
-    // 8. Verify start-mcp.sh script exists and has correct content
-    const mcpScriptResult = await spritesClient.execShell(
-      finalBox.spriteName!,
-      "cat /home/sprite/start-mcp.sh"
-    );
-    expect(mcpScriptResult.exitCode).toBe(0);
-    expect(mcpScriptResult.stdout).toContain("source /home/sprite/.bashrc.env");
-    expect(mcpScriptResult.stdout).toContain("box-agent mcp");
-    logger.info("start-mcp.sh script verified");
-
-    // 9. Verify environment variables in .bashrc.env
+    // 8. Verify environment variables in .bashrc.env
     const envResult = await spritesClient.execShell(
-      finalBox.spriteName!,
+      finalBox.instanceName!,
       "source /home/sprite/.bashrc.env && env | grep -E '^BOX_|^APP_ENV'"
     );
     expect(envResult.exitCode).toBe(0);
@@ -300,15 +296,15 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     expect(envResult.stdout).toContain("BOX_SUBDOMAIN=");
     expect(envResult.stdout).toContain("APP_ENV=prod");
 
-    // 10. Verify BOX_AGENT_SECRET is 64 chars hex
+    // 9. Verify BOX_AGENT_SECRET is 64 chars hex
     const secretMatch = envResult.stdout.match(/BOX_AGENT_SECRET=([a-f0-9]+)/);
     expect(secretMatch).toBeDefined();
     expect(secretMatch![1]!.length).toBe(64);
 
-    // 11. Verify BOX_API_URL ends with /box
+    // 10. Verify BOX_API_URL ends with /box
     expect(envResult.stdout).toMatch(/BOX_API_URL=.*\/box/);
 
-    // 12. Verify BOX_SUBDOMAIN matches box subdomain
+    // 11. Verify BOX_SUBDOMAIN matches box subdomain
     expect(envResult.stdout).toContain(`BOX_SUBDOMAIN=${box.subdomain}`);
 
     logger.info("Environment variables verified");
@@ -363,10 +359,10 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
       finalBox = currentBox;
 
       if (
-        finalBox.spriteName &&
-        !createdSpriteNames.includes(finalBox.spriteName)
+        finalBox.instanceName &&
+        !createdSpriteNames.includes(finalBox.instanceName)
       ) {
-        createdSpriteNames.push(finalBox.spriteName);
+        createdSpriteNames.push(finalBox.instanceName);
       }
 
       if (finalBox.status === "running" || finalBox.status === "error") {
@@ -375,9 +371,9 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     }
 
     expect(finalBox.status).toBe("running");
-    expect(finalBox.spriteName).toBeDefined();
+    expect(finalBox.instanceName).toBeDefined();
     logger.info(
-      { spriteName: finalBox.spriteName },
+      { instanceName: finalBox.instanceName },
       "Box deployed, verifying config fetch..."
     );
 
@@ -389,7 +385,7 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
 
     // Call config endpoint from sprite using curl
     const configFetch = await spritesClient.execShell(
-      finalBox.spriteName!,
+      finalBox.instanceName!,
       `curl -s -H "X-Box-Secret: ${agentSecret}" "http://localhost:33000/box/agent-config?triggerType=default" 2>/dev/null || echo "CURL_FAILED"`
     );
 
@@ -457,17 +453,17 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
         {
           elapsed: `${elapsed / 1000}s`,
           status: finalBox.status,
-          spriteName: finalBox.spriteName,
+          instanceName: finalBox.instanceName,
         },
         "Polling box status (with skills)"
       );
 
       // Track sprite for cleanup
       if (
-        finalBox.spriteName &&
-        !createdSpriteNames.includes(finalBox.spriteName)
+        finalBox.instanceName &&
+        !createdSpriteNames.includes(finalBox.instanceName)
       ) {
-        createdSpriteNames.push(finalBox.spriteName);
+        createdSpriteNames.push(finalBox.instanceName);
       }
 
       if (finalBox.status === "running" || finalBox.status === "error") {
@@ -477,13 +473,13 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
 
     // 3. Verify final state
     expect(finalBox.status).toBe("running");
-    expect(finalBox.spriteName).toBeDefined();
-    expect(finalBox.spriteUrl).toBeDefined();
+    expect(finalBox.instanceName).toBeDefined();
+    expect(finalBox.instanceUrl).toBeDefined();
 
     logger.info(
       {
         boxId: finalBox.id,
-        spriteName: finalBox.spriteName,
+        instanceName: finalBox.instanceName,
         status: finalBox.status,
       },
       "Box with skills deployment completed"
@@ -518,7 +514,7 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
     // 7. Verify skill files are actually installed on the sprite filesystem
     if (skillSubstep!.status === "completed") {
       const skillDirCheck = await spritesClient.execShell(
-        finalBox.spriteName!,
+        finalBox.instanceName!,
         "ls -la ~/.claude/skills/"
       );
       logger.info(
@@ -529,7 +525,7 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
 
       // Check for the specific skill directory
       const skillFileCheck = await spritesClient.execShell(
-        finalBox.spriteName!,
+        finalBox.instanceName!,
         "ls ~/.claude/skills/remotion-best-practices/SKILL.md 2>/dev/null && echo 'SKILL_FILE_EXISTS'"
       );
       logger.info(
@@ -586,10 +582,10 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
         finalBox = result._unsafeUnwrap()!;
 
         if (
-          finalBox.spriteName &&
-          !createdSpriteNames.includes(finalBox.spriteName)
+          finalBox.instanceName &&
+          !createdSpriteNames.includes(finalBox.instanceName)
         ) {
-          createdSpriteNames.push(finalBox.spriteName);
+          createdSpriteNames.push(finalBox.instanceName);
         }
 
         if (finalBox.status === "running" || finalBox.status === "error") {
@@ -703,10 +699,10 @@ describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
         finalBox = result._unsafeUnwrap()!;
 
         if (
-          finalBox.spriteName &&
-          !createdSpriteNames.includes(finalBox.spriteName)
+          finalBox.instanceName &&
+          !createdSpriteNames.includes(finalBox.instanceName)
         ) {
-          createdSpriteNames.push(finalBox.spriteName);
+          createdSpriteNames.push(finalBox.instanceName);
         }
 
         if (finalBox.status === "running" || finalBox.status === "error") {
