@@ -368,9 +368,13 @@ ENVEOF`
       spriteUrl: string;
     }
   ): string {
-    const envFileContent = Object.entries(config.envVars)
-      .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
-      .join("\n");
+    const envFileContent = [
+      ...Object.entries(config.envVars).map(
+        ([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`
+      ),
+      // Add PATH with custom bin directories for SSH access
+      'export PATH="/home/sprite/.local/bin:/.sprite/languages/bun/bin:${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}"',
+    ].join("\n");
 
     const commands: Record<string, string> = {
       SETUP_DOWNLOAD_AGENT: `
