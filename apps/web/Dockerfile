@@ -36,6 +36,7 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/sprites/package.json ./packages/sprites/
 COPY packages/storage/package.json ./packages/storage/
 COPY packages/test-utils/package.json ./packages/test-utils/
+COPY packages/providers/package.json ./packages/providers/
 
 # Install dependencies
 RUN bun install --filter=web --frozen-lockfile
