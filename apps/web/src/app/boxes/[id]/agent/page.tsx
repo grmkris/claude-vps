@@ -2,7 +2,7 @@
 
 import type { BoxId } from "@vps-claude/shared";
 
-import { Bot, Send } from "lucide-react";
+import { Bot, Loader2, Send, Square, Wrench } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
@@ -11,8 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBox } from "@/hooks/use-boxes";
 import {
   useBoxSessions,
-  useSendMessage,
   useSessionHistory,
+  useStreamingSession,
 } from "@/hooks/use-sessions";
 
 import { AgentConfigPanel } from "../components/agent-config-panel";
@@ -71,7 +71,14 @@ export default function AgentPage() {
 
 function SessionsPanel({ boxId }: { boxId: BoxId }) {
   const { data: sessionsData, isLoading } = useBoxSessions(boxId);
-  const sendMessage = useSendMessage(boxId);
+  const {
+    isStreaming,
+    streamingText,
+    currentTool,
+    error: streamError,
+    sendStreamingMessage,
+    cancelStream,
+  } = useStreamingSession(boxId);
   const [message, setMessage] = useState("");
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
 
@@ -79,9 +86,9 @@ function SessionsPanel({ boxId }: { boxId: BoxId }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || sendMessage.isPending) return;
+    if (!message.trim() || isStreaming) return;
 
-    sendMessage.mutate({ message: message.trim() });
+    void sendStreamingMessage({ message: message.trim() });
     setMessage("");
   };
 
@@ -94,16 +101,53 @@ function SessionsPanel({ boxId }: { boxId: BoxId }) {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Send a message to Claude..."
           className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          disabled={sendMessage.isPending}
+          disabled={isStreaming}
         />
-        <Button
-          type="submit"
-          disabled={!message.trim() || sendMessage.isPending}
-        >
-          <Send className="h-4 w-4 mr-2" />
-          Send
-        </Button>
+        {isStreaming ? (
+          <Button type="button" variant="destructive" onClick={cancelStream}>
+            <Square className="h-4 w-4 mr-2" />
+            Stop
+          </Button>
+        ) : (
+          <Button type="submit" disabled={!message.trim()}>
+            <Send className="h-4 w-4 mr-2" />
+            Send
+          </Button>
+        )}
       </form>
+
+      {/* Streaming response display */}
+      {(isStreaming || streamingText) && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            {isStreaming && (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            )}
+            <span className="text-sm font-medium text-primary">
+              {isStreaming ? "Claude is responding..." : "Response"}
+            </span>
+            {currentTool && (
+              <span className="flex items-center gap-1 text-xs bg-secondary px-2 py-0.5 rounded">
+                <Wrench className="h-3 w-3" />
+                Using {currentTool}
+              </span>
+            )}
+          </div>
+          {streamingText && (
+            <p className="text-sm whitespace-pre-wrap">
+              {streamingText}
+              {isStreaming && (
+                <span className="inline-block w-2 h-4 ml-0.5 bg-primary animate-pulse" />
+              )}
+            </p>
+          )}
+          {streamError && (
+            <p className="text-sm text-destructive mt-2">
+              Error: {streamError}
+            </p>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">

@@ -6,6 +6,7 @@ import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { wideEventMiddleware } from "@vps-claude/logger";
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 
 import { env } from "./env";
 import { logger } from "./logger";
@@ -13,6 +14,7 @@ import { createMcpServer } from "./mcp";
 import { cronRouter } from "./routers/cron.router";
 import { emailRouter } from "./routers/email.router";
 import { sessionRouter } from "./routers/session.router";
+import { streamWithSession } from "./utils/agent";
 
 const appRouter = {
   cron: cronRouter,
@@ -58,6 +60,55 @@ app.all("/mcp", async (c) => {
 
 // Health endpoint
 app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));
+
+// SSE streaming endpoint for Claude sessions (before ORPC handler since ORPC doesn't support SSE)
+app.post("/rpc/sessions/stream", async (c) => {
+  // Auth check
+  const boxSecret = c.req.header("X-Box-Secret");
+  if (boxSecret !== env.BOX_AGENT_SECRET) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const body = (await c.req.json()) as {
+    message: string;
+    contextType?: string;
+    contextId?: string;
+  };
+
+  if (!body.message) {
+    return c.json({ error: "message is required" }, 400);
+  }
+
+  const contextId = body.contextId ?? `chat-${Date.now()}`;
+
+  logger.info(
+    `[stream] Starting streaming session: ${body.contextType ?? "chat"}:${contextId}`
+  );
+
+  return streamSSE(c, async (stream) => {
+    try {
+      for await (const msg of streamWithSession({
+        prompt: body.message,
+        contextType: body.contextType ?? "chat",
+        contextId,
+        triggerType: "manual",
+      })) {
+        await stream.writeSSE({
+          event: msg.type,
+          data: JSON.stringify(msg),
+        });
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      logger.error({ err: error }, "[stream] Session streaming error");
+      await stream.writeSSE({
+        event: "error",
+        data: JSON.stringify({ message: errorMessage }),
+      });
+    }
+  });
+});
 
 // ORPC handler for API routes at /rpc
 app.all("/rpc/*", async (c) => {

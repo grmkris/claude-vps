@@ -158,6 +158,61 @@ function extractText(msg: SDKMessage): string {
   return "";
 }
 
+export async function* streamWithSession(opts: {
+  prompt: string;
+  contextType: string;
+  contextId: string;
+  triggerType?: string;
+}): AsyncGenerator<SDKMessage> {
+  logger.info(
+    `[streamWithSession] Starting streaming session for ${opts.contextType}:${opts.contextId}`
+  );
+
+  const triggerType = opts.triggerType ?? "default";
+  const config = await fetchAgentConfig(triggerType);
+
+  const existingSessionId = getSession(opts.contextType, opts.contextId);
+  const sessionOptions = {
+    ...buildSessionOptions(config),
+    includePartialMessages: true, // Enable streaming events
+  };
+
+  logger.info(
+    `[streamWithSession] Using Claude at: ${sessionOptions.pathToClaudeCodeExecutable}`
+  );
+  logger.info(`[streamWithSession] Model: ${sessionOptions.model}`);
+  logger.info(
+    `[streamWithSession] Existing session: ${existingSessionId || "none"}`
+  );
+
+  const session = existingSessionId
+    ? unstable_v2_resumeSession(existingSessionId, sessionOptions)
+    : unstable_v2_createSession(sessionOptions);
+
+  let sessionId = existingSessionId ?? "";
+
+  try {
+    await session.send(opts.prompt);
+
+    for await (const msg of session.stream()) {
+      // Capture session ID from first message
+      if (!sessionId && msg.session_id) {
+        sessionId = msg.session_id;
+        saveSession(opts.contextType, opts.contextId, sessionId);
+        logger.info(`[streamWithSession] Saved new session: ${sessionId}`);
+      }
+      yield msg;
+    }
+
+    logger.info(`[streamWithSession] Stream completed`);
+  } catch (error) {
+    logger.error({ err: error }, "[streamWithSession] Error");
+    throw error;
+  } finally {
+    session.close();
+  }
+}
+
 export async function runWithSession(opts: {
   prompt: string;
   contextType: string;
