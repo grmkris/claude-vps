@@ -69,13 +69,24 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
         );
 
         // Run the setup step
-        await spritesClient.runSetupStep({
+        const result = await spritesClient.runSetupStep({
           spriteName,
           stepKey,
           boxAgentBinaryUrl,
           envVars,
           spriteUrl,
         });
+
+        // Capture Tailscale IP if this is the Tailscale step
+        if (stepKey === "SETUP_TAILSCALE" && result.stdout) {
+          const match = result.stdout.match(
+            /TAILSCALE_IP=(\d+\.\d+\.\d+\.\d+)/
+          );
+          if (match?.[1]) {
+            await boxService.setTailscaleIp(boxId, match[1]);
+            event.set({ tailscaleIp: match[1] });
+          }
+        }
 
         // Mark step as completed
         await deployStepService.updateStepStatus(

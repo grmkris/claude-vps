@@ -191,6 +191,16 @@ const emailSendWorker = createEmailSendWorker({
       const html = await renderAgentEmail(params.body);
       const text = markdownToPlainText(params.body);
 
+      // Build threading headers for proper email threading
+      const headers: Record<string, string> = {};
+      if (params.inReplyTo?.messageId) {
+        const msgId = params.inReplyTo.messageId;
+        // Ensure message ID is wrapped in angle brackets per RFC 5322
+        const formattedId = msgId.startsWith("<") ? msgId : `<${msgId}>`;
+        headers["In-Reply-To"] = formattedId;
+        headers["References"] = formattedId;
+      }
+
       await emailClient.sendRawEmail({
         from: params.from,
         to: params.to,
@@ -198,6 +208,7 @@ const emailSendWorker = createEmailSendWorker({
         text,
         html,
         replyTo: params.inReplyTo?.from,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
       });
     },
     redis,

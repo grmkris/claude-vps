@@ -145,6 +145,7 @@ export interface RawEmailParams {
   text: string;
   html?: string;
   replyTo?: string;
+  headers?: Record<string, string>;
 }
 
 export interface EmailClient {
@@ -199,6 +200,7 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
         text: params.text,
         html: params.html,
         reply_to: params.replyTo,
+        headers: params.headers,
       });
 
       if (!result?.id) {

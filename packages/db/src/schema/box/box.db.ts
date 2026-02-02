@@ -47,6 +47,9 @@ export const box = pgTable(
     errorMessage: text("error_message"),
     lastHealthCheck: timestamp("last_health_check"),
 
+    // Tailscale connection info
+    tailscaleIp: text("tailscale_ip"),
+
     skills: text("skills").array().notNull().default([]),
     deploymentAttempt: integer("deployment_attempt").notNull().default(1),
 

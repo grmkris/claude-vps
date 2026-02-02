@@ -150,12 +150,13 @@ export function createSpritesClient(
     }
 
     // Create the sprite using official SDK
-    const sprite = await flySpritesClient.createSprite(spriteName);
+    await flySpritesClient.createSprite(spriteName);
 
-    // Set environment variables via exec
+    // Set environment variables via shell (requires bash for heredoc)
     // Write to ~/.bashrc for persistence across sessions
     if (Object.keys(config.envVars).length > 0) {
-      await sprite.exec(
+      await execShell(
+        spriteName,
         `cat >> ~/.bashrc << 'ENVEOF'
 # Box environment variables
 ${Object.entries(config.envVars)
@@ -488,8 +489,6 @@ source /home/sprite/.bashrc.env 2>/dev/null || true
 cd /home/sprite/agent-app
 export DATABASE_URL="file:/home/sprite/agent-app/local.db"
 export BETTER_AUTH_SECRET="${config.envVars.BOX_AGENT_SECRET}"
-export BETTER_AUTH_URL="${config.spriteUrl}"
-export CORS_ORIGIN="${config.spriteUrl}"
 exec /.sprite/bin/bun dev --port 3000
 STARTEOF
         chmod +x /home/sprite/start-agent-app.sh
@@ -502,27 +501,8 @@ STARTEOF
           --no-stream
       `,
       SETUP_MCP_SETTINGS: `
-        mkdir -p /home/sprite/.claude
-
-        # Create MCP wrapper script
-        cat > /home/sprite/start-mcp.sh << 'MCPSCRIPT'
-#!/bin/bash
-source /home/sprite/.bashrc.env
-exec /usr/local/bin/box-agent mcp
-MCPSCRIPT
-        chmod +x /home/sprite/start-mcp.sh
-
-        # Create Claude settings with MCP config
-        cat > /home/sprite/.claude/settings.json << 'MCPEOF'
-{
-  "mcpServers": {
-    "ai-tools": {
-      "command": "/home/sprite/start-mcp.sh",
-      "args": []
-    }
-  }
-}
-MCPEOF
+        source /home/sprite/.bashrc.env
+        /home/sprite/.local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp
       `,
       SETUP_TAILSCALE: `
         set -euo pipefail
@@ -560,7 +540,8 @@ TSEOF
         # Join network (--reset for idempotency on redeploys)
         sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --ssh --hostname="$BOX_SUBDOMAIN" --reset
 
-        echo "Tailscale connected: $(tailscale ip -4)"
+        # Output IP in parseable format for capture
+        echo "TAILSCALE_IP=$(tailscale ip -4)"
       `,
     };
 
@@ -885,8 +866,6 @@ source /home/sprite/.bashrc.env 2>/dev/null || true
 cd /home/sprite/agent-app
 export DATABASE_URL="file:/home/sprite/agent-app/local.db"
 export BETTER_AUTH_SECRET="${envVars.BOX_AGENT_SECRET}"
-export BETTER_AUTH_URL="${spriteUrl}"
-export CORS_ORIGIN="${spriteUrl}"
 exec /.sprite/bin/bun dev --port 3000
 STARTEOF
       chmod +x /home/sprite/start-agent-app.sh
@@ -902,27 +881,8 @@ STARTEOF
       12,
       "Configure MCP settings",
       `
-      mkdir -p /home/sprite/.claude
-
-      # Create MCP wrapper script
-      cat > /home/sprite/start-mcp.sh << 'MCPSCRIPT'
-#!/bin/bash
-source /home/sprite/.bashrc.env
-exec /usr/local/bin/box-agent mcp
-MCPSCRIPT
-      chmod +x /home/sprite/start-mcp.sh
-
-      # Create Claude settings with MCP config
-      cat > /home/sprite/.claude/settings.json << 'MCPEOF'
-{
-  "mcpServers": {
-    "ai-tools": {
-      "command": "/home/sprite/start-mcp.sh",
-      "args": []
-    }
-  }
-}
-MCPEOF
+      source /home/sprite/.bashrc.env
+      /home/sprite/.local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp
     `
     );
   }

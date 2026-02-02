@@ -230,12 +230,13 @@ describe("API E2E - Email Flow", () => {
     // Wait for Claude session to be created
     logger.info("Waiting for Claude session...");
     const { sessions } = await waitFor(
-      () => client.boxDetails.sessions({ id: boxId }),
+      () => client.boxSessions.list({ id: boxId }),
       {
         timeoutMs: 180_000, // 3 minutes
         pollIntervalMs: 5000,
         description: "Claude session",
-        until: (result) => result.sessions.length > 0,
+        until: (result: { sessions: Array<{ sessionId: string }> }) =>
+          result.sessions.length > 0,
       }
     );
 
@@ -246,24 +247,24 @@ describe("API E2E - Email Flow", () => {
 
     // Wait for Claude to respond (session history has messages)
     logger.info("Waiting for Claude response in session history...");
+    type Message = { type: "user" | "assistant"; content: string };
     const { messages } = await waitFor(
-      () =>
-        client.boxDetails.sessionHistory({ id: boxId, sessionId: sessionId! }),
+      () => client.boxSessions.history({ id: boxId, sessionId: sessionId! }),
       {
         timeoutMs: 180_000, // 3 minutes
         pollIntervalMs: 5000,
         description: "Claude response in session history",
-        until: (result) => result.messages.length >= 2, // user + assistant
+        until: (result: { messages: Message[] }) => result.messages.length >= 2, // user + assistant
       }
     );
 
     // Verify real messages exist
     expect(messages.length).toBeGreaterThanOrEqual(2);
-    expect(messages.some((m) => m.type === "user")).toBe(true);
-    expect(messages.some((m) => m.type === "assistant")).toBe(true);
+    expect(messages.some((m: Message) => m.type === "user")).toBe(true);
+    expect(messages.some((m: Message) => m.type === "assistant")).toBe(true);
 
     // Verify assistant response has content
-    const assistantMsg = messages.find((m) => m.type === "assistant");
+    const assistantMsg = messages.find((m: Message) => m.type === "assistant");
     expect(assistantMsg?.content.length).toBeGreaterThan(0);
     logger.info(
       {

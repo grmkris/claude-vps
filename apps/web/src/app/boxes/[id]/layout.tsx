@@ -119,6 +119,14 @@ export default function BoxLayout({ children }: { children: React.ReactNode }) {
                   <CopyButton text={box.spriteUrl} />
                 </div>
               )}
+              {box.tailscaleIp && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono text-muted-foreground">
+                    Tailscale: {box.tailscaleIp}
+                  </span>
+                  <CopyButton text={`ssh sprite@${box.tailscaleIp}`} />
+                </div>
+              )}
             </div>
 
             {isRunning && box.spriteUrl && (

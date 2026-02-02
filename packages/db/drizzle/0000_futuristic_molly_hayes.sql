@@ -1,4 +1,5 @@
 CREATE TYPE "public"."box_status" AS ENUM('pending', 'deploying', 'running', 'stopped', 'error', 'deleted');--> statement-breakpoint
+CREATE TYPE "public"."provider_type" AS ENUM('sprites', 'docker');--> statement-breakpoint
 CREATE TYPE "public"."box_env_var_type" AS ENUM('literal', 'credential_ref');--> statement-breakpoint
 CREATE TYPE "public"."trigger_type" AS ENUM('email', 'cron', 'webhook', 'manual', 'default');--> statement-breakpoint
 CREATE TYPE "public"."box_cronjob_execution_status" AS ENUM('pending', 'waking_box', 'running', 'completed', 'failed');--> statement-breakpoint
@@ -81,12 +82,17 @@ CREATE TABLE "box" (
 	"name" text NOT NULL,
 	"subdomain" text NOT NULL,
 	"status" "box_status" DEFAULT 'pending' NOT NULL,
+	"provider" "provider_type" DEFAULT 'sprites' NOT NULL,
+	"provider_host_id" text,
+	"instance_name" text,
+	"instance_url" text,
 	"sprite_name" text,
 	"sprite_url" text,
 	"last_checkpoint_id" text,
 	"password_hash" text,
 	"error_message" text,
 	"last_health_check" timestamp,
+	"tailscale_ip" text,
 	"skills" text[] DEFAULT '{}' NOT NULL,
 	"deployment_attempt" integer DEFAULT 1 NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -251,6 +257,7 @@ CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("ident
 CREATE INDEX "box_userId_idx" ON "box" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "box_subdomain_idx" ON "box" USING btree ("subdomain");--> statement-breakpoint
 CREATE INDEX "box_status_idx" ON "box" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "box_provider_idx" ON "box" USING btree ("provider");--> statement-breakpoint
 CREATE UNIQUE INDEX "box_env_var_unique_idx" ON "box_env_var" USING btree ("box_id","key");--> statement-breakpoint
 CREATE UNIQUE INDEX "box_agent_config_box_trigger_idx" ON "box_agent_config" USING btree ("box_id","trigger_type");--> statement-breakpoint
 CREATE INDEX "box_agent_config_box_id_idx" ON "box_agent_config" USING btree ("box_id");--> statement-breakpoint

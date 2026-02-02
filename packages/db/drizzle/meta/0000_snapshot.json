@@ -1,5 +1,5 @@
 {
-  "id": "39d4def3-62f8-41ca-bd20-f03c4975e6e9",
+  "id": "83f04efa-5fc7-4e64-a56f-f1f371635873",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -111,8 +111,12 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -298,8 +302,12 @@
           "name": "apikey_user_id_user_id_fk",
           "tableFrom": "apikey",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -387,8 +395,12 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -398,7 +410,9 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ]
         }
       },
       "policies": {},
@@ -461,7 +475,9 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -565,6 +581,32 @@
           "notNull": true,
           "default": "'pending'"
         },
+        "provider": {
+          "name": "provider",
+          "type": "provider_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sprites'"
+        },
+        "provider_host_id": {
+          "name": "provider_host_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instance_name": {
+          "name": "instance_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instance_url": {
+          "name": "instance_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "sprite_name": {
           "name": "sprite_name",
           "type": "text",
@@ -598,6 +640,12 @@
         "last_health_check": {
           "name": "last_health_check",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tailscale_ip": {
+          "name": "tailscale_ip",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -681,6 +729,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "box_provider_idx": {
+          "name": "box_provider_idx",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -688,8 +751,12 @@
           "name": "box_user_id_user_id_fk",
           "tableFrom": "box",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -699,7 +766,9 @@
         "box_subdomain_unique": {
           "name": "box_subdomain_unique",
           "nullsNotDistinct": false,
-          "columns": ["subdomain"]
+          "columns": [
+            "subdomain"
+          ]
         }
       },
       "policies": {},
@@ -790,8 +859,12 @@
           "name": "box_env_var_box_id_box_id_fk",
           "tableFrom": "box_env_var",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -965,8 +1038,12 @@
           "name": "box_agent_config_box_id_box_id_fk",
           "tableFrom": "box_agent_config",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1116,8 +1193,12 @@
           "name": "box_cronjob_box_id_box_id_fk",
           "tableFrom": "box_cronjob",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1250,8 +1331,12 @@
           "name": "box_cronjob_execution_cronjob_id_box_cronjob_id_fk",
           "tableFrom": "box_cronjob_execution",
           "tableTo": "box_cronjob",
-          "columnsFrom": ["cronjob_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "cronjob_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1429,8 +1514,12 @@
           "name": "box_deploy_step_box_id_box_id_fk",
           "tableFrom": "box_deploy_step",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1599,8 +1688,12 @@
           "name": "box_email_box_id_box_id_fk",
           "tableFrom": "box_email",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1677,8 +1770,12 @@
           "name": "box_email_settings_box_id_box_id_fk",
           "tableFrom": "box_email_settings",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1688,7 +1785,9 @@
         "box_email_settings_box_id_unique": {
           "name": "box_email_settings_box_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["box_id"]
+          "columns": [
+            "box_id"
+          ]
         }
       },
       "policies": {},
@@ -1766,8 +1865,12 @@
           "name": "user_credential_user_id_user_id_fk",
           "tableFrom": "user_credential",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1958,8 +2061,12 @@
           "name": "ai_usage_user_id_user_id_fk",
           "tableFrom": "ai_usage",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1967,8 +2074,12 @@
           "name": "ai_usage_box_id_box_id_fk",
           "tableFrom": "ai_usage",
           "tableTo": "box",
-          "columnsFrom": ["box_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "box_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1993,30 +2104,63 @@
         "deleted"
       ]
     },
+    "public.provider_type": {
+      "name": "provider_type",
+      "schema": "public",
+      "values": [
+        "sprites",
+        "docker"
+      ]
+    },
     "public.box_env_var_type": {
       "name": "box_env_var_type",
       "schema": "public",
-      "values": ["literal", "credential_ref"]
+      "values": [
+        "literal",
+        "credential_ref"
+      ]
     },
     "public.trigger_type": {
       "name": "trigger_type",
       "schema": "public",
-      "values": ["email", "cron", "webhook", "manual", "default"]
+      "values": [
+        "email",
+        "cron",
+        "webhook",
+        "manual",
+        "default"
+      ]
     },
     "public.box_cronjob_execution_status": {
       "name": "box_cronjob_execution_status",
       "schema": "public",
-      "values": ["pending", "waking_box", "running", "completed", "failed"]
+      "values": [
+        "pending",
+        "waking_box",
+        "running",
+        "completed",
+        "failed"
+      ]
     },
     "public.box_deploy_step_status": {
       "name": "box_deploy_step_status",
       "schema": "public",
-      "values": ["pending", "running", "completed", "failed", "skipped"]
+      "values": [
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "skipped"
+      ]
     },
     "public.box_email_status": {
       "name": "box_email_status",
       "schema": "public",
-      "values": ["received", "delivered", "failed"]
+      "values": [
+        "received",
+        "delivered",
+        "failed"
+      ]
     }
   },
   "schemas": {},

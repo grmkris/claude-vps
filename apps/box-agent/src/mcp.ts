@@ -128,7 +128,7 @@ export function createMcpServer() {
     "email_send",
     {
       description:
-        "Send an email with markdown formatting. The body supports **bold**, *italic*, lists, links, headers, and code blocks.",
+        "Send an email with markdown formatting. The body supports **bold**, *italic*, lists, links, headers, and code blocks. When replying to an email, include inReplyTo with the original messageId for proper email threading.",
       inputSchema: z.object({
         to: z.string().describe("Recipient email address"),
         subject: z.string().describe("Email subject line"),
@@ -137,11 +137,30 @@ export function createMcpServer() {
           .describe(
             "Email body content. Supports markdown formatting: **bold**, *italic*, # headers, - lists, [links](url), `code`"
           ),
+        inReplyTo: z
+          .object({
+            messageId: z
+              .string()
+              .describe("The messageId of the email being replied to"),
+          })
+          .optional()
+          .describe("Include when replying to an email to maintain threading"),
       }),
     },
     async (args) => {
       try {
-        const result = await boxApi.email.send(args);
+        const result = await boxApi.email.send({
+          to: args.to,
+          subject: args.subject,
+          body: args.body,
+          inReplyTo: args.inReplyTo
+            ? {
+                messageId: args.inReplyTo.messageId,
+                from: args.to,
+                subject: args.subject,
+              }
+            : undefined,
+        });
         return toolResult(result);
       } catch (e) {
         return toolError(e);

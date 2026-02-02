@@ -581,7 +581,7 @@ NGINXEOF
     SETUP_AGENT_APP_SERVICE: `
       cat > /etc/supervisor/conf.d/agent-app.conf << 'SUPERVISOREOF'
 [program:agent-app]
-command=/bin/bash -c "source ${HOME_DIR}/.bashrc.env && cd ${HOME_DIR}/agent-app && export DATABASE_URL=file:${HOME_DIR}/agent-app/local.db && export BETTER_AUTH_SECRET=%(ENV_BOX_AGENT_SECRET)s && export BETTER_AUTH_URL=${config.instanceUrl} && export CORS_ORIGIN=${config.instanceUrl} && exec /usr/local/bin/bun dev --port 3000"
+command=/bin/bash -c "source ${HOME_DIR}/.bashrc.env && cd ${HOME_DIR}/agent-app && export DATABASE_URL=file:${HOME_DIR}/agent-app/local.db && export BETTER_AUTH_SECRET=%(ENV_BOX_AGENT_SECRET)s && exec /usr/local/bin/bun dev --port 3000"
 directory=${HOME_DIR}/agent-app
 user=coder
 autostart=true
@@ -595,26 +595,8 @@ SUPERVISOREOF
     `,
 
     SETUP_MCP_SETTINGS: `
-      mkdir -p ${HOME_DIR}/.claude
-
-      cat > ${HOME_DIR}/start-mcp.sh << 'MCPSCRIPT'
-#!/bin/bash
-source ${HOME_DIR}/.bashrc.env
-exec /usr/local/bin/box-agent mcp
-MCPSCRIPT
-      chmod +x ${HOME_DIR}/start-mcp.sh
-
-      cat > ${HOME_DIR}/.claude/settings.json << 'MCPEOF'
-{
-  "mcpServers": {
-    "ai-tools": {
-      "command": "${HOME_DIR}/start-mcp.sh",
-      "args": []
-    }
-  }
-}
-MCPEOF
-      chown -R coder:coder ${HOME_DIR}/.claude ${HOME_DIR}/start-mcp.sh
+      source ${HOME_DIR}/.bashrc.env
+      ${HOME_DIR}/.local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp
     `,
   };
 

@@ -8,7 +8,7 @@ import { client, orpc } from "@/utils/orpc";
 
 export function useBoxSessions(boxId: BoxId | undefined) {
   return useQuery({
-    ...orpc.boxDetails.sessions.queryOptions({ input: { id: boxId! } }),
+    ...orpc.boxSessions.list.queryOptions({ input: { id: boxId! } }),
     enabled: Boolean(boxId),
     refetchInterval: 10000,
   });
@@ -23,7 +23,7 @@ export function useSendMessage(boxId: BoxId) {
       contextType?: string;
       contextId?: string;
     }) => {
-      return client.boxDetails.sessionSend({
+      return client.boxSessions.send({
         id: boxId,
         message: params.message,
         contextType: params.contextType ?? "chat",
@@ -32,7 +32,7 @@ export function useSendMessage(boxId: BoxId) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxDetails.sessions.queryOptions({
+        queryKey: orpc.boxSessions.list.queryOptions({
           input: { id: boxId },
         }).queryKey,
       });
@@ -45,7 +45,7 @@ export function useSessionHistory(
   sessionId: string | null
 ) {
   return useQuery({
-    ...orpc.boxDetails.sessionHistory.queryOptions({
+    ...orpc.boxSessions.history.queryOptions({
       input: { id: boxId!, sessionId: sessionId! },
     }),
     enabled: Boolean(boxId && sessionId),

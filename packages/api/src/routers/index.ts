@@ -8,6 +8,7 @@ import { boxApiRouter } from "./box-api.router";
 import { boxDetailsRouter } from "./box-details.router";
 import { boxEnvVarRouter } from "./box-env-var.router";
 import { boxFsRouter } from "./box-fs.router";
+import { boxSessionsRouter } from "./box-sessions.router";
 import { boxRouter } from "./box.router";
 import { credentialRouter } from "./credential.router";
 import { cronjobRouter } from "./cronjob.router";
@@ -37,6 +38,7 @@ export {
   boxApiRouter,
   boxAiRouter,
   boxDetailsRouter,
+  boxSessionsRouter,
   boxEnvVarRouter,
   boxAgentConfigRouter,
   apiKeyRouter,
@@ -57,6 +59,7 @@ export type SkillRouterType = typeof skillRouter;
 export type McpRouterType = typeof mcpRouter;
 export type BoxFsRouterType = typeof boxFsRouter;
 export type BoxDetailsRouterType = typeof boxDetailsRouter;
+export type BoxSessionsRouterType = typeof boxSessionsRouter;
 export type CronjobRouterType = typeof cronjobRouter;
 export type BoxApiRouterType = typeof boxApiRouter;
 export type BoxAiRouterType = typeof boxAiRouter;
@@ -77,5 +80,6 @@ export type AppRouterClient = RouterClient<AppRouter> & {
   mcp: RouterClient<McpRouterType>;
   boxFs: RouterClient<BoxFsRouterType>;
   boxDetails: RouterClient<BoxDetailsRouterType>;
+  boxSessions: RouterClient<BoxSessionsRouterType>;
   cronjob: RouterClient<CronjobRouterType>;
 };

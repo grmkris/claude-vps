@@ -77,5 +77,6 @@ Read the email and handle it appropriately.
 To reply, use the email_send tool with:
 - to: "${email.from.email}"
 - subject: "Re: ${email.subject || ""}"
-- body: your reply message`;
+- body: your reply message
+- inReplyTo: { messageId: "${email.messageId}" }`;
 }

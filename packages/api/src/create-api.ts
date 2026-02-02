@@ -21,6 +21,7 @@ import {
   boxAiRouter,
   boxApiRouter,
   boxDetailsRouter,
+  boxSessionsRouter,
   boxFsRouter,
   apiKeyRouter,
   skillRouter,
@@ -41,6 +42,7 @@ const fullAppRouter = {
   mcp: mcpRouter,
   boxFs: boxFsRouter,
   boxDetails: boxDetailsRouter,
+  boxSessions: boxSessionsRouter,
   cronjob: cronjobRouter,
 };
 

@@ -331,6 +331,14 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       return ok(undefined);
     },
 
+    async setTailscaleIp(
+      id: BoxId,
+      tailscaleIp: string
+    ): Promise<Result<void, BoxServiceError>> {
+      await db.update(box).set({ tailscaleIp }).where(eq(box.id, id));
+      return ok(undefined);
+    },
+
     async getAgentConfig(
       boxId: BoxId,
       triggerType: TriggerType
