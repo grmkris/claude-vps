@@ -305,6 +305,8 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
         await queueClient.deleteQueue.add("delete", {
           boxId: id,
           userId: boxRecord.userId,
+          instanceName: boxRecord.instanceName,
+          provider: boxRecord.provider ?? "sprites",
         });
       }
 

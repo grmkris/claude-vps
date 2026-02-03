@@ -178,7 +178,7 @@ const skillsGateWorker = createSkillsGateWorker({
 });
 
 const deleteWorker = createDeleteWorker({
-  deps: { boxService, providerFactory, redis, logger },
+  deps: { providerFactory, redis, logger },
 });
 
 const emailDeliveryWorker = createEmailDeliveryWorker({

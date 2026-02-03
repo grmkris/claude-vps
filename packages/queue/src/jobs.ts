@@ -1,4 +1,10 @@
-import { BoxCronjobId, BoxEmailId, BoxId, UserId } from "@vps-claude/shared";
+import {
+  BoxCronjobId,
+  BoxEmailId,
+  BoxId,
+  ProviderType,
+  UserId,
+} from "@vps-claude/shared";
 import { z } from "zod";
 
 export const DeployBoxJobData = z.object({
@@ -16,6 +22,8 @@ export type DeployBoxJobData = z.infer<typeof DeployBoxJobData>;
 export const DeleteBoxJobData = z.object({
   boxId: BoxId,
   userId: UserId,
+  instanceName: z.string(),
+  provider: ProviderType,
 });
 
 export type DeleteBoxJobData = z.infer<typeof DeleteBoxJobData>;
