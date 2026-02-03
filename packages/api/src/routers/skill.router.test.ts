@@ -8,7 +8,7 @@ const SkillsShSkill = z.object({
   name: z.string(),
   description: z.string().optional(),
   installs: z.number(),
-  topSource: z.string(),
+  topSource: z.string().optional(),
 });
 
 const SkillsShResponse = z.object({
