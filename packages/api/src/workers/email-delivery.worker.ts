@@ -49,8 +49,8 @@ export function createEmailDeliveryWorker({
       });
 
       try {
-        // Sprites: box-agent accessible via sprite's public URL
-        const boxAgentUrl = `${instanceUrl}/rpc/email/receive`;
+        // box-agent accessible via path-based routing: /box/rpc/...
+        const boxAgentUrl = `${instanceUrl}/box/rpc/email/receive`;
 
         logger.info({ emailId, instanceUrl }, "Delivering email to box");
 

@@ -11,5 +11,6 @@ export const env = z
     BOX_AGENT_PORT: z.coerce.number().default(33002),
     BOX_INBOX_DIR: z.string().default("/home/sprite/.inbox"),
     BOX_DB_PATH: z.string().default("/home/sprite/.box-agent/sessions.db"),
+    INSTANCE_NAME: z.string().optional(), // Docker container name for exec command
   })
   .parse(bunEnv);

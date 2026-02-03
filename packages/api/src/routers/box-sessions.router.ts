@@ -36,7 +36,7 @@ export const boxSessionsRouter = {
       }
 
       const response = await fetch(
-        `${boxResult.value.instanceUrl}/rpc/sessions/list`,
+        `${boxResult.value.instanceUrl}/box/rpc/sessions/list`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -108,7 +108,7 @@ export const boxSessionsRouter = {
       }
 
       const response = await fetch(
-        `${boxResult.value.instanceUrl}/rpc/sessions/send`,
+        `${boxResult.value.instanceUrl}/box/rpc/sessions/send`,
         {
           method: "POST",
           headers: {
@@ -162,7 +162,7 @@ export const boxSessionsRouter = {
       }
 
       const response = await fetch(
-        `${boxResult.value.instanceUrl}/rpc/sessions/${input.sessionId}/history`,
+        `${boxResult.value.instanceUrl}/box/rpc/sessions/${input.sessionId}/history`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },

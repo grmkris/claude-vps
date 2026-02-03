@@ -175,8 +175,8 @@ export function createApi({
 
     const body = await c.req.json();
 
-    // Make streaming request to box-agent
-    const response = await fetch(`${box.instanceUrl}/rpc/sessions/stream`, {
+    // Make streaming request to box-agent (path-based routing: /box/rpc/...)
+    const response = await fetch(`${box.instanceUrl}/box/rpc/sessions/stream`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

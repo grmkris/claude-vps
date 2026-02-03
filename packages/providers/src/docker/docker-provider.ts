@@ -113,12 +113,12 @@ export function createDockerProvider(
         return { instanceName, url };
       }
 
-      // Generate Traefik labels - route directly to box-agent (port 33002)
+      // Generate Traefik labels for path-based routing:
+      // / -> BoxAgent (landing), /app/* -> AgentApp, /box/* -> BoxAgent
       const labels = generateTraefikLabels({
         serviceName: instanceName,
         subdomain: config.subdomain,
         baseDomain,
-        port: 33002,
         useTls,
       });
 
@@ -134,6 +134,7 @@ export function createDockerProvider(
         APP_ENV: "prod", // Compiled binaries can't use pino-pretty transport
         BOX_DB_PATH: `${HOME_DIR}/.box-agent/sessions.db`,
         BOX_INBOX_DIR: `${HOME_DIR}/.inbox`,
+        INSTANCE_NAME: instanceName, // For Docker exec command display
         // Ensure BOX_AGENT_SECRET is available for supervisor %(ENV_*)s expansion
         BOX_AGENT_SECRET: config.envVars.BOX_AGENT_SECRET,
       };
@@ -313,42 +314,42 @@ export function createDockerProvider(
       instanceName: string,
       instanceUrl: string
     ): Promise<boolean> {
-      // Check box-agent health endpoint
+      // Check box-agent health endpoint at /box/health
       try {
-        const res = await fetch(`${instanceUrl}/health`, {
+        const res = await fetch(`${instanceUrl}/box/health`, {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
           logger.warn(
             { instanceName, status: res.status },
-            "DockerProvider: Health check failed"
+            "DockerProvider: BoxAgent health check failed"
           );
           return false;
         }
       } catch (error) {
         logger.warn(
           { instanceName, error: String(error) },
-          "DockerProvider: Health check failed"
+          "DockerProvider: BoxAgent health check failed"
         );
         return false;
       }
 
-      // Check agent-app
+      // Check agent-app at /app/
       try {
-        const res = await fetch(`${instanceUrl}/`, {
+        const res = await fetch(`${instanceUrl}/app/`, {
           signal: AbortSignal.timeout(10000),
         });
         if (res.status >= 500) {
           logger.warn(
             { instanceName, status: res.status },
-            "DockerProvider: Agent-app health check failed"
+            "DockerProvider: AgentApp health check failed"
           );
           return false;
         }
       } catch (error) {
         logger.warn(
           { instanceName, error: String(error) },
-          "DockerProvider: Agent-app health check failed"
+          "DockerProvider: AgentApp health check failed"
         );
         return false;
       }

@@ -2,7 +2,9 @@
  * Generate Traefik labels for container routing
  *
  * Routes:
- * - *.{baseDomain} -> container port 8080 (nginx -> box-agent/agent-app)
+ * - / -> BoxAgent (static landing page)
+ * - /app/* -> AgentApp (port 3000, strip /app)
+ * - /box/* -> BoxAgent (port 33002, strip /box)
  */
 export interface TraefikLabelConfig {
   /** Container/service name for routing rules */
@@ -11,8 +13,10 @@ export interface TraefikLabelConfig {
   subdomain: string;
   /** Base domain (e.g., agents.example.com) */
   baseDomain: string;
-  /** Internal port to route to (default: 8080) */
-  port?: number;
+  /** BoxAgent port (default: 33002) */
+  boxAgentPort?: number;
+  /** AgentApp port (default: 3000) */
+  agentAppPort?: number;
   /** Docker network Traefik uses (default: "traefik") */
   network?: string;
   /** Enable TLS with Let's Encrypt (default: false for local dev) */
@@ -26,28 +30,62 @@ export function generateTraefikLabels(
     serviceName,
     subdomain,
     baseDomain,
-    port = 8080,
+    boxAgentPort = 33002,
+    agentAppPort = 3000,
     network = "traefik",
     useTls = false,
   } = config;
   const routerName = serviceName.replace(/[^a-zA-Z0-9]/g, "-");
   const host = `${subdomain}.${baseDomain}`;
+  const entrypoint = useTls ? "websecure" : "web";
 
   const labels: Record<string, string> = {
     "traefik.enable": "true",
     "traefik.docker.network": network,
-    [`traefik.http.routers.${routerName}.rule`]: `Host(\`${host}\`)`,
-    [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
-      String(port),
+
+    // Services
+    [`traefik.http.services.${routerName}-box.loadbalancer.server.port`]:
+      String(boxAgentPort),
+    [`traefik.http.services.${routerName}-app.loadbalancer.server.port`]:
+      String(agentAppPort),
+
+    // Middlewares for path stripping
+    [`traefik.http.middlewares.${routerName}-strip-box.stripprefix.prefixes`]:
+      "/box",
+    [`traefik.http.middlewares.${routerName}-strip-app.stripprefix.prefixes`]:
+      "/app",
+
+    // Router: root (static landing page from BoxAgent)
+    [`traefik.http.routers.${routerName}-root.rule`]: `Host(\`${host}\`) && Path(\`/\`)`,
+    [`traefik.http.routers.${routerName}-root.service`]: `${routerName}-box`,
+    [`traefik.http.routers.${routerName}-root.priority`]: "1",
+    [`traefik.http.routers.${routerName}-root.entrypoints`]: entrypoint,
+
+    // Router: app (AgentApp at /app/*)
+    [`traefik.http.routers.${routerName}-app.rule`]: `Host(\`${host}\`) && PathPrefix(\`/app\`)`,
+    [`traefik.http.routers.${routerName}-app.service`]: `${routerName}-app`,
+    [`traefik.http.routers.${routerName}-app.middlewares`]: `${routerName}-strip-app@docker`,
+    [`traefik.http.routers.${routerName}-app.priority`]: "50",
+    [`traefik.http.routers.${routerName}-app.entrypoints`]: entrypoint,
+
+    // Router: box (BoxAgent API at /box/*)
+    [`traefik.http.routers.${routerName}-box.rule`]: `Host(\`${host}\`) && PathPrefix(\`/box\`)`,
+    [`traefik.http.routers.${routerName}-box.service`]: `${routerName}-box`,
+    [`traefik.http.routers.${routerName}-box.middlewares`]: `${routerName}-strip-box@docker`,
+    [`traefik.http.routers.${routerName}-box.priority`]: "100",
+    [`traefik.http.routers.${routerName}-box.entrypoints`]: entrypoint,
   };
 
   if (useTls) {
-    labels[`traefik.http.routers.${routerName}.entrypoints`] = "websecure";
-    labels[`traefik.http.routers.${routerName}.tls`] = "true";
-    labels[`traefik.http.routers.${routerName}.tls.certresolver`] =
+    labels[`traefik.http.routers.${routerName}-root.tls`] = "true";
+    labels[`traefik.http.routers.${routerName}-root.tls.certresolver`] =
       "letsencrypt";
-  } else {
-    labels[`traefik.http.routers.${routerName}.entrypoints`] = "web";
+    labels[`traefik.http.routers.${routerName}-app.tls`] = "true";
+    labels[`traefik.http.routers.${routerName}-app.tls.certresolver`] =
+      "letsencrypt";
+    labels[`traefik.http.routers.${routerName}-box.tls`] = "true";
+    labels[`traefik.http.routers.${routerName}-box.tls.certresolver`] =
+      "letsencrypt";
   }
 
   return labels;

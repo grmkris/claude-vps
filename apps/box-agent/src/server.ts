@@ -61,6 +61,40 @@ app.all("/mcp", async (c) => {
 // Health endpoint
 app.get("/health", (c) => c.json({ status: "ok", agent: "box-agent" }));
 
+// Static landing page at root (for path-based routing)
+app.get("/", (c) => {
+  const subdomain = env.BOX_SUBDOMAIN;
+  const instanceName = env.INSTANCE_NAME || "container";
+  return c.html(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Box: ${subdomain}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; color: #333; }
+    h1 { border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; }
+    nav { display: flex; gap: 1rem; margin: 1rem 0; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 14px; }
+    section { margin: 1.5rem 0; }
+    h2 { font-size: 1.1rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Box: ${subdomain}</h1>
+  <nav>
+    <a href="/app">App Dashboard</a>
+    <a href="/box/health">Health Check</a>
+    <a href="/box/docs">API Docs</a>
+  </nav>
+  <section>
+    <h2>Docker Access</h2>
+    <pre>docker exec -it ${instanceName} bash</pre>
+  </section>
+</body>
+</html>`);
+});
+
 // SSE streaming endpoint for Claude sessions (before ORPC handler since ORPC doesn't support SSE)
 app.post("/rpc/sessions/stream", async (c) => {
   // Auth check
