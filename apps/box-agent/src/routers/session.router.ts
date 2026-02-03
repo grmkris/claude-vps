@@ -37,7 +37,9 @@ export const sessionRouter = {
     .handler(async ({ input }) => {
       const home = homedir();
       // Claude stores sessions in ~/.claude/projects/-{path} where path has / replaced with -
-      const projectDir = `${home}/.claude/projects/-home-sprite`;
+      // e.g., /home/box -> -home-box, /home/sprite -> -home-sprite
+      const homeSuffix = home.replace(/\//g, "-");
+      const projectDir = `${home}/.claude/projects/${homeSuffix}`;
       const filePath = `${projectDir}/${input.sessionId}.jsonl`;
 
       const file = Bun.file(filePath);
