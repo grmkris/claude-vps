@@ -8,10 +8,8 @@ import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { wideEventMiddleware } from "@vps-claude/logger";
-import { BoxId, UserId } from "@vps-claude/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { streamSSE } from "hono/streaming";
 
 import { createContext, type Services } from "./context";
 import {
@@ -130,124 +128,6 @@ export function createApi({
   </body>
 </html>`;
     return c.html(html);
-  });
-
-  // SSE streaming endpoint for Claude sessions (before ORPC handler)
-  app.post("/rpc/box/:id/sessions/stream", async (c) => {
-    const wideEvent = c.get("wideEvent");
-    wideEvent?.set({ op: "box.sessions.stream" });
-
-    // Get user session
-    const session = await auth.api.getSession({
-      headers: c.req.raw.headers,
-    });
-
-    if (!session?.user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const userId = UserId.parse(session.user.id);
-    const boxId = BoxId.parse(c.req.param("id"));
-
-    wideEvent?.set({ boxId, user: { id: userId } });
-
-    // Get box and verify ownership
-    const boxResult = await services.boxService.getById(boxId);
-    if (boxResult.isErr()) {
-      return c.json({ error: boxResult.error.message }, 500);
-    }
-
-    const box = boxResult.value;
-    if (!box || box.userId !== userId) {
-      return c.json({ error: "Box not found" }, 404);
-    }
-
-    if (box.status !== "running" || !box.instanceUrl) {
-      return c.json({ error: "Box not running" }, 400);
-    }
-
-    // Get agent secret for auth
-    const settingsResult =
-      await services.emailService.getOrCreateSettings(boxId);
-    if (settingsResult.isErr()) {
-      return c.json({ error: "Failed to get box settings" }, 500);
-    }
-
-    const body = await c.req.json();
-
-    // Make streaming request to box-agent (path-based routing: /box/rpc/...)
-    const response = await fetch(`${box.instanceUrl}/box/rpc/sessions/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Box-Secret": settingsResult.value.agentSecret,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      return c.json(
-        { error: `Box agent returned ${response.status}` },
-        response.status as 400
-      );
-    }
-
-    // Proxy SSE response through to client
-    return streamSSE(c, async (stream) => {
-      const reader = response.body?.getReader();
-      if (!reader) {
-        await stream.writeSSE({
-          event: "error",
-          data: JSON.stringify({ message: "No response body" }),
-        });
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Parse SSE events from buffer
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          let currentEvent = "";
-          let currentData = "";
-
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              currentEvent = line.slice(7);
-            } else if (line.startsWith("data: ")) {
-              currentData = line.slice(6);
-            } else if (line === "" && currentData) {
-              // Empty line marks end of event
-              await stream.writeSSE({
-                event: currentEvent || "message",
-                data: currentData,
-              });
-              currentEvent = "";
-              currentData = "";
-            }
-          }
-        }
-      } catch (error) {
-        logger.error({ err: error }, "SSE proxy error");
-        await stream.writeSSE({
-          event: "error",
-          data: JSON.stringify({
-            message: error instanceof Error ? error.message : "Unknown error",
-          }),
-        });
-      } finally {
-        reader.releaseLock();
-      }
-    });
   });
 
   app.post("/webhooks/inbound-email", async (c) => {

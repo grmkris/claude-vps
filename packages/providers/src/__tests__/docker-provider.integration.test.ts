@@ -215,13 +215,26 @@ describe.skipIf(!HAS_DOCKER)("DockerProvider Integration", () => {
         NEW_VAR: "new_value",
       });
 
-      // Read the env file to verify
-      const result = await provider.execShell(
-        instanceName,
-        "cat /home/box/.bashrc.env"
-      );
-      expect(result.stdout).toContain("NEW_VAR");
-      expect(result.stdout).toContain("new_value");
+      // Wait for container to stabilize after box-agent restart
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Retry logic for container that might be restarting
+      let result;
+      for (let i = 0; i < 3; i++) {
+        try {
+          result = await provider.execShell(
+            instanceName,
+            "cat /home/box/.bashrc.env"
+          );
+          break;
+        } catch (e) {
+          if (i === 2) throw e;
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      expect(result?.stdout).toContain("NEW_VAR");
+      expect(result?.stdout).toContain("new_value");
     });
   });
 });

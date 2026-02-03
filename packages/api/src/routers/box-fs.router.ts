@@ -11,7 +11,7 @@ export const boxFsRouter = {
     .input(
       z.object({
         id: BoxId,
-        path: z.string().default("/home/sprite"),
+        path: z.string().optional(),
       })
     )
     .output(FsListOutput)
@@ -36,11 +36,12 @@ export const boxFsRouter = {
       }
 
       try {
-        const entries = await context.spritesClient.listDir(
-          box.instanceName,
-          input.path
-        );
-        return { entries, currentPath: input.path };
+        const provider = context.providerFactory.getProvider(box.provider);
+        const homePath =
+          box.provider === "docker" ? "/home/box" : "/home/sprite";
+        const path = input.path ?? homePath;
+        const entries = await provider.listDir(box.instanceName, path);
+        return { entries, currentPath: path };
       } catch (error) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
           message:
@@ -79,10 +80,8 @@ export const boxFsRouter = {
       }
 
       try {
-        const buffer = await context.spritesClient.readFile(
-          box.instanceName,
-          input.path
-        );
+        const provider = context.providerFactory.getProvider(box.provider);
+        const buffer = await provider.readFile(box.instanceName, input.path);
         // Limit to 5MB
         if (buffer.length > 5 * 1024 * 1024) {
           throw new ORPCError("BAD_REQUEST", {
@@ -143,14 +142,10 @@ export const boxFsRouter = {
       }
 
       try {
-        await context.spritesClient.writeFile(
-          box.instanceName,
-          input.path,
-          buffer,
-          {
-            mkdir: input.mkdir,
-          }
-        );
+        const provider = context.providerFactory.getProvider(box.provider);
+        await provider.writeFile(box.instanceName, input.path, buffer, {
+          mkdir: input.mkdir,
+        });
         return { success: true as const, path: input.path };
       } catch (error) {
         throw new ORPCError("INTERNAL_SERVER_ERROR", {

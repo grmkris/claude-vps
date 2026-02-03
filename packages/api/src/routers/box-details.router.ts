@@ -143,6 +143,13 @@ export const boxDetailsRouter = {
             });
           }
 
+          if (box.provider === "docker") {
+            throw new ORPCError("BAD_REQUEST", {
+              message:
+                "SSH proxy not available for Docker boxes. Use: docker exec -it <container> bash",
+            });
+          }
+
           return {
             proxyUrl: context.spritesClient.getProxyUrl(box.instanceName),
             token: context.spritesClient.getToken(),
@@ -232,9 +239,9 @@ export const boxDetailsRouter = {
         throw new ORPCError("BAD_REQUEST", { message: "Box not running" });
       }
 
-      return context.spritesClient.execShell(
-        boxResult.value.instanceName,
-        input.command
+      const provider = context.providerFactory.getProvider(
+        boxResult.value.provider
       );
+      return provider.execShell(boxResult.value.instanceName, input.command);
     }),
 };

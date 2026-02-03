@@ -20,6 +20,7 @@ import { useFileList, useFileUpload } from "@/hooks/use-filesystem";
 
 interface FileBrowserProps {
   boxId: BoxId;
+  provider: "sprites" | "docker";
 }
 
 function formatFileSize(bytes?: number): string {
@@ -39,8 +40,9 @@ function sortEntries(entries: FileEntry[]): FileEntry[] {
   });
 }
 
-export function FileBrowser({ boxId }: FileBrowserProps) {
-  const [currentPath, setCurrentPath] = useState("/home/sprite");
+export function FileBrowser({ boxId, provider }: FileBrowserProps) {
+  const homePath = provider === "docker" ? "/home/box" : "/home/sprite";
+  const [currentPath, setCurrentPath] = useState(homePath);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, refetch, isRefetching } = useFileList(

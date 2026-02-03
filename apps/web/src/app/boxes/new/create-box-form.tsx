@@ -1,7 +1,7 @@
 "use client";
 
 import { slugify, type McpServerConfig } from "@vps-claude/shared";
-import { ArrowLeft, Box, Network } from "lucide-react";
+import { ArrowLeft, Box, Cloud, Container, Network } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
@@ -28,6 +28,7 @@ export default function CreateBoxForm() {
   const bulkSetEnvVars = useBulkSetBoxEnvVars();
   const { data: credentialsData } = useCredentials();
   const [name, setName] = useState("");
+  const [provider, setProvider] = useState<"sprites" | "docker">("docker");
   const [skills, setSkills] = useState<string[]>([]);
   const [mcpServers, setMcpServers] = useState<Record<string, McpServerConfig>>(
     {}
@@ -64,6 +65,7 @@ export default function CreateBoxForm() {
     createMutation.mutate(
       {
         name,
+        provider,
         skills,
         ...(hasMcpServers && { mcpServers }),
       },
@@ -155,10 +157,47 @@ export default function CreateBoxForm() {
             <p className="text-sm text-muted-foreground">
               Your box will be available at{" "}
               <span className="font-mono text-primary">
-                {subdomainPreview}.sprites.dev
+                {subdomainPreview}.
+                {provider === "docker" ? "localhost" : "sprites.dev"}
               </span>
             </p>
           )}
+        </div>
+
+        {/* Provider Selection */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Provider</Label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-border hover:bg-secondary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+              <input
+                type="radio"
+                name="provider"
+                value="docker"
+                checked={provider === "docker"}
+                onChange={() => setProvider("docker")}
+                className="sr-only"
+              />
+              <Container className="h-4 w-4" />
+              <span className="text-sm">Docker</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-border hover:bg-secondary/50 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+              <input
+                type="radio"
+                name="provider"
+                value="sprites"
+                checked={provider === "sprites"}
+                onChange={() => setProvider("sprites")}
+                className="sr-only"
+              />
+              <Cloud className="h-4 w-4" />
+              <span className="text-sm">Sprites</span>
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {provider === "docker"
+              ? "Local container for development"
+              : "Cloud VM with auto-sleep"}
+          </p>
         </div>
 
         {/* Skills.sh Skills */}
@@ -176,91 +215,95 @@ export default function CreateBoxForm() {
           <EnvVarsInput value={envVars} onChange={setEnvVars} />
         </div>
 
-        {/* Tailscale SSH */}
-        <div className="pt-6 border-t space-y-4">
-          <div className="flex items-center gap-3">
-            <Network className="h-4 w-4 text-primary" />
-            <Label className="text-sm font-medium">
-              Tailscale SSH (Optional)
-            </Label>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Checkbox
-              checked={enableTailscale}
-              onCheckedChange={(checked) =>
-                setEnableTailscale(checked === true)
-              }
-            />
-            <span className="text-sm text-muted-foreground">
-              Enable Tailscale for SSH access via your private network
-            </span>
-          </div>
-
-          {enableTailscale && (
-            <div className="space-y-3 pl-6 border-l-2 border-primary/20">
-              <p className="text-xs text-muted-foreground">
-                Get an auth key from{" "}
-                <a
-                  href="https://login.tailscale.com/admin/settings/keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline"
-                >
-                  Tailscale Admin Console
-                </a>
-                . Use reusable + ephemeral + pre-authorized.
-              </p>
-
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={
-                    tailscaleAuthSource === "direct" ? "default" : "outline"
-                  }
-                  size="sm"
-                  onClick={() => setTailscaleAuthSource("direct")}
-                >
-                  Enter Key
-                </Button>
-                <Button
-                  type="button"
-                  variant={
-                    tailscaleAuthSource === "credential" ? "default" : "outline"
-                  }
-                  size="sm"
-                  onClick={() => setTailscaleAuthSource("credential")}
-                  disabled={tailscaleCredentials.length === 0}
-                >
-                  Use Credential
-                </Button>
-              </div>
-
-              {tailscaleAuthSource === "direct" ? (
-                <Input
-                  type="password"
-                  placeholder="tskey-auth-..."
-                  value={tailscaleAuthKey}
-                  onChange={(e) => setTailscaleAuthKey(e.target.value)}
-                  className="font-mono text-sm"
-                />
-              ) : (
-                <select
-                  value={tailscaleCredentialKey}
-                  onChange={(e) => setTailscaleCredentialKey(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Select a credential...</option>
-                  {tailscaleCredentials.map((cred: { key: string }) => (
-                    <option key={cred.key} value={cred.key}>
-                      {cred.key}
-                    </option>
-                  ))}
-                </select>
-              )}
+        {/* Tailscale SSH - Only for Sprites */}
+        {provider === "sprites" && (
+          <div className="pt-6 border-t space-y-4">
+            <div className="flex items-center gap-3">
+              <Network className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-medium">
+                Tailscale SSH (Optional)
+              </Label>
             </div>
-          )}
-        </div>
+
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={enableTailscale}
+                onCheckedChange={(checked) =>
+                  setEnableTailscale(checked === true)
+                }
+              />
+              <span className="text-sm text-muted-foreground">
+                Enable Tailscale for SSH access via your private network
+              </span>
+            </div>
+
+            {enableTailscale && (
+              <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+                <p className="text-xs text-muted-foreground">
+                  Get an auth key from{" "}
+                  <a
+                    href="https://login.tailscale.com/admin/settings/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline"
+                  >
+                    Tailscale Admin Console
+                  </a>
+                  . Use reusable + ephemeral + pre-authorized.
+                </p>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={
+                      tailscaleAuthSource === "direct" ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() => setTailscaleAuthSource("direct")}
+                  >
+                    Enter Key
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      tailscaleAuthSource === "credential"
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    onClick={() => setTailscaleAuthSource("credential")}
+                    disabled={tailscaleCredentials.length === 0}
+                  >
+                    Use Credential
+                  </Button>
+                </div>
+
+                {tailscaleAuthSource === "direct" ? (
+                  <Input
+                    type="password"
+                    placeholder="tskey-auth-..."
+                    value={tailscaleAuthKey}
+                    onChange={(e) => setTailscaleAuthKey(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                ) : (
+                  <select
+                    value={tailscaleCredentialKey}
+                    onChange={(e) => setTailscaleCredentialKey(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Select a credential...</option>
+                    {tailscaleCredentials.map((cred: { key: string }) => (
+                      <option key={cred.key} value={cred.key}>
+                        {cred.key}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <Button
           type="submit"

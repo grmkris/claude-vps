@@ -20,5 +20,5 @@ export default function FilesPage() {
     );
   }
 
-  return <FileBrowser boxId={id} />;
+  return <FileBrowser boxId={id} provider={boxData.box.provider} />;
 }

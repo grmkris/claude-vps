@@ -13,7 +13,11 @@ RUN apt-get update && apt-get install -y \
     sudo \
     ca-certificates \
     unzip \
+    zsh \
     && rm -rf /var/lib/apt/lists/*
+
+# Install starship prompt
+RUN curl -sS https://starship.rs/install.sh | sh -s -- -y
 
 # Install Bun
 RUN curl -fsSL https://bun.sh/install | bash \
@@ -28,8 +32,8 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && cp -L /root/.local/bin/claude /.sprite/bin/claude \
     && chmod +x /usr/local/bin/claude /.sprite/bin/claude
 
-# Create box user with sudo access
-RUN useradd -m -s /bin/bash box \
+# Create box user with sudo access and zsh shell
+RUN useradd -m -s /usr/bin/zsh box \
     && echo "box ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Create required directories
@@ -42,8 +46,11 @@ RUN mkdir -p \
     /etc/supervisor/conf.d \
     && chown -R box:box /home/box
 
-# Add box user's local bin to PATH
-RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/box/.bashrc
+# Configure zsh with starship prompt
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/box/.zshrc \
+    && echo 'eval "$(starship init zsh)"' >> /home/box/.zshrc \
+    && echo 'autoload -Uz compinit && compinit' >> /home/box/.zshrc \
+    && chown box:box /home/box/.zshrc
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh

@@ -3,6 +3,8 @@
 import type { Route } from "next";
 
 import {
+  Cloud,
+  Container,
   ExternalLink,
   Plus,
   Trash2,
@@ -114,6 +116,18 @@ function BoxCard({ box }: { box: BoxType }) {
 
       <div className="flex items-center gap-2 mb-4">
         <StatusDot status={box.status} showLabel />
+        {box.provider === "docker" && (
+          <span className="flex items-center gap-1 text-xs font-medium bg-blue-500/20 text-blue-600 px-1.5 py-0.5 rounded">
+            <Container className="h-3 w-3" />
+            Docker
+          </span>
+        )}
+        {box.provider === "sprites" && (
+          <span className="flex items-center gap-1 text-xs font-medium bg-purple-500/20 text-purple-600 px-1.5 py-0.5 rounded">
+            <Cloud className="h-3 w-3" />
+            Sprites
+          </span>
+        )}
         {isDevBox(box) && (
           <span className="text-xs font-medium bg-amber-500/20 text-amber-600 px-1.5 py-0.5 rounded">
             DEV
