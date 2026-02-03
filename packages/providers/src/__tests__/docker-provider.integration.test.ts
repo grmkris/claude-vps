@@ -218,7 +218,7 @@ describe.skipIf(!HAS_DOCKER)("DockerProvider Integration", () => {
       // Read the env file to verify
       const result = await provider.execShell(
         instanceName,
-        "cat /home/coder/.bashrc.env"
+        "cat /home/box/.bashrc.env"
       );
       expect(result.stdout).toContain("NEW_VAR");
       expect(result.stdout).toContain("new_value");

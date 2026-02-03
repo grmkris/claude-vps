@@ -18,14 +18,16 @@ import type {
 import { createDockerClient, type DockerClient } from "./docker-client";
 import { generateTraefikLabels, getContainerUrl } from "./traefik-labels";
 
-// Base Docker image for boxes
-const BOX_IMAGE = "ubuntu:22.04";
+// Base Docker image for boxes (multi-arch: amd64 + arm64)
+// Use local image for dev, GHCR for prod
+const BOX_IMAGE =
+  process.env.BOX_IMAGE || "ghcr.io/grmkris/vps-claude-box:latest";
 
 // Label prefix for our managed containers
 const LABEL_PREFIX = "vps-claude";
 
 // Home directory for box user
-const HOME_DIR = "/home/coder";
+const HOME_DIR = "/home/box";
 
 export interface DockerProviderOptions {
   /** Docker socket path or host URL */
@@ -34,6 +36,8 @@ export interface DockerProviderOptions {
   port?: number;
   /** Base domain for routing (e.g., agents.example.com) */
   baseDomain: string;
+  /** Enable TLS with Let's Encrypt (default: false for local dev) */
+  useTls?: boolean;
   /** Logger instance */
   logger: Logger;
 }
@@ -50,7 +54,14 @@ export interface DockerProviderOptions {
 export function createDockerProvider(
   options: DockerProviderOptions
 ): ComputeProvider {
-  const { socketPath, host, port, baseDomain, logger } = options;
+  const {
+    socketPath,
+    host,
+    port,
+    baseDomain,
+    useTls = false,
+    logger,
+  } = options;
 
   const dockerClient: DockerClient = createDockerClient({
     socketPath,
@@ -93,7 +104,7 @@ export function createDockerProvider(
       // Check if already exists
       const existing = await dockerClient.getContainer(instanceName);
       if (existing) {
-        const url = getContainerUrl(config.subdomain, baseDomain);
+        const url = getContainerUrl(config.subdomain, baseDomain, useTls);
         urlCache.set(instanceName, url);
         logger.info(
           { instanceName },
@@ -102,11 +113,13 @@ export function createDockerProvider(
         return { instanceName, url };
       }
 
-      // Generate Traefik labels
+      // Generate Traefik labels - route directly to box-agent (port 33002)
       const labels = generateTraefikLabels({
         serviceName: instanceName,
         subdomain: config.subdomain,
         baseDomain,
+        port: 33002,
+        useTls,
       });
 
       // Add our management labels
@@ -114,8 +127,17 @@ export function createDockerProvider(
       labels[`${LABEL_PREFIX}.user-id`] = config.userId;
       labels[`${LABEL_PREFIX}.subdomain`] = config.subdomain;
 
-      // Convert env vars to array format
-      const envArray = Object.entries(config.envVars).map(
+      // Convert env vars to array format, add Docker-specific vars
+      // Include all config.envVars (BOX_AGENT_SECRET, etc.) plus Docker-specific overrides
+      const dockerEnvVars = {
+        ...config.envVars,
+        APP_ENV: "prod", // Compiled binaries can't use pino-pretty transport
+        BOX_DB_PATH: `${HOME_DIR}/.box-agent/sessions.db`,
+        BOX_INBOX_DIR: `${HOME_DIR}/.inbox`,
+        // Ensure BOX_AGENT_SECRET is available for supervisor %(ENV_*)s expansion
+        BOX_AGENT_SECRET: config.envVars.BOX_AGENT_SECRET,
+      };
+      const envArray = Object.entries(dockerEnvVars).map(
         ([k, v]) => `${k}=${v}`
       );
 
@@ -123,32 +145,31 @@ export function createDockerProvider(
         Labels: labels,
         Env: envArray,
         HostConfig: {
-          // Keep container running
           RestartPolicy: { Name: "unless-stopped" },
-          // Resource limits
           Memory: 2 * 1024 * 1024 * 1024, // 2GB
           NanoCpus: 2 * 1e9, // 2 CPUs
+          NetworkMode: "traefik", // Connect to traefik network for routing
         },
-        // Keep container running with a long-running process
-        Cmd: ["/bin/bash", "-c", "while true; do sleep 3600; done"],
+        // Image is multi-arch, no platform override needed
+        // Keep container running - entrypoint starts supervisor
         Tty: true,
         OpenStdin: true,
         User: "root",
-        // Use "/" initially - HOME_DIR doesn't exist in base image yet
-        WorkingDir: "/",
+        WorkingDir: HOME_DIR,
       });
 
-      // Create coder user and home directory
+      // Base image already has: bun, claude-code, nginx, supervisor, box user
+      // Just ensure directories exist (should be in image but safe to verify)
+      logger.info(
+        { instanceName },
+        "DockerProvider: Verifying container setup"
+      );
       await dockerClient.execShell(
         instanceName,
-        `
-        useradd -m -s /bin/bash coder || true
-        mkdir -p ${HOME_DIR}
-        chown -R coder:coder ${HOME_DIR}
-      `
+        `mkdir -p ${HOME_DIR}/.inbox ${HOME_DIR}/.box-agent ${HOME_DIR}/.claude/skills && chown -R box:box ${HOME_DIR}`
       );
 
-      const url = getContainerUrl(config.subdomain, baseDomain);
+      const url = getContainerUrl(config.subdomain, baseDomain, useTls);
       urlCache.set(instanceName, url);
 
       return { instanceName, url };
@@ -195,14 +216,14 @@ export function createDockerProvider(
     ): Promise<ExecResult> {
       // Split command into args for non-shell execution
       const args = command.split(/\s+/);
-      return dockerClient.exec(instanceName, args, { user: "coder" });
+      return dockerClient.exec(instanceName, args, { user: "box" });
     },
 
     async execShell(
       instanceName: string,
       command: string
     ): Promise<ExecResult> {
-      return dockerClient.execShell(instanceName, command, { user: "coder" });
+      return dockerClient.execShell(instanceName, command, { user: "box" });
     },
 
     // =========================================================================
@@ -442,22 +463,24 @@ function getDockerSetupCommand(
     .join("\n");
 
   const commands: Record<string, string> = {
-    // Install base dependencies
+    // Base deps already installed in image
     SETUP_BASE_DEPS: `
-      apt-get update
-      apt-get install -y curl git nginx supervisor
-      curl -fsSL https://bun.sh/install | bash
-      mv /root/.bun/bin/bun /usr/local/bin/bun
+      echo "Base dependencies pre-installed in box image"
     `,
 
     SETUP_DOWNLOAD_AGENT: `
-      curl -fsSL "${config.boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
-      chmod +x /usr/local/bin/box-agent
+      # Skip download if binary already exists (baked into image)
+      if [ -f /usr/local/bin/box-agent ]; then
+        echo "box-agent already present, skipping download"
+      else
+        curl -fsSL "${config.boxAgentBinaryUrl}" -o /usr/local/bin/box-agent
+        chmod +x /usr/local/bin/box-agent
+      fi
     `,
 
     SETUP_CREATE_DIRS: `
       mkdir -p ${HOME_DIR}/.inbox ${HOME_DIR}/.box-agent ${HOME_DIR}/.claude/skills/email-templates
-      chown -R coder:coder ${HOME_DIR}
+      chown -R box:box ${HOME_DIR}
     `,
 
     SETUP_EMAIL_SKILL: `
@@ -473,7 +496,7 @@ Use the \`email_send\` MCP tool with:
 - **subject**: email subject line
 - **body**: markdown content (auto-converted to HTML)
 SKILLEOF
-      chown -R coder:coder ${HOME_DIR}/.claude
+      chown -R box:box ${HOME_DIR}/.claude
     `,
 
     SETUP_ENV_VARS: `
@@ -481,22 +504,23 @@ SKILLEOF
 # Box environment variables
 ${envExports}
 ENVEOF
-      chown coder:coder ${HOME_DIR}/.bashrc
+      chown box:box ${HOME_DIR}/.bashrc
     `,
 
     SETUP_CREATE_ENV_FILE: `
       cat > ${HOME_DIR}/.bashrc.env << 'ENVEOF'
 ${envFileContent}
 ENVEOF
-      chown coder:coder ${HOME_DIR}/.bashrc.env
+      chown box:box ${HOME_DIR}/.bashrc.env
     `,
 
     SETUP_BOX_AGENT_SERVICE: `
       cat > /etc/supervisor/conf.d/box-agent.conf << 'SUPERVISOREOF'
 [program:box-agent]
-command=/bin/bash -c "source ${HOME_DIR}/.bashrc.env && exec /usr/local/bin/box-agent"
-directory=${HOME_DIR}
-user=coder
+command=/bin/bash -c "source /home/box/.bashrc.env && exec /usr/local/bin/box-agent"
+directory=/home/box
+user=box
+environment=HOME="/home/box"
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/box-agent.err.log
@@ -507,96 +531,51 @@ SUPERVISOREOF
     `,
 
     SETUP_INSTALL_NGINX: `
-      # nginx installed in SETUP_BASE_DEPS
-      echo "nginx already installed"
+      # nginx not needed - Traefik routes directly to box-agent
+      echo "Skipping nginx - using Traefik for routing"
     `,
 
     SETUP_NGINX_SERVICE: `
-      cat > /etc/nginx/nginx.conf << 'NGINXEOF'
-events {
-    worker_connections 1024;
-}
-
-http {
-    include mime.types;
-    default_type application/octet-stream;
-    sendfile on;
-    keepalive_timeout 65;
-
-    upstream box_agent {
-        server 127.0.0.1:33002;
-        keepalive 8;
-    }
-
-    upstream agent_app {
-        server 127.0.0.1:3000;
-        keepalive 8;
-    }
-
-    server {
-        listen 8080;
-        server_name _;
-
-        location /email/ {
-            proxy_pass http://box_agent;
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-
-        location /agent/ {
-            proxy_pass http://box_agent;
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-        }
-
-        location /health {
-            proxy_pass http://box_agent;
-            proxy_http_version 1.1;
-        }
-
-        location / {
-            proxy_pass http://agent_app;
-            proxy_http_version 1.1;
-            proxy_set_header Host $host;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-        }
-    }
-}
-NGINXEOF
-      nginx -t
-      supervisorctl restart nginx || supervisorctl start nginx
+      # nginx not needed - Traefik routes directly to box-agent on port 33002
+      echo "Skipping nginx service - Traefik handles routing"
     `,
 
     SETUP_CLONE_AGENT_APP: `
       [ -d ${HOME_DIR}/agent-app ] || git clone https://github.com/grmkris/agent-next-app ${HOME_DIR}/agent-app
-      chown -R coder:coder ${HOME_DIR}/agent-app
+      chown -R box:box ${HOME_DIR}/agent-app
     `,
 
     SETUP_INSTALL_AGENT_APP: `
-      cd ${HOME_DIR}/agent-app && sudo -u coder /usr/local/bin/bun install
+      cd ${HOME_DIR}/agent-app && sudo -u box /usr/local/bin/bun install
     `,
 
     SETUP_AGENT_APP_SERVICE: `
       cat > /etc/supervisor/conf.d/agent-app.conf << 'SUPERVISOREOF'
 [program:agent-app]
-command=/bin/bash -c "source ${HOME_DIR}/.bashrc.env && cd ${HOME_DIR}/agent-app && export DATABASE_URL=file:${HOME_DIR}/agent-app/local.db && export BETTER_AUTH_SECRET=%(ENV_BOX_AGENT_SECRET)s && exec /usr/local/bin/bun dev --port 3000"
-directory=${HOME_DIR}/agent-app
-user=coder
+command=/bin/bash -c "source /home/box/.bashrc.env && cd /home/box/agent-app && export DATABASE_URL=file:/home/box/agent-app/local.db && export BETTER_AUTH_SECRET=\\$BOX_AGENT_SECRET && exec /usr/local/bin/bun dev --port 3000"
+directory=/home/box/agent-app
+user=box
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/agent-app.err.log
 stdout_logfile=/var/log/agent-app.out.log
-environment=BOX_AGENT_SECRET="${config.envVars.BOX_AGENT_SECRET ?? ""}"
 SUPERVISOREOF
       supervisorctl reread
       supervisorctl update
     `,
 
     SETUP_MCP_SETTINGS: `
-      source ${HOME_DIR}/.bashrc.env
-      ${HOME_DIR}/.local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp
+      source /home/box/.bashrc.env
+      /usr/local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp || echo "MCP settings skipped"
+    `,
+
+    SETUP_INSTALL_CLAUDE: `
+      # Claude CLI pre-installed in box image, verify it exists
+      which claude || curl -fsSL https://claude.ai/install.sh | sudo -u box bash
+    `,
+
+    SETUP_TAILSCALE: `
+      echo "Tailscale skipped for Docker provider"
     `,
   };
 

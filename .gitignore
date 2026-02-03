@@ -48,3 +48,6 @@ coverage
 .cache
 tmp
 tempprogress.txt
+
+# Docker box binaries
+docker/box/box-agent-*

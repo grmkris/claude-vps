@@ -6,6 +6,7 @@
     "dev": "bun run --watch src/index.ts",
     "build": "bun build --compile --minify --sourcemap ./src/index.ts --outfile dist/box-agent",
     "build:linux": "bun build --compile --target=bun-linux-x64 --minify ./src/index.ts --outfile dist/box-agent-linux-x64",
+    "build:linux-arm64": "bun build --compile --target=bun-linux-arm64 --minify ./src/index.ts --outfile dist/box-agent-linux-arm64",
     "start": "bun run src/index.ts",
     "typecheck": "tsgo --noEmit",
     "db:generate": "drizzle-kit generate",

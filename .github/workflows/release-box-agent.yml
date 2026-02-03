@@ -26,8 +26,10 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build Linux binary
-        run: bun run --cwd apps/box-agent build:linux
+      - name: Build Linux binaries
+        run: |
+          bun run --cwd apps/box-agent build:linux
+          bun run --cwd apps/box-agent build:linux-arm64
 
       - name: Generate version
         id: version
@@ -46,16 +48,23 @@ jobs:
           body: |
             ## Box Agent Binary Release
 
-            Pre-compiled binary for Linux x64.
+            Pre-compiled binaries for Linux x64 and ARM64.
 
             **Commit:** ${{ github.sha }}
 
-            ### Installation
+            ### Installation (x64)
             ```bash
             curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/box-agent-linux-x64 -o /usr/local/bin/box-agent
             chmod +x /usr/local/bin/box-agent
             ```
+
+            ### Installation (ARM64)
+            ```bash
+            curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/box-agent-linux-arm64 -o /usr/local/bin/box-agent
+            chmod +x /usr/local/bin/box-agent
+            ```
           files: |
             apps/box-agent/dist/box-agent-linux-x64
+            apps/box-agent/dist/box-agent-linux-arm64
           draft: false
           prerelease: false

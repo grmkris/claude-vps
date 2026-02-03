@@ -20,6 +20,7 @@ import {
 import {
   type BoxAgentConfigId,
   type BoxId,
+  type ProviderType,
   type UserId,
 } from "@vps-claude/shared";
 import { generateSubdomain } from "@vps-claude/shared";
@@ -74,6 +75,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
       userId: UserId,
       input: {
         name: string;
+        provider?: ProviderType;
         skills?: string[];
         envVars?: Record<string, string>;
         mcpServers?: Record<string, McpServerConfig>;
@@ -101,6 +103,7 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
           status: "deploying",
           skills,
           userId,
+          provider: input.provider ?? "sprites",
         })
         .returning();
 

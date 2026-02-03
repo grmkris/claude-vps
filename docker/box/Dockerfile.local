@@ -1,0 +1,6 @@
+# Local test image with box-agent baked in
+FROM vps-claude-box:local
+
+# Copy local box-agent binary (assumes ARM64 build)
+COPY --chown=root:root box-agent-linux-arm64 /usr/local/bin/box-agent
+RUN chmod +x /usr/local/bin/box-agent

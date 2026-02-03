@@ -43,6 +43,7 @@ const TestEnvSchema = z.object({
   INBOUND_API_KEY: z.string().min(1),
   AGENTS_DOMAIN: z.string().min(1),
   CLAUDE_CODE_OAUTH_TOKEN: z.string().min(1),
+  PROVIDER: z.enum(["sprites", "docker"]).optional(),
 });
 // Environment configuration
 const TEST_ENV = TestEnvSchema.parse(env);
@@ -140,9 +141,13 @@ describe("API E2E - Email Flow", () => {
     logger.info("Inbound email client created");
 
     // 5. Create box via SDK
-    logger.info("Creating box via SDK...");
+    logger.info(
+      { provider: TEST_ENV.PROVIDER ?? "sprites" },
+      "Creating box via SDK..."
+    );
     const { box } = await client.box.create({
       name: `E2E Test Box ${Date.now().toString(36)}`,
+      provider: TEST_ENV.PROVIDER,
       ...(TEST_ENV.CLAUDE_CODE_OAUTH_TOKEN && {
         envVars: { CLAUDE_CODE_OAUTH_TOKEN: TEST_ENV.CLAUDE_CODE_OAUTH_TOKEN },
       }),

@@ -15,6 +15,8 @@ export interface TraefikLabelConfig {
   port?: number;
   /** Docker network Traefik uses (default: "traefik") */
   network?: string;
+  /** Enable TLS with Let's Encrypt (default: false for local dev) */
+  useTls?: boolean;
 }
 
 export function generateTraefikLabels(
@@ -26,28 +28,39 @@ export function generateTraefikLabels(
     baseDomain,
     port = 8080,
     network = "traefik",
+    useTls = false,
   } = config;
   const routerName = serviceName.replace(/[^a-zA-Z0-9]/g, "-");
   const host = `${subdomain}.${baseDomain}`;
 
-  return {
+  const labels: Record<string, string> = {
     "traefik.enable": "true",
-    // Docker network for Traefik to use
     "traefik.docker.network": network,
-    // HTTP Router
     [`traefik.http.routers.${routerName}.rule`]: `Host(\`${host}\`)`,
-    [`traefik.http.routers.${routerName}.entrypoints`]: "websecure",
-    [`traefik.http.routers.${routerName}.tls`]: "true",
-    [`traefik.http.routers.${routerName}.tls.certresolver`]: "letsencrypt",
-    // Service
     [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
       String(port),
   };
+
+  if (useTls) {
+    labels[`traefik.http.routers.${routerName}.entrypoints`] = "websecure";
+    labels[`traefik.http.routers.${routerName}.tls`] = "true";
+    labels[`traefik.http.routers.${routerName}.tls.certresolver`] =
+      "letsencrypt";
+  } else {
+    labels[`traefik.http.routers.${routerName}.entrypoints`] = "web";
+  }
+
+  return labels;
 }
 
 /**
  * Generate public URL for a container
  */
-export function getContainerUrl(subdomain: string, baseDomain: string): string {
-  return `https://${subdomain}.${baseDomain}`;
+export function getContainerUrl(
+  subdomain: string,
+  baseDomain: string,
+  useTls = false
+): string {
+  const protocol = useTls ? "https" : "http";
+  return `${protocol}://${subdomain}.${baseDomain}`;
 }

@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { McpServerConfigSchema } from "@vps-claude/db";
-import { BoxId } from "@vps-claude/shared";
+import { BoxId, ProviderType } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -41,6 +41,7 @@ export const boxRouter = {
     .input(
       z.object({
         name: z.string().min(1).max(50),
+        provider: ProviderType.optional(),
         skills: z.array(z.string()).default([]),
         envVars: z.record(z.string(), z.string()).optional(),
         mcpServers: z.record(z.string(), McpServerConfigSchema).optional(),

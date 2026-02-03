@@ -71,6 +71,11 @@ const spritesClient = createSpritesClient({
 
 const providerFactory = createProviderFactory({
   spritesClient,
+  dockerOptions: {
+    baseDomain: "localhost",
+    socketPath: "/var/run/docker.sock",
+    useTls: false,
+  },
   logger,
 });
 
