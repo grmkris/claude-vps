@@ -52,6 +52,14 @@ RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/box/.zshrc \
     && echo 'autoload -Uz compinit && compinit' >> /home/box/.zshrc \
     && chown box:box /home/box/.zshrc
 
+# Copy box-agent binary if present (optional - can also be downloaded at runtime)
+COPY box-agent-linux-* /tmp/
+RUN if [ -f /tmp/box-agent-linux-arm64 ] && [ "$(uname -m)" = "aarch64" ]; then \
+      cp /tmp/box-agent-linux-arm64 /usr/local/bin/box-agent && chmod +x /usr/local/bin/box-agent; \
+    elif [ -f /tmp/box-agent-linux-x64 ] && [ "$(uname -m)" = "x86_64" ]; then \
+      cp /tmp/box-agent-linux-x64 /usr/local/bin/box-agent && chmod +x /usr/local/bin/box-agent; \
+    fi && rm -f /tmp/box-agent-linux-*
+
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

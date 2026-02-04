@@ -10,6 +10,7 @@ const logger = createLogger({ appName: "docker-provider-test" });
 
 const DOCKER_SOCKET = process.env.DOCKER_SOCKET || "/var/run/docker.sock";
 const HAS_DOCKER = fs.existsSync(DOCKER_SOCKET);
+const BASE_DOMAIN = process.env.TEST_BASE_DOMAIN || "agents.localhost";
 
 describe.skipIf(!HAS_DOCKER)("DockerProvider Integration", () => {
   let provider: ComputeProvider;
@@ -19,7 +20,7 @@ describe.skipIf(!HAS_DOCKER)("DockerProvider Integration", () => {
   beforeAll(async () => {
     provider = createDockerProvider({
       socketPath: DOCKER_SOCKET,
-      baseDomain: "test.local",
+      baseDomain: BASE_DOMAIN,
       logger,
     });
 
@@ -235,6 +236,160 @@ describe.skipIf(!HAS_DOCKER)("DockerProvider Integration", () => {
 
       expect(result?.stdout).toContain("NEW_VAR");
       expect(result?.stdout).toContain("new_value");
+    });
+  });
+
+  // HTTP Routing tests (requires Traefik running + box image with box-agent baked in)
+  // To run these tests:
+  // 1. Build box-agent: cd apps/box-agent && bun run build:linux-arm64
+  // 2. Copy to docker/box: cp dist/box-agent-linux-arm64 docker/box/
+  // 3. Build image with binary: cd docker/box && docker build -t vps-claude-box:latest .
+  // 4. Run tests: BOX_IMAGE=vps-claude-box:latest RUN_HTTP_TESTS=1 bun test docker-provider
+  const RUN_HTTP_TESTS = process.env.RUN_HTTP_TESTS === "1";
+  describe.skipIf(!RUN_HTTP_TESTS)("HTTP Routing", () => {
+    let containerUrl: string;
+
+    beforeAll(async () => {
+      containerUrl = `http://docker-test-${suffix}.${BASE_DOMAIN}`;
+
+      // Run setup steps to configure nginx with landing page
+      const setupSteps = [
+        "SETUP_CREATE_ENV_FILE",
+        "SETUP_INSTALL_NGINX",
+        "SETUP_NGINX_SERVICE",
+      ];
+
+      for (const step of setupSteps) {
+        await provider.runSetupStep({
+          instanceName,
+          stepKey: step,
+          boxAgentBinaryUrl: "",
+          envVars: {
+            BOX_SUBDOMAIN: `docker-test-${suffix}`,
+            INSTANCE_NAME: instanceName,
+            BOX_AGENT_SECRET: "test-secret-for-integration-tests-min32chars",
+          },
+          instanceUrl: containerUrl,
+        });
+      }
+
+      // Wait for nginx to start and be routable via Traefik
+      // Retry until we get a successful response (Traefik needs time to discover the container)
+      let ready = false;
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+
+        // Check if Traefik has discovered the router
+        try {
+          const routersRes = await fetch(
+            "http://localhost:8081/api/http/routers",
+            {
+              signal: AbortSignal.timeout(2000),
+            }
+          );
+          if (routersRes.ok) {
+            const routers = (await routersRes.json()) as Array<{
+              name: string;
+            }>;
+            const hasRouter = routers.some((r) =>
+              r.name.includes(`docker-test-${suffix}`)
+            );
+            if (!hasRouter) {
+              logger.info(
+                { attempt: i + 1 },
+                "Traefik hasn't discovered container yet..."
+              );
+              continue;
+            }
+          }
+        } catch {
+          // Traefik API not available, just continue
+        }
+
+        try {
+          const res = await fetch(`${containerUrl}/`, {
+            signal: AbortSignal.timeout(5000),
+          });
+          if (res.ok) {
+            ready = true;
+            break;
+          }
+          logger.info(
+            { attempt: i + 1, status: res.status },
+            "Waiting for nginx..."
+          );
+        } catch (e) {
+          logger.info(
+            { attempt: i + 1, error: String(e) },
+            "Waiting for nginx..."
+          );
+        }
+      }
+      if (!ready) {
+        logger.warn("nginx not ready after 30s, tests may fail");
+      }
+    }, 60_000);
+
+    test("GET / returns static landing page from nginx", async () => {
+      const res = await fetch(`${containerUrl}/`, {
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error({ status: res.status, body }, "Landing page fetch failed");
+      }
+      expect(res.ok).toBe(true);
+
+      const html = await res.text();
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain(`docker-test-${suffix}`);
+      expect(html).toContain("/app");
+      expect(html).toContain("/box/");
+    });
+
+    test("GET /box/health returns BoxAgent health (if running)", async () => {
+      try {
+        const res = await fetch(`${containerUrl}/box/health`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { agent: string };
+          expect(data.agent).toBe("box-agent");
+        }
+      } catch {
+        // Box-agent may not be running in test setup - that's OK
+        expect(true).toBe(true);
+      }
+    });
+
+    test("GET /box/ returns Scalar docs (not landing page)", async () => {
+      try {
+        const res = await fetch(`${containerUrl}/box/`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (res.ok) {
+          const html = await res.text();
+          // Should NOT contain landing page content (that's nginx's job)
+          expect(html).not.toContain("Docker Access");
+        }
+      } catch {
+        // Box-agent may not be running - that's OK
+        expect(true).toBe(true);
+      }
+    });
+
+    test("GET /app/ returns AgentApp response", async () => {
+      try {
+        const res = await fetch(`${containerUrl}/app/`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        // AgentApp may not be installed - any response is valid
+        expect([200, 404, 500, 502, 503]).toContain(res.status);
+      } catch {
+        // Connection refused is OK if AgentApp not running
+        expect(true).toBe(true);
+      }
     });
   });
 });

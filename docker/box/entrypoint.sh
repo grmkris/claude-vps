@@ -19,9 +19,12 @@ BOX_AGENT_URL="${BOX_AGENT_BINARY_URL:-https://github.com/grmkris/claude-vps/rel
 # Download box-agent if not present or if BOX_AGENT_BINARY_URL is set (force update)
 if [ ! -f /usr/local/bin/box-agent ] || [ -n "$BOX_AGENT_BINARY_URL" ]; then
   echo "Downloading box-agent from $BOX_AGENT_URL..."
-  curl -fsSL "$BOX_AGENT_URL" -o /usr/local/bin/box-agent
-  chmod +x /usr/local/bin/box-agent
-  echo "box-agent installed successfully"
+  if curl -fsSL "$BOX_AGENT_URL" -o /usr/local/bin/box-agent; then
+    chmod +x /usr/local/bin/box-agent
+    echo "box-agent installed successfully"
+  else
+    echo "WARNING: Failed to download box-agent, continuing without it"
+  fi
 fi
 
 # Source environment file if it exists

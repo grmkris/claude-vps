@@ -532,13 +532,72 @@ SUPERVISOREOF
     `,
 
     SETUP_INSTALL_NGINX: `
-      # nginx not needed - Traefik routes directly to box-agent
-      echo "Skipping nginx - using Traefik for routing"
+      # Create static landing page directory
+      mkdir -p /var/www/html
+
+      # Create landing page HTML (env vars substituted at runtime via envsubst)
+      cat > /tmp/landing.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Box: $BOX_SUBDOMAIN</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; color: #333; background: #fafafa; }
+    h1 { border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; }
+    nav { display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
+    a { color: #0066cc; text-decoration: none; padding: 0.5rem 1rem; background: #fff; border: 1px solid #ddd; border-radius: 4px; }
+    a:hover { background: #f0f0f0; }
+    pre { background: #fff; padding: 1rem; border-radius: 4px; overflow-x: auto; font-size: 14px; border: 1px solid #ddd; }
+    section { margin: 1.5rem 0; }
+    h2 { font-size: 1.1rem; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>Box: $BOX_SUBDOMAIN</h1>
+  <nav>
+    <a href="/app">App Dashboard</a>
+    <a href="/box/">API Docs</a>
+    <a href="/box/health">Health Check</a>
+  </nav>
+  <section>
+    <h2>Docker Access</h2>
+    <pre>docker exec -it $INSTANCE_NAME bash</pre>
+  </section>
+</body>
+</html>
+HTMLEOF
+
+      # Configure nginx to serve on port 8080
+      cat > /etc/nginx/sites-available/default << 'NGINXEOF'
+server {
+    listen 8080;
+    root /var/www/html;
+    index index.html;
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+NGINXEOF
     `,
 
     SETUP_NGINX_SERVICE: `
-      # nginx not needed - Traefik routes directly to box-agent on port 33002
-      echo "Skipping nginx service - Traefik handles routing"
+      # Generate landing page with env vars using sed (envsubst not always available)
+      source /home/box/.bashrc.env
+      cp /tmp/landing.html /var/www/html/index.html
+      sed -i "s|\\$BOX_SUBDOMAIN|$BOX_SUBDOMAIN|g" /var/www/html/index.html
+      sed -i "s|\\$INSTANCE_NAME|$INSTANCE_NAME|g" /var/www/html/index.html
+
+      # Add nginx supervisor config
+      cat > /etc/supervisor/conf.d/nginx.conf << 'SUPERVISOREOF'
+[program:nginx]
+command=/usr/sbin/nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/nginx.err.log
+stdout_logfile=/var/log/nginx.out.log
+SUPERVISOREOF
+      supervisorctl reread
+      supervisorctl update
     `,
 
     SETUP_CLONE_AGENT_APP: `

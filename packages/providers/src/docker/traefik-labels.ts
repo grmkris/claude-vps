@@ -2,7 +2,7 @@
  * Generate Traefik labels for container routing
  *
  * Routes:
- * - / -> BoxAgent (static landing page)
+ * - / -> nginx:8080 (static landing page)
  * - /app/* -> AgentApp (port 3000, strip /app)
  * - /box/* -> BoxAgent (port 33002, strip /box)
  */
@@ -17,6 +17,8 @@ export interface TraefikLabelConfig {
   boxAgentPort?: number;
   /** AgentApp port (default: 3000) */
   agentAppPort?: number;
+  /** Nginx port for static content (default: 8080) */
+  nginxPort?: number;
   /** Docker network Traefik uses (default: "traefik") */
   network?: string;
   /** Enable TLS with Let's Encrypt (default: false for local dev) */
@@ -32,6 +34,7 @@ export function generateTraefikLabels(
     baseDomain,
     boxAgentPort = 33002,
     agentAppPort = 3000,
+    nginxPort = 8080,
     network = "traefik",
     useTls = false,
   } = config;
@@ -48,6 +51,8 @@ export function generateTraefikLabels(
       String(boxAgentPort),
     [`traefik.http.services.${routerName}-app.loadbalancer.server.port`]:
       String(agentAppPort),
+    [`traefik.http.services.${routerName}-static.loadbalancer.server.port`]:
+      String(nginxPort),
 
     // Middlewares for path stripping
     [`traefik.http.middlewares.${routerName}-strip-box.stripprefix.prefixes`]:
@@ -55,9 +60,9 @@ export function generateTraefikLabels(
     [`traefik.http.middlewares.${routerName}-strip-app.stripprefix.prefixes`]:
       "/app",
 
-    // Router: root (static landing page from BoxAgent)
+    // Router: root (static landing page from nginx)
     [`traefik.http.routers.${routerName}-root.rule`]: `Host(\`${host}\`) && Path(\`/\`)`,
-    [`traefik.http.routers.${routerName}-root.service`]: `${routerName}-box`,
+    [`traefik.http.routers.${routerName}-root.service`]: `${routerName}-static`,
     [`traefik.http.routers.${routerName}-root.priority`]: "1",
     [`traefik.http.routers.${routerName}-root.entrypoints`]: entrypoint,
 
