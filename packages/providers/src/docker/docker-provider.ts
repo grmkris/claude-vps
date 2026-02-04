@@ -23,6 +23,32 @@ import { generateTraefikLabels, getContainerUrl } from "./traefik-labels";
 const BOX_IMAGE =
   process.env.BOX_IMAGE || "ghcr.io/grmkris/vps-claude-box:latest";
 
+/**
+ * Nginx config for Docker containers - static landing page only.
+ * Traefik handles routing to services:
+ *   /         → nginx:8080 (landing page)
+ *   /app/*    → AgentApp:33003 (strip /app)
+ *   /box/*    → BoxAgent:33002 (strip /box)
+ */
+const NGINX_CONFIG = `events {
+    worker_connections 1024;
+}
+
+http {
+    include mime.types;
+    default_type application/octet-stream;
+
+    server {
+        listen 8080;
+        root /var/www/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}`;
+
 // Label prefix for our managed containers
 const LABEL_PREFIX = "vps-claude";
 
@@ -314,7 +340,7 @@ export function createDockerProvider(
       instanceName: string,
       instanceUrl: string
     ): Promise<boolean> {
-      // Check box-agent health endpoint at /box/health
+      // Check box-agent health via Traefik /box/* route (strips /box → /health)
       try {
         const res = await fetch(`${instanceUrl}/box/health`, {
           signal: AbortSignal.timeout(10000),
@@ -334,7 +360,7 @@ export function createDockerProvider(
         return false;
       }
 
-      // Check agent-app at /app/
+      // Check agent-app via Traefik /app/* route (strips /app → /)
       try {
         const res = await fetch(`${instanceUrl}/app/`, {
           signal: AbortSignal.timeout(10000),
@@ -555,9 +581,9 @@ SUPERVISOREOF
 <body>
   <h1>Box: $BOX_SUBDOMAIN</h1>
   <nav>
-    <a href="/app">App Dashboard</a>
-    <a href="/box/">API Docs</a>
-    <a href="/box/health">Health Check</a>
+    <a href="/">App Dashboard</a>
+    <a href="/rpc/">API Docs</a>
+    <a href="/health">Health Check</a>
   </nav>
   <section>
     <h2>Docker Access</h2>
@@ -567,16 +593,9 @@ SUPERVISOREOF
 </html>
 HTMLEOF
 
-      # Configure nginx to serve on port 8080
-      cat > /etc/nginx/sites-available/default << 'NGINXEOF'
-server {
-    listen 8080;
-    root /var/www/html;
-    index index.html;
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
+      # Write full nginx config with reverse proxy
+      cat > /etc/nginx/nginx.conf << 'NGINXEOF'
+${NGINX_CONFIG}
 NGINXEOF
     `,
 
@@ -612,7 +631,7 @@ SUPERVISOREOF
     SETUP_AGENT_APP_SERVICE: `
       cat > /etc/supervisor/conf.d/agent-app.conf << 'SUPERVISOREOF'
 [program:agent-app]
-command=/bin/bash -c "source /home/box/.bashrc.env && cd /home/box/agent-app && export DATABASE_URL=file:/home/box/agent-app/local.db && export BETTER_AUTH_SECRET=\\$BOX_AGENT_SECRET && exec /usr/local/bin/bun dev --port 3000"
+command=/bin/bash -c "source /home/box/.bashrc.env && cd /home/box/agent-app && export DATABASE_URL=file:/home/box/agent-app/local.db && export BETTER_AUTH_SECRET=\\$BOX_AGENT_SECRET && exec /usr/local/bin/bun dev --port 33003"
 directory=/home/box/agent-app
 user=box
 autostart=true

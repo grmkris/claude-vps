@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { getBoxAgentBinaryUrl } from "@vps-claude/shared";
 import { env as bunEnv } from "bun";
 import { z } from "zod";
 
@@ -28,7 +29,7 @@ export const env = z
   })
   .parse(bunEnv);
 
-// Default box-agent binary URL (GitHub releases)
-export const BOX_AGENT_BINARY_URL =
-  env.BOX_AGENT_BINARY_URL ||
-  "https://github.com/grmkris/claude-vps/releases/latest/download/box-agent-linux-x64";
+// Box-agent binary URL (auto-detects architecture)
+export const BOX_AGENT_BINARY_URL = getBoxAgentBinaryUrl(
+  env.BOX_AGENT_BINARY_URL
+);

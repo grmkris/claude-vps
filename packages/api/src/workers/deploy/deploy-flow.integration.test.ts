@@ -3,6 +3,7 @@ import {
   createProviderFactory,
   type ProviderFactory,
 } from "@vps-claude/providers";
+import { getBoxAgentBinaryUrl } from "@vps-claude/shared";
 import { createSpritesClient, type SpritesClient } from "@vps-claude/sprites";
 import { createTestSetup, type TestSetup } from "@vps-claude/test-utils";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
@@ -33,10 +34,10 @@ import {
 const logger = createLogger({ appName: "deploy-flow-integration-test" });
 const SPRITES_TOKEN = process.env.SPRITES_TOKEN;
 
-// Default box-agent binary URL from GitHub releases
-const BOX_AGENT_BINARY_URL =
-  process.env.BOX_AGENT_BINARY_URL ||
-  "https://github.com/grmkris/claude-vps/releases/latest/download/box-agent-linux-x64";
+// Box-agent binary URL (auto-detects architecture)
+const BOX_AGENT_BINARY_URL = getBoxAgentBinaryUrl(
+  process.env.BOX_AGENT_BINARY_URL
+);
 
 describe.skipIf(!SPRITES_TOKEN)("Deploy Flow Integration", () => {
   let testEnv: TestSetup;

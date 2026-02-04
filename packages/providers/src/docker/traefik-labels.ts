@@ -3,7 +3,7 @@
  *
  * Routes:
  * - / -> nginx:8080 (static landing page)
- * - /app/* -> AgentApp (port 3000, strip /app)
+ * - /app/* -> AgentApp (port 33003, strip /app)
  * - /box/* -> BoxAgent (port 33002, strip /box)
  */
 export interface TraefikLabelConfig {
@@ -33,7 +33,7 @@ export function generateTraefikLabels(
     subdomain,
     baseDomain,
     boxAgentPort = 33002,
-    agentAppPort = 3000,
+    agentAppPort = 33003,
     nginxPort = 8080,
     network = "traefik",
     useTls = false,
