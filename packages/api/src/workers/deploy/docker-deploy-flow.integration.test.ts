@@ -384,16 +384,9 @@ describe.skipIf(!HAS_DOCKER)("Docker Deploy Flow Integration", () => {
         signal: AbortSignal.timeout(120000),
       });
 
-      // Wait briefly for session to start, then check execution status
-      await new Promise((r) => setTimeout(r, 3000));
-
+      // Poll for execution status (Claude CLI takes ~8s to start and create session file)
       const statusUrl = `${finalBox.instanceUrl}/box/rpc/sessions/execution-status`;
-      const statusResponse = await fetch(statusUrl, {
-        signal: AbortSignal.timeout(10000),
-      });
-
-      expect(statusResponse.ok).toBe(true);
-      const data = (await statusResponse.json()) as {
+      let data: {
         isExecuting: boolean;
         activeSessions: Array<{
           sessionId: string | null;
@@ -401,9 +394,28 @@ describe.skipIf(!HAS_DOCKER)("Docker Deploy Flow Integration", () => {
           lastActivityAt: number;
           messageCount: number;
         }>;
-      };
+      } = { isExecuting: false, activeSessions: [] };
 
-      logger.info({ data }, "Execution status during session");
+      // Poll every 2 seconds for up to 30 seconds
+      for (let attempt = 0; attempt < 15; attempt++) {
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const statusResponse = await fetch(statusUrl, {
+          signal: AbortSignal.timeout(10000),
+        });
+
+        expect(statusResponse.ok).toBe(true);
+        data = (await statusResponse.json()) as typeof data;
+
+        logger.info(
+          { attempt, data },
+          "Polling execution status during session"
+        );
+
+        if (data.isExecuting) {
+          break;
+        }
+      }
 
       // Session should be running
       expect(data.isExecuting).toBe(true);
