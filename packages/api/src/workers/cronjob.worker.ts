@@ -8,18 +8,21 @@ import {
 } from "@vps-claude/queue";
 import { WORKER_CONFIG } from "@vps-claude/shared";
 
+import type { AgentInboxService } from "../services/agent-inbox.service";
 import type { CronjobService } from "../services/cronjob.service";
 import type { EmailService } from "../services/email.service";
 
 interface CronjobWorkerDeps {
   cronjobService: CronjobService;
   emailService: EmailService;
+  agentInboxService: AgentInboxService;
   redis: Redis;
   logger: Logger;
 }
 
 export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
-  const { cronjobService, emailService, redis, logger } = deps;
+  const { cronjobService, emailService, agentInboxService, redis, logger } =
+    deps;
 
   const worker = new Worker<TriggerCronjobJobData>(
     WORKER_CONFIG.triggerCronjob.name,
@@ -60,6 +63,21 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           });
           event.set({ status: "skipped", reason: "disabled" });
           return { success: true, skipped: true };
+        }
+
+        // Create unified inbox record for the cron trigger
+        const inboxResult = await agentInboxService.create({
+          boxId,
+          type: "cron",
+          content: cronjob.prompt,
+          sourceType: "system",
+          metadata: {
+            cronJobId: cronjob.id,
+            cronSchedule: cronjob.schedule,
+          },
+        });
+        if (inboxResult.isOk()) {
+          event.set({ inboxId: inboxResult.value.id });
         }
 
         // Get box info

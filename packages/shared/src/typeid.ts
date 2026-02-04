@@ -19,6 +19,9 @@ export const idTypesMapNameToPrefix = {
   aiUsage: "aiu",
   userCredential: "ucr",
   boxEnvVar: "bev",
+  agentInbox: "inb",
+  agentInboxNotification: "inn",
+  boxAgentSettings: "bas",
 } as const;
 
 type IdTypesMapNameToPrefix = typeof idTypesMapNameToPrefix;
@@ -133,3 +136,14 @@ export type UserCredentialId = z.infer<typeof UserCredentialId>;
 
 export const BoxEnvVarId = typeIdValidator("boxEnvVar");
 export type BoxEnvVarId = z.infer<typeof BoxEnvVarId>;
+
+export const AgentInboxId = typeIdValidator("agentInbox");
+export type AgentInboxId = z.infer<typeof AgentInboxId>;
+
+export const AgentInboxNotificationId = typeIdValidator(
+  "agentInboxNotification"
+);
+export type AgentInboxNotificationId = z.infer<typeof AgentInboxNotificationId>;
+
+export const BoxAgentSettingsId = typeIdValidator("boxAgentSettings");
+export type BoxAgentSettingsId = z.infer<typeof BoxAgentSettingsId>;

@@ -1,21 +1,14 @@
-/**
- * MCP Server for Box Agent Tools
- *
- * Provides tools via MCP protocol:
- * - AI: generate_image, text_to_speech, speech_to_text
- * - Cronjob: cronjob_list, cronjob_create, cronjob_update, cronjob_delete, cronjob_toggle
- * - Email: email_send, email_list, email_read
- *
- * Supports both stdio (Claude SDK) and HTTP (inspector, remote) transports.
- */
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { BoxCronjobId } from "@vps-claude/shared";
+import { AgentInboxId, BoxCronjobId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { boxApi } from "./box-api-client";
-import { listEmails, readEmail } from "./utils/inbox";
+import {
+  countUnreadByType,
+  formatNotificationSummary,
+  type InboxType,
+} from "./utils/agent-inbox";
 
 function toolResult(result: unknown) {
   return {
@@ -31,17 +24,11 @@ function toolError(error: unknown) {
   };
 }
 
-/**
- * Create a configured MCP server.
- * Used by both stdio mode (Claude SDK) and HTTP mode (inspector, remote access).
- */
 export function createMcpServer() {
   const server = new McpServer({
-    name: "ai-tools",
-    version: "1.0.0",
+    name: "agent-tools",
+    version: "2.0.0",
   });
-
-  // ===== AI Tools (via boxApi.ai.*) =====
 
   server.registerTool(
     "generate_image",
@@ -122,8 +109,6 @@ export function createMcpServer() {
     }
   );
 
-  // ===== Email Tools (local functions + boxApi.email.send) =====
-
   server.registerTool(
     "email_send",
     {
@@ -169,15 +154,30 @@ export function createMcpServer() {
   );
 
   server.registerTool(
-    "email_list",
+    "list",
     {
-      description: "List all emails in the inbox",
-      inputSchema: z.object({}),
+      description:
+        "List inbox items (emails, cron triggers, webhooks, messages). Items are stored in ~/.agent-inbox/{type}/. You can also use 'ls ~/.agent-inbox/' and 'cat' to browse directly.",
+      inputSchema: z.object({
+        type: z
+          .array(z.enum(["email", "cron", "webhook", "message"]))
+          .optional()
+          .describe("Filter by type(s). Omit to list all types."),
+        status: z
+          .enum(["pending", "delivered", "read"])
+          .optional()
+          .describe("Filter by status"),
+        limit: z.number().optional().describe("Maximum items to return"),
+      }),
     },
-    async () => {
+    async (args) => {
       try {
-        const emails = await listEmails();
-        return toolResult({ emails });
+        const result = await boxApi.inbox.list({
+          type: args.type as InboxType[] | undefined,
+          status: args.status,
+          limit: args.limit,
+        });
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
@@ -185,29 +185,152 @@ export function createMcpServer() {
   );
 
   server.registerTool(
-    "email_read",
+    "send",
     {
-      description: "Read an email by its ID",
+      description:
+        "Send a message to another agent/box. Use this for inter-agent communication (NOT for sending emails - use email_send for that).",
       inputSchema: z.object({
-        id: z
-          .string()
-          .describe("The email ID (filename without .json extension)"),
+        to: z
+          .array(
+            z.object({
+              box: z.string().describe("Target box subdomain"),
+              session: z
+                .string()
+                .optional()
+                .describe("Target specific session (contextType:contextId)"),
+            })
+          )
+          .describe("Recipients - one or more boxes/sessions"),
+        content: z.string().describe("Message content (markdown supported)"),
+        title: z.string().optional().describe("Optional message title"),
       }),
     },
     async (args) => {
       try {
-        const email = await readEmail(args.id);
-        if (!email) {
-          throw new Error(`Email not found: ${args.id}`);
-        }
-        return toolResult(email);
+        const result = await boxApi.inbox.send({
+          to: args.to,
+          content: args.content,
+          title: args.title,
+        });
+        return toolResult(result);
       } catch (e) {
         return toolError(e);
       }
     }
   );
 
-  // ===== Cronjob Tools (via boxApi.cronjob.*) =====
+  server.registerTool(
+    "reply",
+    {
+      description:
+        "Reply to an inbox item. For emails, this sends an email reply. For messages, this creates a linked message.",
+      inputSchema: z.object({
+        inboxId: z.string().describe("ID of the inbox item to reply to"),
+        content: z.string().describe("Reply content"),
+      }),
+    },
+    async (args) => {
+      try {
+        const itemResult = await boxApi.inbox.get({
+          id: AgentInboxId.parse(args.inboxId),
+        });
+
+        if (!itemResult.item) {
+          throw new Error(`Inbox item not found: ${args.inboxId}`);
+        }
+
+        const item = itemResult.item;
+
+        if (item.type === "email" && item.metadata) {
+          const metadata = item.metadata as {
+            emailMessageId?: string;
+            subject?: string;
+          };
+          const sourceExternal = item.sourceExternal as {
+            email?: string;
+          } | null;
+
+          if (!sourceExternal?.email) {
+            throw new Error("Cannot reply to email: missing sender address");
+          }
+
+          const result = await boxApi.email.send({
+            to: sourceExternal.email,
+            subject: `Re: ${metadata.subject || ""}`,
+            body: args.content,
+            inReplyTo: metadata.emailMessageId
+              ? {
+                  messageId: metadata.emailMessageId,
+                  from: sourceExternal.email,
+                  subject: metadata.subject || "",
+                }
+              : undefined,
+          });
+          return toolResult({ ...result, replyType: "email" });
+        }
+
+        const result = await boxApi.inbox.send({
+          to: [{ box: item.sourceBoxId as string }],
+          content: args.content,
+          parentId: AgentInboxId.parse(args.inboxId),
+        });
+        return toolResult({ ...result, replyType: "message" });
+      } catch (e) {
+        return toolError(e);
+      }
+    }
+  );
+
+  server.registerTool(
+    "mark_read",
+    {
+      description: "Mark an inbox item as read",
+      inputSchema: z.object({
+        inboxId: z.string().describe("ID of the inbox item to mark as read"),
+      }),
+    },
+    async (args) => {
+      try {
+        const result = await boxApi.inbox.markRead({
+          id: AgentInboxId.parse(args.inboxId),
+        });
+        return toolResult(result);
+      } catch (e) {
+        return toolError(e);
+      }
+    }
+  );
+
+  server.registerTool(
+    "notifications_check",
+    {
+      description:
+        "Check for unread notifications. Returns a summary of new items in your inbox.",
+      inputSchema: z.object({
+        sessionKey: z
+          .string()
+          .optional()
+          .describe("Filter notifications for a specific session"),
+      }),
+    },
+    async (args) => {
+      try {
+        const counts = await countUnreadByType();
+        const summary = formatNotificationSummary(counts);
+        const serverNotifications = await boxApi.inbox.notifications({
+          sessionKey: args.sessionKey,
+        });
+
+        return toolResult({
+          summary: summary || "No new items.",
+          counts,
+          serverNotifications: serverNotifications.notifications,
+        });
+      } catch (e) {
+        return toolError(e);
+      }
+    }
+  );
 
   server.registerTool(
     "cronjob_list",
@@ -326,14 +449,9 @@ export function createMcpServer() {
   return server;
 }
 
-/**
- * Start MCP server over stdio (for Claude SDK subprocess spawning).
- */
 export async function startMcpServer() {
   const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-
-  // Log to stderr so it doesn't interfere with MCP protocol on stdout
-  console.error("AI Tools MCP server started");
+  console.error("Agent Tools MCP server started");
 }

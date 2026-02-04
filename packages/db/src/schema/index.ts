@@ -6,3 +6,4 @@ export * from "./box-deploy-step";
 export * from "./box-email";
 export * from "./credential";
 export * from "./ai-usage";
+export * from "./agent-inbox";
