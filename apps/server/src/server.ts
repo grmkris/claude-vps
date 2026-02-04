@@ -1,4 +1,5 @@
 import { createApi } from "@vps-claude/api/create-api";
+import { createAgentInboxService } from "@vps-claude/api/services/agent-inbox.service";
 import { createAiService } from "@vps-claude/api/services/ai.service";
 import { createApiKeyService } from "@vps-claude/api/services/api-key.service";
 import { createBoxEnvVarService } from "@vps-claude/api/services/box-env-var.service";
@@ -18,10 +19,7 @@ import {
 } from "@vps-claude/api/workers";
 import { createCronjobWorker } from "@vps-claude/api/workers/cronjob.worker";
 import { createDeleteWorker } from "@vps-claude/api/workers/delete-box.worker";
-import {
-  createEmailDeliveryWorker,
-  createEmailSendWorker,
-} from "@vps-claude/api/workers/email-delivery.worker";
+import { createEmailSendWorker } from "@vps-claude/api/workers/email-delivery.worker";
 import { createAuth } from "@vps-claude/auth";
 import { createDb, runMigrations } from "@vps-claude/db";
 import {
@@ -123,8 +121,10 @@ const emailService = createEmailService({
   },
 });
 const credentialService = createCredentialService({ deps: { db } });
+const agentInboxService = createAgentInboxService({ deps: { db } });
 
 const services = {
+  agentInboxService,
   aiService,
   apiKeyService,
   boxEnvVarService,
@@ -181,13 +181,9 @@ const deleteWorker = createDeleteWorker({
   deps: { providerFactory, redis, logger },
 });
 
-const emailDeliveryWorker = createEmailDeliveryWorker({
-  deps: {
-    emailService,
-    redis,
-    logger,
-  },
-});
+// Email delivery now handled by unified inbox + hooks
+// Old emailDeliveryWorker removed - delivery via ~/.agent-inbox/ files
+
 const emailSendWorker = createEmailSendWorker({
   deps: {
     emailService,
@@ -225,6 +221,7 @@ const cronjobWorker = createCronjobWorker({
   deps: {
     cronjobService,
     emailService,
+    agentInboxService,
     redis,
     logger,
   },

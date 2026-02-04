@@ -27,6 +27,7 @@ import {
   skillRouter,
   mcpRouter,
   cronjobRouter,
+  agentInboxRouter,
 } from "./routers/index";
 
 // Combined router for handlers - includes all routes
@@ -44,6 +45,7 @@ const fullAppRouter = {
   boxDetails: boxDetailsRouter,
   boxSessions: boxSessionsRouter,
   cronjob: cronjobRouter,
+  agentInbox: agentInboxRouter,
 };
 
 type HonoVariables = {
@@ -183,27 +185,40 @@ export function createApi({
       emailData.from_email;
     const fromName = fromAddr?.name || emailData.from?.name;
 
-    const result = await services.emailService.processInbound(subdomain, {
-      messageId:
-        emailData.messageId || emailData.message_id || crypto.randomUUID(),
-      from: {
-        email: fromEmail,
-        name: fromName,
-      },
-      to: toAddress,
-      subject: emailData.subject,
-      textBody:
-        emailData.parsedData?.textBody ||
-        emailData.cleanedContent?.text ||
-        emailData.text ||
-        emailData.text_body,
-      htmlBody:
-        emailData.parsedData?.htmlBody ||
-        emailData.cleanedContent?.html ||
-        emailData.html ||
-        emailData.html_body,
-      rawEmail: emailData.parsedData?.raw || emailData.raw,
-    });
+    const emailMessageId =
+      emailData.messageId || emailData.message_id || crypto.randomUUID();
+    const textBody =
+      emailData.parsedData?.textBody ||
+      emailData.cleanedContent?.text ||
+      emailData.text ||
+      emailData.text_body ||
+      "";
+    const htmlBody =
+      emailData.parsedData?.htmlBody ||
+      emailData.cleanedContent?.html ||
+      emailData.html ||
+      emailData.html_body;
+
+    // Use unified agent inbox service
+    const result = await services.agentInboxService.processInbound(
+      subdomain,
+      "email",
+      textBody,
+      {
+        sourceType: "external",
+        sourceExternal: {
+          email: fromEmail,
+          name: fromName,
+        },
+        metadata: {
+          emailMessageId,
+          from: { email: fromEmail, name: fromName },
+          to: toAddress,
+          subject: emailData.subject,
+          htmlBody,
+        },
+      }
+    );
 
     if (result.isErr()) {
       wideEvent?.set({
@@ -214,8 +229,19 @@ export function createApi({
       return c.json({ message: result.error.message }, 200);
     }
 
-    wideEvent?.set({ emailId: result.value.id, status: "queued" });
-    return c.json({ success: true, emailId: result.value.id });
+    const { inbox, deliveryMode } = result.value;
+    wideEvent?.set({
+      inboxId: inbox.id,
+      deliveryMode,
+      status: "created",
+    });
+
+    // TODO: Implement delivery based on deliveryMode
+    // - "spawn": Create new Claude session with inbox item as prompt
+    // - "notify": Write file to ~/.agent-inbox/, hook notifies running sessions
+    // For now, delivery happens via box-agent hooks reading ~/.agent-inbox/
+
+    return c.json({ success: true, inboxId: inbox.id });
   });
 
   const apiHandler = new OpenAPIHandler(fullAppRouter, {

@@ -6,6 +6,7 @@ import type { Context as HonoContext } from "hono";
 
 import { UserId } from "@vps-claude/shared";
 
+import type { AgentInboxService } from "./services/agent-inbox.service";
 import type { AiService } from "./services/ai.service";
 import type { ApiKeyService } from "./services/api-key.service";
 import type { BoxEnvVarService } from "./services/box-env-var.service";
@@ -16,6 +17,7 @@ import type { DeployStepService } from "./services/deploy-step.service";
 import type { EmailService } from "./services/email.service";
 
 export interface Services {
+  agentInboxService: AgentInboxService;
   aiService: AiService;
   apiKeyService: ApiKeyService;
   boxEnvVarService: BoxEnvVarService;
