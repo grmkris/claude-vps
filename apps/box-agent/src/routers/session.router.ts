@@ -1,6 +1,9 @@
+import { eq } from "drizzle-orm";
 import { homedir } from "node:os";
 import { z } from "zod";
 
+import { db } from "../db";
+import { executionState } from "../db/schema";
 import { logger } from "../logger";
 import { protectedProcedure, publicProcedure } from "../procedures";
 import { runWithSession } from "../utils/agent";
@@ -105,5 +108,40 @@ export const sessionRouter = {
       }).catch((err) => logger.error({ err }, "Session failed"));
 
       return { success: true, contextId };
+    }),
+
+  executionStatus: publicProcedure
+    .route({ method: "GET", path: "/sessions/execution-status" })
+    .output(
+      z.object({
+        isExecuting: z.boolean(),
+        activeSessions: z.array(
+          z.object({
+            sessionId: z.string().nullable(),
+            startedAt: z.number(),
+            lastActivityAt: z.number(),
+            messageCount: z.number(),
+          })
+        ),
+      })
+    )
+    .handler(async ({ context }) => {
+      context.wideEvent?.set({ op: "session.executionStatus" });
+
+      const running = db
+        .select()
+        .from(executionState)
+        .where(eq(executionState.status, "running"))
+        .all();
+
+      return {
+        isExecuting: running.length > 0,
+        activeSessions: running.map((s) => ({
+          sessionId: s.sessionId,
+          startedAt: s.startedAt,
+          lastActivityAt: s.lastActivityAt,
+          messageCount: s.messageCount,
+        })),
+      };
     }),
 };

@@ -15,4 +15,16 @@ sqlite.run(`
   )
 `);
 
+sqlite.run(`
+  CREATE TABLE IF NOT EXISTS execution_state (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_file TEXT NOT NULL UNIQUE,
+    session_id TEXT,
+    status TEXT NOT NULL DEFAULT 'running',
+    started_at INTEGER NOT NULL,
+    last_activity_at INTEGER NOT NULL,
+    message_count INTEGER NOT NULL DEFAULT 0
+  )
+`);
+
 logger.info("Database migrations complete");
