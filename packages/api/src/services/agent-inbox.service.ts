@@ -64,7 +64,6 @@ export function createAgentInboxService({
 }) {
   const { db } = deps;
 
-  // Settings management
   const getSettings = async (
     boxId: BoxId
   ): Promise<Result<BoxAgentSettings | null, AgentInboxServiceError>> => {
@@ -106,16 +105,13 @@ export function createAgentInboxService({
     type: InboxType,
     itemOverride?: boolean
   ): DeliveryMode => {
-    // Item-level override takes precedence
     if (itemOverride !== undefined) {
       return itemOverride ? "spawn" : "notify";
     }
-    // Then box settings
     const config = settings.deliveryConfig as DeliveryConfig;
     return config[type] ?? DEFAULT_DELIVERY_CONFIG[type];
   };
 
-  // Inbox item CRUD
   const create = async (
     input: CreateInboxItemInput
   ): Promise<Result<AgentInbox, AgentInboxServiceError>> => {
@@ -158,8 +154,6 @@ export function createAgentInboxService({
     if (inboxResult.isErr()) return err(inboxResult.error);
 
     const inbox = inboxResult.value;
-
-    // Create notifications for each recipient
     const notificationValues = recipients.map((r) => ({
       inboxId: inbox.id,
       targetBoxId: r.boxId,
@@ -234,7 +228,6 @@ export function createAgentInboxService({
     return updateStatus(id, "read");
   };
 
-  // Notification management
   const getUnreadNotifications = async (
     boxId: BoxId,
     sessionKey?: string
@@ -244,10 +237,7 @@ export function createAgentInboxService({
       eq(agentInboxNotification.status, "unread"),
     ];
 
-    // If sessionKey provided, get notifications for that session OR null (box-wide)
-    // If no sessionKey, get all notifications for the box
     if (sessionKey) {
-      // This is a simplification - in practice you might want OR logic
       conditions.push(eq(agentInboxNotification.targetSessionKey, sessionKey));
     }
 
@@ -288,7 +278,6 @@ export function createAgentInboxService({
     return ok(undefined);
   };
 
-  // Box lookup by agent secret
   const getBoxByAgentSecret = async (
     agentSecret: string
   ): Promise<Result<SelectBoxSchema | null, AgentInboxServiceError>> => {
@@ -305,7 +294,6 @@ export function createAgentInboxService({
     return ok(boxResult ?? null);
   };
 
-  // Process inbound for different types
   const processInbound = async (
     subdomain: string,
     type: InboxType,
@@ -388,7 +376,6 @@ export function createAgentInboxService({
     });
   };
 
-  // Send message from one box to another
   const sendMessage = async (
     senderBoxId: BoxId,
     recipients: InboxRecipient[],
@@ -407,9 +394,6 @@ export function createAgentInboxService({
       return err({ type: "NOT_FOUND", message: "Sender box not found" });
     }
 
-    // Create inbox item for each recipient box
-    // Note: In a real implementation, you might want to create separate items
-    // or use a more sophisticated fanout mechanism
     const uniqueBoxIds = [...new Set(recipients.map((r) => r.boxId))];
 
     const results: AgentInbox[] = [];
@@ -438,12 +422,10 @@ export function createAgentInboxService({
       results.push(result.value.inbox);
     }
 
-    // Return the first created item (caller can query for all if needed)
     return ok(results[0]!);
   };
 
   return {
-    // Settings
     getSettings,
     getOrCreateSettings,
     getDeliveryMode,
@@ -472,7 +454,6 @@ export function createAgentInboxService({
       return ok(result[0]!);
     },
 
-    // Inbox items
     create,
     createWithNotifications,
     getById,
@@ -480,16 +461,13 @@ export function createAgentInboxService({
     updateStatus,
     markAsRead,
 
-    // Notifications
     getUnreadNotifications,
     markNotificationRead,
     markNotificationReadByInboxId,
 
-    // High-level operations
     processInbound,
     sendMessage,
 
-    // Get inbox items with notifications for display
     getInboxWithNotifications: async (
       boxId: BoxId,
       options?: { type?: InboxType | InboxType[]; limit?: number }

@@ -47,7 +47,6 @@ export const agentInboxRouter = {
         type: input.type,
       });
 
-      // Verify user owns this box
       const boxResult = await context.boxService.getById(input.boxId);
       if (boxResult.isErr() || !boxResult.value) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
@@ -62,14 +61,12 @@ export const agentInboxRouter = {
         limit: input.limit,
       });
 
-      return result.match(
-        (items) => ({ items: items as z.infer<typeof InboxItemOutput>[] }),
-        (error) => {
-          throw new ORPCError("INTERNAL_SERVER_ERROR", {
-            message: error.message,
-          });
-        }
-      );
+      if (result.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: result.error.message,
+        });
+      }
+      return { items: result.value };
     }),
 
   get: protectedProcedure
@@ -81,20 +78,12 @@ export const agentInboxRouter = {
 
       const result = await context.agentInboxService.getById(input.id);
 
-      return result.match(
-        (item) => {
-          if (!item) return { item: null };
-
-          // Verify user owns the box
-          // This would need boxService.getById to check ownership
-          return { item: item as z.infer<typeof InboxItemOutput> };
-        },
-        (error) => {
-          throw new ORPCError("INTERNAL_SERVER_ERROR", {
-            message: error.message,
-          });
-        }
-      );
+      if (result.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: result.error.message,
+        });
+      }
+      return { item: result.value ?? null };
     }),
 
   markRead: protectedProcedure
@@ -106,14 +95,12 @@ export const agentInboxRouter = {
 
       const result = await context.agentInboxService.markAsRead(input.id);
 
-      return result.match(
-        () => ({ success: true }),
-        (error) => {
-          throw new ORPCError("INTERNAL_SERVER_ERROR", {
-            message: error.message,
-          });
-        }
-      );
+      if (result.isErr()) {
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: result.error.message,
+        });
+      }
+      return { success: true };
     }),
 
   getUnreadCounts: protectedProcedure
@@ -136,7 +123,6 @@ export const agentInboxRouter = {
         boxId: input.boxId,
       });
 
-      // Verify user owns this box
       const boxResult = await context.boxService.getById(input.boxId);
       if (boxResult.isErr() || !boxResult.value) {
         throw new ORPCError("NOT_FOUND", { message: "Box not found" });
@@ -145,7 +131,6 @@ export const agentInboxRouter = {
         throw new ORPCError("FORBIDDEN", { message: "Not authorized" });
       }
 
-      // Get unread items by type
       const result = await context.agentInboxService.listByBox(input.boxId, {
         status: "pending",
         limit: 100,

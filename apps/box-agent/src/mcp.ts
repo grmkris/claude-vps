@@ -1,15 +1,3 @@
-/**
- * MCP Server for Box Agent Tools
- *
- * Provides tools via MCP protocol:
- * - AI: generate_image, text_to_speech, speech_to_text
- * - Cronjob: cronjob_list, cronjob_create, cronjob_update, cronjob_delete, cronjob_toggle
- * - Email: email_send
- * - Inbox: list, send, reply, mark_read (unified inbox for all message types)
- *
- * Supports both stdio (Claude SDK) and HTTP (inspector, remote) transports.
- */
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { AgentInboxId, BoxCronjobId } from "@vps-claude/shared";
@@ -36,17 +24,11 @@ function toolError(error: unknown) {
   };
 }
 
-/**
- * Create a configured MCP server.
- * Used by both stdio mode (Claude SDK) and HTTP mode (inspector, remote access).
- */
 export function createMcpServer() {
   const server = new McpServer({
     name: "agent-tools",
     version: "2.0.0",
   });
-
-  // ===== AI Tools (via boxApi.ai.*) =====
 
   server.registerTool(
     "generate_image",
@@ -127,8 +109,6 @@ export function createMcpServer() {
     }
   );
 
-  // ===== Email Tools (local functions + boxApi.email.send) =====
-
   server.registerTool(
     "email_send",
     {
@@ -172,8 +152,6 @@ export function createMcpServer() {
       }
     }
   );
-
-  // ===== Inbox Tools (unified inbox for all message types) =====
 
   server.registerTool(
     "list",
@@ -253,7 +231,6 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        // First get the original item to determine type
         const itemResult = await boxApi.inbox.get({
           id: AgentInboxId.parse(args.inboxId),
         });
@@ -264,9 +241,7 @@ export function createMcpServer() {
 
         const item = itemResult.item;
 
-        // Route based on type
         if (item.type === "email" && item.metadata) {
-          // Reply via email
           const metadata = item.metadata as {
             emailMessageId?: string;
             subject?: string;
@@ -294,7 +269,6 @@ export function createMcpServer() {
           return toolResult({ ...result, replyType: "email" });
         }
 
-        // For messages, create a linked message
         const result = await boxApi.inbox.send({
           to: [{ box: item.sourceBoxId as string }],
           content: args.content,
@@ -341,11 +315,8 @@ export function createMcpServer() {
     },
     async (args) => {
       try {
-        // Get counts from local filesystem
         const counts = await countUnreadByType();
         const summary = formatNotificationSummary(counts);
-
-        // Also get from server for any pending notifications
         const serverNotifications = await boxApi.inbox.notifications({
           sessionKey: args.sessionKey,
         });
@@ -360,8 +331,6 @@ export function createMcpServer() {
       }
     }
   );
-
-  // ===== Cronjob Tools (via boxApi.cronjob.*) =====
 
   server.registerTool(
     "cronjob_list",
@@ -480,14 +449,9 @@ export function createMcpServer() {
   return server;
 }
 
-/**
- * Start MCP server over stdio (for Claude SDK subprocess spawning).
- */
 export async function startMcpServer() {
   const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-
-  // Log to stderr so it doesn't interfere with MCP protocol on stdout
   console.error("Agent Tools MCP server started");
 }

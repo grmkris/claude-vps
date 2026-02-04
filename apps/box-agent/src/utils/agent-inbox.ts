@@ -4,12 +4,10 @@ import { z } from "zod";
 
 import { env } from "../env";
 
-// Base directory for agent inbox
 const AGENT_INBOX_DIR = env.BOX_INBOX_DIR.replace("/.inbox", "/.agent-inbox");
 
 export type InboxType = "email" | "cron" | "webhook" | "message";
 
-// Unified inbox item schema for files
 export const InboxItemSchema = z.object({
   id: z.string(),
   type: z.enum(["email", "cron", "webhook", "message"]),
@@ -26,19 +24,15 @@ export const InboxItemSchema = z.object({
   content: z.string(),
   metadata: z
     .object({
-      // Email
       emailMessageId: z.string().optional(),
       subject: z.string().optional(),
       htmlBody: z.string().optional(),
       inReplyTo: z.string().optional(),
-      // Cron
       cronJobId: z.string().optional(),
       cronSchedule: z.string().optional(),
-      // Webhook
       webhookId: z.string().optional(),
       webhookPayload: z.record(z.unknown()).optional(),
       callbackUrl: z.string().optional(),
-      // Message
       title: z.string().optional(),
     })
     .optional(),
