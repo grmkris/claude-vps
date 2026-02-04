@@ -244,9 +244,8 @@ describe.skipIf(!HAS_DOCKER)("DockerProvider Integration", () => {
   // 1. Build box-agent: cd apps/box-agent && bun run build:linux-arm64
   // 2. Copy to docker/box: cp dist/box-agent-linux-arm64 docker/box/
   // 3. Build image with binary: cd docker/box && docker build -t vps-claude-box:latest .
-  // 4. Run tests: BOX_IMAGE=vps-claude-box:latest RUN_HTTP_TESTS=1 bun test docker-provider
-  const RUN_HTTP_TESTS = process.env.RUN_HTTP_TESTS === "1";
-  describe.skipIf(!RUN_HTTP_TESTS)("HTTP Routing", () => {
+  // 4. Run tests: BOX_IMAGE=vps-claude-box:latest bun test docker-provider
+  describe("HTTP Routing", () => {
     let containerUrl: string;
 
     beforeAll(async () => {
