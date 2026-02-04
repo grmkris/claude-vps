@@ -581,9 +581,9 @@ SUPERVISOREOF
 <body>
   <h1>Box: $BOX_SUBDOMAIN</h1>
   <nav>
-    <a href="/">App Dashboard</a>
-    <a href="/rpc/">API Docs</a>
-    <a href="/health">Health Check</a>
+    <a href="/app">App Dashboard</a>
+    <a href="/box/rpc/">API Docs</a>
+    <a href="/box/health">Health Check</a>
   </nav>
   <section>
     <h2>Docker Access</h2>

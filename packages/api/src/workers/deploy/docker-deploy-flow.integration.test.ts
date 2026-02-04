@@ -37,6 +37,13 @@ const DOCKER_SOCKET = process.env.DOCKER_SOCKET || "/var/run/docker.sock";
 const HAS_DOCKER = fs.existsSync(DOCKER_SOCKET);
 const BASE_DOMAIN = process.env.TEST_BASE_DOMAIN || "agents.localhost";
 
+// Claude authentication - needed for session tests
+const CLAUDE_TOKEN =
+  process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
+const CLAUDE_TOKEN_KEY = process.env.CLAUDE_CODE_OAUTH_TOKEN
+  ? "CLAUDE_CODE_OAUTH_TOKEN"
+  : "ANTHROPIC_API_KEY";
+
 // Box-agent binary URL (auto-detects architecture)
 const BOX_AGENT_BINARY_URL = getBoxAgentBinaryUrl(
   process.env.BOX_AGENT_BINARY_URL
@@ -181,7 +188,10 @@ describe.skipIf(!HAS_DOCKER)("Docker Deploy Flow Integration", () => {
   }, 30_000);
 
   // Helper to deploy and wait for running status
-  async function deployAndWait(boxName: string) {
+  async function deployAndWait(
+    boxName: string,
+    envVars?: Record<string, string>
+  ) {
     const boxResult = await boxService.create(testEnv.users.authenticated.id, {
       name: boxName,
       provider: "docker",
@@ -189,6 +199,17 @@ describe.skipIf(!HAS_DOCKER)("Docker Deploy Flow Integration", () => {
 
     expect(boxResult.isOk()).toBe(true);
     const box = boxResult._unsafeUnwrap();
+
+    // Inject env vars immediately after box creation (before deploy job runs)
+    if (envVars) {
+      for (const [key, value] of Object.entries(envVars)) {
+        await boxEnvVarService.set(box.id, testEnv.users.authenticated.id, {
+          key,
+          value,
+          type: "literal",
+        });
+      }
+    }
 
     const maxWait = 5 * 60 * 1000;
     const pollInterval = 5000;
@@ -328,76 +349,83 @@ describe.skipIf(!HAS_DOCKER)("Docker Deploy Flow Integration", () => {
     logger.info("Execution status test passed - initially not executing");
   }, 600_000);
 
-  it("execution status shows running session during Claude execution", async () => {
-    const testSuffix = Date.now().toString(36);
-    const boxName = `docker-exec-running-${testSuffix}`;
+  it.skipIf(!CLAUDE_TOKEN)(
+    "execution status shows running session during Claude execution",
+    async () => {
+      const testSuffix = Date.now().toString(36);
+      const boxName = `docker-exec-running-${testSuffix}`;
 
-    const { box, finalBox } = await deployAndWait(boxName);
+      // Pass Claude token to container
+      const { box, finalBox } = await deployAndWait(boxName, {
+        [CLAUDE_TOKEN_KEY]: CLAUDE_TOKEN!,
+      });
 
-    // Get agent secret
-    const settingsResult = await emailService.getOrCreateSettings(box.id);
-    expect(settingsResult.isOk()).toBe(true);
-    const agentSecret = settingsResult._unsafeUnwrap().agentSecret;
+      // Get agent secret
+      const settingsResult = await emailService.getOrCreateSettings(box.id);
+      expect(settingsResult.isOk()).toBe(true);
+      const agentSecret = settingsResult._unsafeUnwrap().agentSecret;
 
-    // Start a long-running Claude session (don't await completion)
-    const streamUrl = `${finalBox.instanceUrl}/box/rpc/sessions/stream`;
-    logger.info({ streamUrl }, "Starting long-running session...");
+      // Start a long-running Claude session (don't await completion)
+      const streamUrl = `${finalBox.instanceUrl}/box/rpc/sessions/stream`;
+      logger.info({ streamUrl }, "Starting long-running session...");
 
-    const sessionPromise = fetch(streamUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Box-Secret": agentSecret,
-      },
-      body: JSON.stringify({
-        message:
-          "Count from 1 to 20, saying each number on a new line, with a brief pause description between each",
-        contextType: "test",
-        contextId: `exec-test-${testSuffix}`,
-      }),
-      signal: AbortSignal.timeout(120000),
-    });
+      const sessionPromise = fetch(streamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Box-Secret": agentSecret,
+        },
+        body: JSON.stringify({
+          message:
+            "Count from 1 to 20, saying each number on a new line, with a brief pause description between each",
+          contextType: "test",
+          contextId: `exec-test-${testSuffix}`,
+        }),
+        signal: AbortSignal.timeout(120000),
+      });
 
-    // Wait briefly for session to start, then check execution status
-    await new Promise((r) => setTimeout(r, 3000));
+      // Wait briefly for session to start, then check execution status
+      await new Promise((r) => setTimeout(r, 3000));
 
-    const statusUrl = `${finalBox.instanceUrl}/box/rpc/sessions/execution-status`;
-    const statusResponse = await fetch(statusUrl, {
-      signal: AbortSignal.timeout(10000),
-    });
+      const statusUrl = `${finalBox.instanceUrl}/box/rpc/sessions/execution-status`;
+      const statusResponse = await fetch(statusUrl, {
+        signal: AbortSignal.timeout(10000),
+      });
 
-    expect(statusResponse.ok).toBe(true);
-    const data = (await statusResponse.json()) as {
-      isExecuting: boolean;
-      activeSessions: Array<{
-        sessionId: string | null;
-        startedAt: number;
-        lastActivityAt: number;
-        messageCount: number;
-      }>;
-    };
+      expect(statusResponse.ok).toBe(true);
+      const data = (await statusResponse.json()) as {
+        isExecuting: boolean;
+        activeSessions: Array<{
+          sessionId: string | null;
+          startedAt: number;
+          lastActivityAt: number;
+          messageCount: number;
+        }>;
+      };
 
-    logger.info({ data }, "Execution status during session");
+      logger.info({ data }, "Execution status during session");
 
-    // Session should be running
-    expect(data.isExecuting).toBe(true);
-    expect(data.activeSessions.length).toBeGreaterThan(0);
+      // Session should be running
+      expect(data.isExecuting).toBe(true);
+      expect(data.activeSessions.length).toBeGreaterThan(0);
 
-    // Verify session details
-    const session = data.activeSessions[0];
-    expect(session).toBeDefined();
-    expect(session?.startedAt).toBeGreaterThan(0);
-    expect(session?.lastActivityAt).toBeGreaterThan(0);
-    expect(session?.messageCount).toBeGreaterThanOrEqual(0);
+      // Verify session details
+      const session = data.activeSessions[0];
+      expect(session).toBeDefined();
+      expect(session?.startedAt).toBeGreaterThan(0);
+      expect(session?.lastActivityAt).toBeGreaterThan(0);
+      expect(session?.messageCount).toBeGreaterThanOrEqual(0);
 
-    // Clean up - cancel the session
-    try {
-      const response = await sessionPromise;
-      void response.body?.cancel();
-    } catch {
-      // Ignore timeout/cancel errors
-    }
+      // Clean up - cancel the session
+      try {
+        const response = await sessionPromise;
+        void response.body?.cancel();
+      } catch {
+        // Ignore timeout/cancel errors
+      }
 
-    logger.info("Execution status test passed - detected running session");
-  }, 600_000);
+      logger.info("Execution status test passed - detected running session");
+    },
+    600_000
+  );
 });
