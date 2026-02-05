@@ -1,6 +1,7 @@
 import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
+import { agentInboxRouter } from "./agent-inbox.router";
 import { apiKeyRouter } from "./api-key.router";
 import { boxAgentConfigRouter } from "./box-agent-config.router";
 import { boxAiRouter } from "./box-ai.router";
@@ -33,6 +34,7 @@ export const appRouter = {
 
 // All routers exported separately to avoid TS7056 type explosion
 export {
+  agentInboxRouter,
   boxRouter,
   credentialRouter,
   boxApiRouter,
@@ -63,6 +65,7 @@ export type BoxSessionsRouterType = typeof boxSessionsRouter;
 export type CronjobRouterType = typeof cronjobRouter;
 export type BoxApiRouterType = typeof boxApiRouter;
 export type BoxAiRouterType = typeof boxAiRouter;
+export type AgentInboxRouterType = typeof agentInboxRouter;
 
 // Box API client type (for box-agent calling /box/* endpoints)
 export type BoxApiClient = RouterClient<BoxApiRouterType> & {
@@ -82,4 +85,5 @@ export type AppRouterClient = RouterClient<AppRouter> & {
   boxDetails: RouterClient<BoxDetailsRouterType>;
   boxSessions: RouterClient<BoxSessionsRouterType>;
   cronjob: RouterClient<CronjobRouterType>;
+  agentInbox: RouterClient<AgentInboxRouterType>;
 };
