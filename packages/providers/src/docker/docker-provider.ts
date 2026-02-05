@@ -417,10 +417,12 @@ export function createDockerProvider(
         envContent
       );
 
-      // Restart box-agent to pick up changes
+      // Restart box-agent via supervisor to pick up new env vars
+      // Supervisor config sources .bashrc.env before starting box-agent
       await dockerClient.execShell(
         instanceName,
-        "pkill -f box-agent || true; nohup /usr/local/bin/box-agent > /var/log/box-agent.log 2>&1 &"
+        "supervisorctl restart box-agent",
+        { user: "root" }
       );
     },
 
@@ -481,11 +483,18 @@ function getDockerSetupCommand(
     instanceUrl: string;
   }
 ): string {
-  const envExports = Object.entries(config.envVars)
+  // Add Docker-specific env vars needed by box-agent
+  const allEnvVars = {
+    ...config.envVars,
+    BOX_DB_PATH: `${HOME_DIR}/.box-agent/sessions.db`,
+    BOX_INBOX_DIR: `${HOME_DIR}/.inbox`,
+  };
+
+  const envExports = Object.entries(allEnvVars)
     .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
     .join("\n");
 
-  const envFileContent = Object.entries(config.envVars)
+  const envFileContent = Object.entries(allEnvVars)
     .map(([k, v]) => `export ${k}="${v.replace(/"/g, '\\"')}"`)
     .join("\n");
 
