@@ -173,9 +173,9 @@ describe("buildDeployFlow", () => {
         skillsWithSources: [
           {
             skillId: "remotion-best-practices",
-            topSource: "remotion-dev/skills",
+            source: "remotion-dev/skills",
           },
-          { skillId: "vercel-ai", topSource: "vercel-labs/skills" },
+          { skillId: "vercel-ai", source: "vercel-labs/skills" },
         ],
       });
 
@@ -188,9 +188,9 @@ describe("buildDeployFlow", () => {
       const flow = buildDeployFlow({
         ...baseParams,
         skillsWithSources: [
-          { skillId: "skill-a", topSource: "a/repo" },
-          { skillId: "skill-b", topSource: "b/repo" },
-          { skillId: "skill-c", topSource: "c/repo" },
+          { skillId: "skill-a", source: "a/repo" },
+          { skillId: "skill-b", source: "b/repo" },
+          { skillId: "skill-c", source: "c/repo" },
         ],
         completedSkillIds: ["skill-a", "skill-c"],
       });
@@ -203,8 +203,8 @@ describe("buildDeployFlow", () => {
       const flow = buildDeployFlow({
         ...baseParams,
         skillsWithSources: [
-          { skillId: "skill-a", topSource: "a/repo" },
-          { skillId: "skill-b", topSource: "b/repo" },
+          { skillId: "skill-a", source: "a/repo" },
+          { skillId: "skill-b", source: "b/repo" },
         ],
         completedSkillIds: ["skill-a", "skill-b"],
       });
@@ -228,7 +228,7 @@ describe("buildDeployFlow", () => {
       const flow = buildDeployFlow({
         ...baseParams,
         completedStepKeys,
-        skillsWithSources: [{ skillId: "some-skill", topSource: "owner/repo" }],
+        skillsWithSources: [{ skillId: "some-skill", source: "owner/repo" }],
         completedSkillIds: [],
       });
 
@@ -250,8 +250,8 @@ describe("buildDeployFlow", () => {
         ...baseParams,
         completedStepKeys: [...SETUP_STEP_KEYS],
         skillsWithSources: [
-          { skillId: "done-skill", topSource: "done/repo" },
-          { skillId: "pending-skill", topSource: "pending/repo" },
+          { skillId: "done-skill", source: "done/repo" },
+          { skillId: "pending-skill", source: "pending/repo" },
         ],
         completedSkillIds: ["done-skill"],
       });
@@ -264,7 +264,7 @@ describe("buildDeployFlow", () => {
       const flow = buildDeployFlow({
         ...baseParams,
         completedStepKeys: [...SETUP_STEP_KEYS],
-        skillsWithSources: [{ skillId: "skill-a", topSource: "a/repo" }],
+        skillsWithSources: [{ skillId: "skill-a", source: "a/repo" }],
         completedSkillIds: ["skill-a"],
       });
 

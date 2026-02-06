@@ -45,8 +45,8 @@ const TestEnvSchema = z.object({
   CLAUDE_CODE_OAUTH_TOKEN: z.string().min(1),
   PROVIDER: z.enum(["sprites", "docker"]).optional(),
 });
-// Environment configuration
-const TEST_ENV = TestEnvSchema.parse(env);
+const envResult = TestEnvSchema.safeParse(env);
+const TEST_ENV = envResult.data as z.infer<typeof TestEnvSchema>;
 
 // Generate unique test user credentials
 const testId = Date.now().toString(36);
@@ -87,7 +87,7 @@ async function waitFor<T>(
   );
 }
 
-describe("API E2E - Email Flow", () => {
+describe.skipIf(!envResult.success)("API E2E - Email Flow", () => {
   let client: AppRouterClient;
   let inbound: Inbound;
   let boxId: `box_${string}`;

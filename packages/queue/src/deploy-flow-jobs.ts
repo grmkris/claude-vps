@@ -74,7 +74,7 @@ export const InstallSkillJobData = z.object({
   deploymentAttempt: z.number().int().min(1),
   instanceName: z.string(),
   skillId: z.string(),
-  topSource: z.string().optional(),
+  source: z.string().optional(),
 });
 export type InstallSkillJobData = z.infer<typeof InstallSkillJobData>;
 

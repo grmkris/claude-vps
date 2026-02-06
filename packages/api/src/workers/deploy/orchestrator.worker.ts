@@ -347,7 +347,7 @@ async function prepareEnvVars({
 async function resolveSkillSources(
   skills: string[],
   logger: Logger
-): Promise<Array<{ skillId: string; topSource?: string }>> {
+): Promise<Array<{ skillId: string; source?: string }>> {
   if (skills.length === 0) return [];
 
   try {
@@ -355,29 +355,33 @@ async function resolveSkillSources(
       { skillCount: skills.length },
       "ORCHESTRATOR: Resolving skill sources"
     );
-    const res = await fetch("https://skills.sh/api/skills?limit=100");
-    if (!res.ok) {
-      logger.warn(
-        "ORCHESTRATOR: Failed to fetch skills.sh API, skills will be skipped"
+    // Fetch each skill individually via search API
+    const allSkills: Array<{ id: string; skillId: string; source: string }> =
+      [];
+    for (const skillId of skills) {
+      const res = await fetch(
+        `https://skills.sh/api/search?q=${encodeURIComponent(skillId)}&limit=10`
       );
-      return skills.map((skillId) => ({ skillId, topSource: undefined }));
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        skills: Array<{ id: string; skillId: string; source: string }>;
+      };
+      allSkills.push(...data.skills);
     }
 
-    const data = (await res.json()) as {
-      skills: Array<{ id: string; topSource: string }>;
-    };
-
     const result = skills.map((skillId) => {
-      const skill = data.skills.find((s) => s.id === skillId);
+      const skill = allSkills.find(
+        (s) => s.id === skillId || s.skillId === skillId
+      );
       if (!skill) {
         logger.warn({ skillId }, "ORCHESTRATOR: Skill not found in skills.sh");
       }
-      return { skillId, topSource: skill?.topSource };
+      return { skillId, source: skill?.source };
     });
 
     logger.info(
       {
-        resolved: result.filter((s) => s.topSource).length,
+        resolved: result.filter((s) => s.source).length,
         total: skills.length,
       },
       "ORCHESTRATOR: Skill sources resolved"
@@ -385,7 +389,7 @@ async function resolveSkillSources(
     return result;
   } catch (error) {
     logger.warn({ error }, "ORCHESTRATOR: Error fetching skill sources");
-    return skills.map((skillId) => ({ skillId, topSource: undefined }));
+    return skills.map((skillId) => ({ skillId, source: undefined }));
   }
 }
 

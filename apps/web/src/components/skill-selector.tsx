@@ -1,10 +1,9 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2, Search, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -30,25 +29,13 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
-  const {
-    data,
-    isLoading,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["skills-catalog", debouncedSearch],
-    queryFn: async ({ pageParam }) => {
-      return orpc.skill.catalog.call({
+    queryFn: () =>
+      orpc.skill.catalog.call({
         search: debouncedSearch || undefined,
-        offset: pageParam,
-        limit: 30,
-      });
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.hasMore ? allPages.length * 30 : undefined,
+        limit: 50,
+      }),
   });
 
   const toggleSkill = (skillId: string) => {
@@ -59,7 +46,7 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
     }
   };
 
-  const allSkills = data?.pages.flatMap((page) => page.skills) ?? [];
+  const allSkills = data?.skills ?? [];
 
   if (error) {
     return (
@@ -136,30 +123,14 @@ export function SkillSelector({ value, onChange }: SkillSelectorProps) {
                           {skill.installs.toLocaleString()} installs
                         </span>
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                        {skill.description}
+                      <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                        {skill.source}
                       </p>
                     </div>
                   </div>
                 </button>
               );
             })}
-            {hasNextPage && (
-              <div className="p-3 text-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
-                  {isFetchingNextPage ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  Load more
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>

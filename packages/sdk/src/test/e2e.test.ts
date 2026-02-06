@@ -11,7 +11,18 @@ import {
 
 const logger = createLogger({ appName: "sdk-e2e-test", level: "info" });
 
-describe("SDK E2E Tests", () => {
+// Check if server is available before running tests
+let serverAvailable = false;
+try {
+  const r = await fetch(`${TEST_CONFIG.baseUrl}/health`, {
+    signal: AbortSignal.timeout(2000),
+  });
+  serverAvailable = r.ok;
+} catch {
+  // Server not running
+}
+
+describe.skipIf(!serverAvailable)("SDK E2E Tests", () => {
   let setup: TestSetup;
 
   beforeAll(async () => {

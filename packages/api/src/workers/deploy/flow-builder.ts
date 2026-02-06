@@ -6,7 +6,7 @@ import { SETUP_STEP_KEYS, type SetupStepKey } from "@vps-claude/sprites";
 
 export interface SkillWithSource {
   skillId: string;
-  topSource?: string;
+  source?: string;
 }
 
 export interface DeployFlowParams {
@@ -314,25 +314,23 @@ function buildSkillsGate(params: SkillsGateParams): FlowJob | undefined {
     return undefined;
   }
 
-  const skillJobs: FlowJob[] = skillsWithSources.map(
-    ({ skillId, topSource }) => ({
-      name: `skill-${skillId}-${boxId}`,
-      queueName: DEPLOY_QUEUES.installSkill,
-      data: {
-        boxId,
-        deploymentAttempt,
-        instanceName,
-        skillId,
-        topSource, // Pre-resolved from skills.sh API
-      },
-      opts: {
-        attempts: WORKER_CONFIG.installSkill.attempts,
-        backoff: WORKER_CONFIG.installSkill.backoff,
-        jobId: makeJobId(`skill-${skillId}`),
-        failParentOnFailure: false, // Allow partial skill failures
-      },
-    })
-  );
+  const skillJobs: FlowJob[] = skillsWithSources.map(({ skillId, source }) => ({
+    name: `skill-${skillId}-${boxId}`,
+    queueName: DEPLOY_QUEUES.installSkill,
+    data: {
+      boxId,
+      deploymentAttempt,
+      instanceName,
+      skillId,
+      source, // Pre-resolved from skills.sh API
+    },
+    opts: {
+      attempts: WORKER_CONFIG.installSkill.attempts,
+      backoff: WORKER_CONFIG.installSkill.backoff,
+      jobId: makeJobId(`skill-${skillId}`),
+      failParentOnFailure: false, // Allow partial skill failures
+    },
+  }));
 
   return {
     name: `skills-gate-${boxId}`,

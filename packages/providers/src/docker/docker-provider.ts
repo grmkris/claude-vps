@@ -562,6 +562,8 @@ autorestart=true
 stderr_logfile=/var/log/box-agent.err.log
 stdout_logfile=/var/log/box-agent.out.log
 SUPERVISOREOF
+      # Wait for supervisord socket (entrypoint may still be downloading box-agent)
+      for i in $(seq 1 30); do [ -S /var/run/supervisor.sock ] && break; sleep 1; done
       supervisorctl reread
       supervisorctl update
     `,
@@ -624,6 +626,8 @@ autorestart=true
 stderr_logfile=/var/log/nginx.err.log
 stdout_logfile=/var/log/nginx.out.log
 SUPERVISOREOF
+      # Wait for supervisord socket (entrypoint may still be downloading box-agent)
+      for i in $(seq 1 30); do [ -S /var/run/supervisor.sock ] && break; sleep 1; done
       supervisorctl reread
       supervisorctl update
     `,
@@ -648,6 +652,8 @@ autorestart=true
 stderr_logfile=/var/log/agent-app.err.log
 stdout_logfile=/var/log/agent-app.out.log
 SUPERVISOREOF
+      # Wait for supervisord socket (entrypoint may still be downloading box-agent)
+      for i in $(seq 1 30); do [ -S /var/run/supervisor.sock ] && break; sleep 1; done
       supervisorctl reread
       supervisorctl update
     `,

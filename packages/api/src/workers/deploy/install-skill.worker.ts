@@ -33,7 +33,7 @@ export function createInstallSkillWorker({
   const worker = new Worker<InstallSkillJobData, DeployJobResult>(
     DEPLOY_QUEUES.installSkill,
     async (job: Job<InstallSkillJobData>): Promise<DeployJobResult> => {
-      const { boxId, deploymentAttempt, instanceName, skillId, topSource } =
+      const { boxId, deploymentAttempt, instanceName, skillId, source } =
         job.data;
 
       const stepKey = `SKILL_${skillId}`;
@@ -65,8 +65,8 @@ export function createInstallSkillWorker({
           { parentId }
         );
 
-        // topSource is pre-resolved by orchestrator from skills.sh API
-        if (!topSource) {
+        // source is pre-resolved by orchestrator from skills.sh API
+        if (!source) {
           await deployStepService.updateStepStatus(
             boxId,
             deploymentAttempt,
@@ -85,16 +85,16 @@ export function createInstallSkillWorker({
         }
 
         // Install skill via CLI
-        // topSource is the GitHub repo path, e.g. "remotion-dev/skills"
+        // source is the GitHub repo path, e.g. "remotion-dev/skills"
         // --yes --global skips interactive prompts, echo "" | handles any remaining prompts
-        const skillsRepoUrl = `https://github.com/${topSource}`;
+        const skillsRepoUrl = `https://github.com/${source}`;
         const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId} --yes --global`;
         const provider = providerFactory.getProviderForBox(boxResult.value);
         const result = await provider.execShell(instanceName, cmd);
 
         if (result.exitCode !== 0) {
           throw new Error(
-            `skills add ${topSource} failed: exit ${result.exitCode}\nstdout: ${result.stdout}\nstderr: ${result.stderr}`
+            `skills add ${source} failed: exit ${result.exitCode}\nstdout: ${result.stdout}\nstderr: ${result.stderr}`
           );
         }
 
@@ -108,7 +108,7 @@ export function createInstallSkillWorker({
         );
 
         event.set({
-          topSource,
+          source,
           exitCode: result.exitCode,
           status: "installed",
         });
