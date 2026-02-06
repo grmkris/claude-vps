@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { AgentInboxId, BoxId } from "@vps-claude/shared";
+import { AgentInboxId, BoxCronjobId, BoxId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -7,9 +7,34 @@ import { protectedProcedure } from "../index";
 const InboxTypeEnum = z.enum(["email", "cron", "webhook", "message"]);
 const InboxStatusEnum = z.enum(["pending", "delivered", "read"]);
 
+const InboxMetadataOutput = z
+  .object({
+    // Email
+    emailMessageId: z.string().optional(),
+    from: z
+      .object({ email: z.string(), name: z.string().optional() })
+      .optional(),
+    to: z.string().optional(),
+    subject: z.string().optional(),
+    htmlBody: z.string().optional(),
+    inReplyTo: z.string().optional(),
+    // Cron
+    cronJobId: BoxCronjobId.optional(),
+    cronSchedule: z.string().optional(),
+    // Webhook
+    webhookId: z.string().optional(),
+    webhookPayload: z.record(z.string(), z.unknown()).optional(),
+    callbackUrl: z.string().optional(),
+    // Message
+    title: z.string().optional(),
+    // Delivery override
+    spawnSession: z.boolean().optional(),
+  })
+  .nullable();
+
 const InboxItemOutput = z.object({
-  id: z.string(),
-  boxId: z.string(),
+  id: AgentInboxId,
+  boxId: BoxId,
   type: InboxTypeEnum,
   status: InboxStatusEnum,
   content: z.string(),
@@ -25,7 +50,7 @@ const InboxItemOutput = z.object({
       webhookUrl: z.string().optional(),
     })
     .nullable(),
-  metadata: z.record(z.unknown()).nullable(),
+  metadata: InboxMetadataOutput,
 });
 
 export const agentInboxRouter = {
@@ -89,7 +114,7 @@ export const agentInboxRouter = {
   markRead: protectedProcedure
     .route({ method: "POST", path: "/rpc/inbox/item/{id}/read" })
     .input(z.object({ id: AgentInboxId }))
-    .output(z.object({ success: z.boolean() }))
+    .output(z.object({ boxId: BoxId, inboxId: AgentInboxId }))
     .handler(async ({ context, input }) => {
       context.wideEvent?.set({ op: "inbox.markRead", inboxId: input.id });
 
@@ -100,7 +125,7 @@ export const agentInboxRouter = {
           message: result.error.message,
         });
       }
-      return { success: true };
+      return { boxId: result.value.boxId, inboxId: result.value.inboxId };
     }),
 
   getUnreadCounts: protectedProcedure

@@ -5,6 +5,10 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createApi } from "../create-api";
+import {
+  createAgentInboxService,
+  type AgentInboxService,
+} from "../services/agent-inbox.service";
 import { createBoxService, type BoxService } from "../services/box.service";
 import { createDeployStepService } from "../services/deploy-step.service";
 import {
@@ -19,6 +23,7 @@ describe("inbound-email webhook", () => {
   let testEnv: TestSetup;
   let boxService: BoxService;
   let emailService: EmailService;
+  let agentInboxService: AgentInboxService;
   let app: ReturnType<typeof createApi>["app"];
 
   beforeAll(async () => {
@@ -36,6 +41,9 @@ describe("inbound-email webhook", () => {
     const deployStepService = createDeployStepService({
       deps: { db: testEnv.db },
     });
+    agentInboxService = createAgentInboxService({
+      deps: { db: testEnv.db },
+    });
 
     const { app: honoApp } = createApi({
       db: testEnv.db,
@@ -51,6 +59,7 @@ describe("inbound-email webhook", () => {
         aiService: {} as never,
         providerFactory: {} as never,
         spritesClient: {} as never,
+        agentInboxService,
       },
       auth: {} as never,
       corsOrigin: "*",
@@ -108,13 +117,13 @@ describe("inbound-email webhook", () => {
     const json = await response.json();
     expect(response.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(json.emailId).toBeDefined();
+    expect(json.inboxId).toBeDefined();
 
-    // Verify email stored in database
-    const emails = await emailService.listByBox(boxId as never);
-    const list = emails._unsafeUnwrap();
+    // Verify inbox item stored in database
+    const items = await agentInboxService.listByBox(boxId as never);
+    const list = items._unsafeUnwrap();
     expect(list.length).toBeGreaterThan(0);
-    expect(list.some((e) => e.subject === "Test Email")).toBe(true);
+    expect(list.some((i) => i.type === "email")).toBe(true);
   });
 
   test("rejects unknown recipient", async () => {

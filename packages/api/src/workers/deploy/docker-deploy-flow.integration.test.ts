@@ -381,157 +381,156 @@ describe.skipIf(!HAS_DOCKER)("Docker Deploy Flow Integration", () => {
   // - fs.watch() async callbacks have latency before updating execution_state table
   // - By the time polling starts, session is already complete
   // To properly test this, we'd need to mock the Claude session or use a very long-running task.
-  it.skip(
-    "execution status shows running session during Claude execution",
-    async () => {
-      const testSuffix = Date.now().toString(36);
-      const boxName = `docker-exec-running-${testSuffix}`;
+  it.skip("execution status shows running session during Claude execution", async () => {
+    const testSuffix = Date.now().toString(36);
+    const boxName = `docker-exec-running-${testSuffix}`;
 
-      // Pass Claude token to container via standard env var flow
-      const { box, finalBox } = await deployAndWait(boxName, {
+    // Pass Claude token to container via standard env var flow
+    const { box, finalBox } = await deployAndWait(boxName, {
+      [CLAUDE_TOKEN_KEY]: CLAUDE_TOKEN!,
+    });
+
+    // Verify token reached container, inject if missing
+    const tokenCheck = await verifyEnvVarInContainer(
+      finalBox.instanceName!,
+      CLAUDE_TOKEN_KEY
+    );
+    logger.info(
+      { found: tokenCheck.found, key: CLAUDE_TOKEN_KEY },
+      "Token verification in container"
+    );
+
+    if (!tokenCheck.found) {
+      logger.warn("Token not found via env var flow, injecting directly...");
+      await injectEnvVars(finalBox.instanceName!, {
         [CLAUDE_TOKEN_KEY]: CLAUDE_TOKEN!,
       });
+      // Wait for box-agent restart
+      await new Promise((r) => setTimeout(r, 3000));
+    }
 
-      // Verify token reached container, inject if missing
-      const tokenCheck = await verifyEnvVarInContainer(
-        finalBox.instanceName!,
-        CLAUDE_TOKEN_KEY
-      );
-      logger.info(
-        { found: tokenCheck.found, key: CLAUDE_TOKEN_KEY },
-        "Token verification in container"
-      );
+    // Get agent secret
+    const settingsResult = await emailService.getOrCreateSettings(box.id);
+    expect(settingsResult.isOk()).toBe(true);
+    const agentSecret = settingsResult._unsafeUnwrap().agentSecret;
 
-      if (!tokenCheck.found) {
-        logger.warn("Token not found via env var flow, injecting directly...");
-        await injectEnvVars(finalBox.instanceName!, {
-          [CLAUDE_TOKEN_KEY]: CLAUDE_TOKEN!,
-        });
-        // Wait for box-agent restart
-        await new Promise((r) => setTimeout(r, 3000));
-      }
+    // Start a long-running Claude session (don't await completion)
+    const streamUrl = `${finalBox.instanceUrl}/box/rpc/sessions/stream`;
+    logger.info({ streamUrl }, "Starting long-running session...");
 
-      // Get agent secret
-      const settingsResult = await emailService.getOrCreateSettings(box.id);
-      expect(settingsResult.isOk()).toBe(true);
-      const agentSecret = settingsResult._unsafeUnwrap().agentSecret;
+    const sessionPromise = fetch(streamUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Box-Secret": agentSecret,
+      },
+      body: JSON.stringify({
+        message:
+          "I need you to write a comprehensive technical document. First, explain the history of version control systems from RCS to Git, including at least 5 systems. Then, write detailed tutorials for: 1) Setting up a Git repository with branching strategies, 2) Implementing CI/CD pipelines with GitHub Actions including 3 example workflows, 3) Docker containerization best practices with multi-stage builds. For each section, include code examples, diagrams described in text, common pitfalls, and troubleshooting tips. This should be thorough enough to serve as a reference guide. Take your time and be extremely detailed.",
+        contextType: "test",
+        contextId: `exec-test-${testSuffix}`,
+      }),
+      signal: AbortSignal.timeout(180000),
+    });
 
-      // Start a long-running Claude session (don't await completion)
-      const streamUrl = `${finalBox.instanceUrl}/box/rpc/sessions/stream`;
-      logger.info({ streamUrl }, "Starting long-running session...");
-
-      const sessionPromise = fetch(streamUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Box-Secret": agentSecret,
-        },
-        body: JSON.stringify({
-          message:
-            "I need you to write a comprehensive technical document. First, explain the history of version control systems from RCS to Git, including at least 5 systems. Then, write detailed tutorials for: 1) Setting up a Git repository with branching strategies, 2) Implementing CI/CD pipelines with GitHub Actions including 3 example workflows, 3) Docker containerization best practices with multi-stage builds. For each section, include code examples, diagrams described in text, common pitfalls, and troubleshooting tips. This should be thorough enough to serve as a reference guide. Take your time and be extremely detailed.",
-          contextType: "test",
-          contextId: `exec-test-${testSuffix}`,
-        }),
-        signal: AbortSignal.timeout(180000),
-      });
-
-      // Consume the SSE stream to keep the connection alive
-      // This runs in background while we poll for execution status
-      sessionPromise
-        .then(async (res) => {
-          logger.info(
-            { status: res.status, ok: res.ok },
-            "Session stream response received"
-          );
-          if (!res.ok) {
-            const text = await res.text();
-            logger.error({ status: res.status, body: text }, "Session failed");
-            return;
-          }
-          // Read the stream to keep connection alive
-          const reader = res.body?.getReader();
-          if (!reader) return;
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                logger.info("Session stream completed");
-                break;
-              }
-              // Log first chunk to verify streaming
-              if (value) {
-                const text = new TextDecoder().decode(value);
-                if (text.includes("event:")) {
-                  logger.info({ chunkLength: value.length }, "Received SSE chunk");
-                }
+    // Consume the SSE stream to keep the connection alive
+    // This runs in background while we poll for execution status
+    sessionPromise
+      .then(async (res) => {
+        logger.info(
+          { status: res.status, ok: res.ok },
+          "Session stream response received"
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          logger.error({ status: res.status, body: text }, "Session failed");
+          return;
+        }
+        // Read the stream to keep connection alive
+        const reader = res.body?.getReader();
+        if (!reader) return;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              logger.info("Session stream completed");
+              break;
+            }
+            // Log first chunk to verify streaming
+            if (value) {
+              const text = new TextDecoder().decode(value);
+              if (text.includes("event:")) {
+                logger.info(
+                  { chunkLength: value.length },
+                  "Received SSE chunk"
+                );
               }
             }
-          } catch (err) {
-            logger.warn({ err }, "Stream reading error (may be expected on cancel)");
           }
-        })
-        .catch((err) => {
-          logger.error({ err }, "Session stream request failed");
-        });
-
-      // Start polling immediately - session may complete quickly
-      // Wait just 2 seconds for Claude to start writing session file
-      await new Promise((r) => setTimeout(r, 2000));
-
-      // Poll for execution status
-      const statusUrl = `${finalBox.instanceUrl}/box/rpc/sessions/execution-status`;
-      let data: {
-        isExecuting: boolean;
-        activeSessions: Array<{
-          sessionId: string | null;
-          startedAt: number;
-          lastActivityAt: number;
-          messageCount: number;
-        }>;
-      } = { isExecuting: false, activeSessions: [] };
-
-      // Poll every 1 second for up to 90 seconds to catch the running window
-      for (let attempt = 0; attempt < 90; attempt++) {
-        await new Promise((r) => setTimeout(r, 1000));
-
-        const statusResponse = await fetch(statusUrl, {
-          signal: AbortSignal.timeout(10000),
-        });
-
-        expect(statusResponse.ok).toBe(true);
-        data = (await statusResponse.json()) as typeof data;
-
-        logger.info(
-          { attempt, data },
-          "Polling execution status during session"
-        );
-
-        if (data.isExecuting) {
-          break;
+        } catch (err) {
+          logger.warn(
+            { err },
+            "Stream reading error (may be expected on cancel)"
+          );
         }
+      })
+      .catch((err) => {
+        logger.error({ err }, "Session stream request failed");
+      });
+
+    // Start polling immediately - session may complete quickly
+    // Wait just 2 seconds for Claude to start writing session file
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Poll for execution status
+    const statusUrl = `${finalBox.instanceUrl}/box/rpc/sessions/execution-status`;
+    let data: {
+      isExecuting: boolean;
+      activeSessions: Array<{
+        sessionId: string | null;
+        startedAt: number;
+        lastActivityAt: number;
+        messageCount: number;
+      }>;
+    } = { isExecuting: false, activeSessions: [] };
+
+    // Poll every 1 second for up to 90 seconds to catch the running window
+    for (let attempt = 0; attempt < 90; attempt++) {
+      await new Promise((r) => setTimeout(r, 1000));
+
+      const statusResponse = await fetch(statusUrl, {
+        signal: AbortSignal.timeout(10000),
+      });
+
+      expect(statusResponse.ok).toBe(true);
+      data = (await statusResponse.json()) as typeof data;
+
+      logger.info({ attempt, data }, "Polling execution status during session");
+
+      if (data.isExecuting) {
+        break;
       }
+    }
 
-      // Session should be running
-      expect(data.isExecuting).toBe(true);
-      expect(data.activeSessions.length).toBeGreaterThan(0);
+    // Session should be running
+    expect(data.isExecuting).toBe(true);
+    expect(data.activeSessions.length).toBeGreaterThan(0);
 
-      // Verify session details
-      const session = data.activeSessions[0];
-      expect(session).toBeDefined();
-      expect(session?.startedAt).toBeGreaterThan(0);
-      expect(session?.lastActivityAt).toBeGreaterThan(0);
-      expect(session?.messageCount).toBeGreaterThanOrEqual(0);
+    // Verify session details
+    const session = data.activeSessions[0];
+    expect(session).toBeDefined();
+    expect(session?.startedAt).toBeGreaterThan(0);
+    expect(session?.lastActivityAt).toBeGreaterThan(0);
+    expect(session?.messageCount).toBeGreaterThanOrEqual(0);
 
-      // Clean up - cancel the session
-      try {
-        const response = await sessionPromise;
-        void response.body?.cancel();
-      } catch {
-        // Ignore timeout/cancel errors
-      }
+    // Clean up - cancel the session
+    try {
+      const response = await sessionPromise;
+      void response.body?.cancel();
+    } catch {
+      // Ignore timeout/cancel errors
+    }
 
-      logger.info("Execution status test passed - detected running session");
-    },
-    600_000
-  );
+    logger.info("Execution status test passed - detected running session");
+  }, 600_000);
 });

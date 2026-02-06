@@ -31,7 +31,7 @@ export const InboxItemSchema = z.object({
       cronJobId: z.string().optional(),
       cronSchedule: z.string().optional(),
       webhookId: z.string().optional(),
-      webhookPayload: z.record(z.unknown()).optional(),
+      webhookPayload: z.record(z.string(), z.unknown()).optional(),
       callbackUrl: z.string().optional(),
       title: z.string().optional(),
     })

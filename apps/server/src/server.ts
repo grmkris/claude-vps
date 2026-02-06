@@ -286,7 +286,6 @@ const shutdown = async (signal: string) => {
 
   // Other workers
   await deleteWorker.close();
-  await emailDeliveryWorker.close();
   await emailSendWorker.close();
   await cronjobWorker.close();
 

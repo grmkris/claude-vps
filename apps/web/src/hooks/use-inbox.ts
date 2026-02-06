@@ -43,10 +43,15 @@ export function useInboxCounts(boxId: BoxId | undefined) {
 export function useMarkInboxRead() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    ...orpc.agentInbox.markRead.mutationOptions(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agentInbox"] });
-    },
-  });
+  return useMutation(
+    orpc.agentInbox.markRead.mutationOptions({
+      onSuccess: ({ boxId }) => {
+        void queryClient.invalidateQueries({
+          queryKey: orpc.agentInbox.listByBox.queryKey({
+            input: { boxId },
+          }),
+        });
+      },
+    })
+  );
 }

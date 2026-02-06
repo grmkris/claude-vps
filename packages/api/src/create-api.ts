@@ -20,6 +20,8 @@ import {
   credentialRouter,
   boxAiRouter,
   boxApiRouter,
+  boxCronjobApiRouter,
+  boxInboxApiRouter,
   boxDetailsRouter,
   boxSessionsRouter,
   boxFsRouter,
@@ -260,6 +262,8 @@ export function createApi({
   // Combined box router for /box/* routes (uses box token auth, not session)
   const combinedBoxRouter = {
     ...boxApiRouter,
+    cronjob: boxCronjobApiRouter,
+    inbox: boxInboxApiRouter,
     ai: boxAiRouter,
   };
 

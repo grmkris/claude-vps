@@ -6,9 +6,11 @@ import { apiKeyRouter } from "./api-key.router";
 import { boxAgentConfigRouter } from "./box-agent-config.router";
 import { boxAiRouter } from "./box-ai.router";
 import { boxApiRouter } from "./box-api.router";
+import { boxCronjobApiRouter } from "./box-cronjob-api.router";
 import { boxDetailsRouter } from "./box-details.router";
 import { boxEnvVarRouter } from "./box-env-var.router";
 import { boxFsRouter } from "./box-fs.router";
+import { boxInboxApiRouter } from "./box-inbox-api.router";
 import { boxSessionsRouter } from "./box-sessions.router";
 import { boxRouter } from "./box.router";
 import { credentialRouter } from "./credential.router";
@@ -38,6 +40,8 @@ export {
   boxRouter,
   credentialRouter,
   boxApiRouter,
+  boxCronjobApiRouter,
+  boxInboxApiRouter,
   boxAiRouter,
   boxDetailsRouter,
   boxSessionsRouter,
@@ -65,11 +69,15 @@ export type BoxSessionsRouterType = typeof boxSessionsRouter;
 export type CronjobRouterType = typeof cronjobRouter;
 export type BoxApiRouterType = typeof boxApiRouter;
 export type BoxAiRouterType = typeof boxAiRouter;
+export type BoxCronjobApiRouterType = typeof boxCronjobApiRouter;
+export type BoxInboxApiRouterType = typeof boxInboxApiRouter;
 export type AgentInboxRouterType = typeof agentInboxRouter;
 
 // Box API client type (for box-agent calling /box/* endpoints)
 export type BoxApiClient = RouterClient<BoxApiRouterType> & {
   ai: RouterClient<BoxAiRouterType>;
+  cronjob: RouterClient<BoxCronjobApiRouterType>;
+  inbox: RouterClient<BoxInboxApiRouterType>;
 };
 
 // Combined client type for SDK - includes all routers

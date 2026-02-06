@@ -20,6 +20,10 @@ import {
 
 type InboxType = "email" | "cron" | "webhook" | "message";
 
+type InboxItem = NonNullable<
+  ReturnType<typeof useInboxItems>["data"]
+>["items"][number];
+
 const TYPE_ICONS: Record<InboxType, typeof Mail> = {
   email: Mail,
   cron: Clock,
@@ -76,18 +80,12 @@ function formatRelativeTime(date: Date | string): string {
   return `${diffDays}d ago`;
 }
 
-function getItemTitle(item: {
-  type: string;
-  sourceExternal?: { email?: string; name?: string } | null;
-  metadata?: Record<string, unknown> | null;
-}): string {
+function getItemTitle(item: InboxItem): string {
   if (item.type === "email") {
-    const meta = item.metadata as { subject?: string } | null;
-    return meta?.subject ?? "(no subject)";
+    return item.metadata?.subject ?? "(no subject)";
   }
   if (item.type === "cron") {
-    const meta = item.metadata as { cronJobId?: string } | null;
-    return `Cron trigger: ${meta?.cronJobId ?? "unknown"}`;
+    return `Cron trigger: ${item.metadata?.cronJobId ?? "unknown"}`;
   }
   if (item.type === "webhook") {
     return "Webhook payload";
@@ -98,12 +96,7 @@ function getItemTitle(item: {
   return "Unknown item";
 }
 
-function getItemSender(item: {
-  type: string;
-  sourceType: string;
-  sourceExternal?: { email?: string; name?: string } | null;
-  sourceBoxId?: string | null;
-}): string {
+function getItemSender(item: InboxItem): string {
   if (item.sourceType === "external" && item.sourceExternal) {
     return item.sourceExternal.name ?? item.sourceExternal.email ?? "Unknown";
   }

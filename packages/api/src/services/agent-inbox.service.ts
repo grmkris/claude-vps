@@ -209,7 +209,9 @@ export function createAgentInboxService({
   const updateStatus = async (
     id: AgentInboxId,
     status: AgentInbox["status"]
-  ): Promise<Result<void, AgentInboxServiceError>> => {
+  ): Promise<
+    Result<{ boxId: BoxId; inboxId: AgentInboxId }, AgentInboxServiceError>
+  > => {
     const updates: Partial<AgentInbox> = { status };
     if (status === "delivered") {
       updates.deliveredAt = new Date();
@@ -218,13 +220,26 @@ export function createAgentInboxService({
       updates.readAt = new Date();
     }
 
-    await db.update(agentInbox).set(updates).where(eq(agentInbox.id, id));
-    return ok(undefined);
+    const result = await db
+      .update(agentInbox)
+      .set(updates)
+      .where(eq(agentInbox.id, id))
+      .returning();
+    const row = result[0];
+    if (!row) {
+      return err({
+        type: "INTERNAL_ERROR",
+        message: "Failed to update inbox item",
+      });
+    }
+    return ok({ boxId: row.boxId, inboxId: row.id });
   };
 
   const markAsRead = async (
     id: AgentInboxId
-  ): Promise<Result<void, AgentInboxServiceError>> => {
+  ): Promise<
+    Result<{ boxId: BoxId; inboxId: AgentInboxId }, AgentInboxServiceError>
+  > => {
     return updateStatus(id, "read");
   };
 

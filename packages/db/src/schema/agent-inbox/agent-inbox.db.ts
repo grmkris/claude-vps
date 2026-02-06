@@ -1,5 +1,6 @@
 import {
   type AgentInboxId,
+  type BoxCronjobId,
   type BoxId,
   typeIdGenerator,
 } from "@vps-claude/shared";
@@ -62,7 +63,7 @@ export const agentInbox = pgTable(
       htmlBody?: string;
       inReplyTo?: string;
       // Cron
-      cronJobId?: string;
+      cronJobId?: BoxCronjobId;
       cronSchedule?: string;
       // Webhook
       webhookId?: string;
