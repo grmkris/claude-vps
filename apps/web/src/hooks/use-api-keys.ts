@@ -21,13 +21,7 @@ export type CreateApiKeyInput = {
 };
 
 export function useApiKeys() {
-  return useQuery({
-    queryKey: ["api-keys"],
-    queryFn: async () => {
-      const result = await orpc.apiKey.list.call({});
-      return result.apiKeys;
-    },
-  });
+  return useQuery(orpc.apiKey.list.queryOptions({ input: {} }));
 }
 
 export function useCreateApiKey() {
@@ -50,7 +44,9 @@ export function useCreateApiKey() {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      void queryClient.invalidateQueries({
+        queryKey: orpc.apiKey.list.queryKey({ input: {} }),
+      });
       toast.success("API key created!");
     },
     onError: (error) => {
@@ -69,7 +65,9 @@ export function useRevokeApiKey() {
       return await orpc.apiKey.delete.call({ keyId });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      void queryClient.invalidateQueries({
+        queryKey: orpc.apiKey.list.queryKey({ input: {} }),
+      });
       toast.success("API key revoked!");
     },
     onError: (error) => {

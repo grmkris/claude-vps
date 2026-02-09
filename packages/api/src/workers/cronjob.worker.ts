@@ -35,7 +35,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         boxId,
       });
 
-      // Create execution record
       const executionResult = await cronjobService.createExecution(cronjobId);
       if (executionResult.isErr()) {
         event.error(new Error(executionResult.error.message));
@@ -46,14 +45,12 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
       const startTime = Date.now();
 
       try {
-        // Get cronjob details
         const cronjobResult = await cronjobService.getById(cronjobId);
         if (cronjobResult.isErr() || !cronjobResult.value) {
           throw new Error("Cronjob not found");
         }
         const cronjob = cronjobResult.value;
 
-        // Skip if disabled
         if (!cronjob.enabled) {
           await cronjobService.updateExecution(execution.id, {
             status: "completed",
@@ -65,7 +62,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           return { success: true, skipped: true };
         }
 
-        // Create unified inbox record for the cron trigger
         const inboxResult = await agentInboxService.create({
           boxId,
           type: "cron",
@@ -80,7 +76,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           event.set({ inboxId: inboxResult.value.id });
         }
 
-        // Get box info
         const boxResult = await cronjobService.getBoxForCronjob(cronjobId);
         if (boxResult.isErr()) {
           throw new Error(boxResult.error.message);
@@ -91,19 +86,16 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           throw new Error("Box not running (no sprite URL)");
         }
 
-        // Get agent secret for auth
         const settingsResult = await emailService.getOrCreateSettings(boxId);
         if (settingsResult.isErr()) {
           throw new Error("Failed to get box settings");
         }
         const agentSecret = settingsResult.value.agentSecret;
 
-        // Update status to waking_box
         await cronjobService.updateExecution(execution.id, {
           status: "waking_box",
         });
 
-        // Check if sprite is awake, wake it if needed
         try {
           const healthResponse = await fetch(`${instanceUrl}/box/health`, {
             method: "GET",
@@ -118,12 +110,10 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           event.set({ healthCheckFailed: true });
         }
 
-        // Update status to running
         await cronjobService.updateExecution(execution.id, {
           status: "running",
         });
 
-        // Trigger the cronjob via box-agent (path-based routing: /box/rpc/...)
         const triggerUrl = `${instanceUrl}/box/rpc/cron/trigger`;
         logger.info({ cronjobId, triggerUrl }, "Triggering cronjob");
 
@@ -149,7 +139,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
         const result = await response.json();
         const durationMs = Date.now() - startTime;
 
-        // Update execution as completed
         await cronjobService.updateExecution(execution.id, {
           status: "completed",
           completedAt: new Date(),
@@ -157,7 +146,6 @@ export function createCronjobWorker({ deps }: { deps: CronjobWorkerDeps }) {
           result: JSON.stringify(result),
         });
 
-        // Update lastRunAt
         await cronjobService.updateLastRunAt(cronjobId);
 
         event.set({ status: "completed" });

@@ -67,7 +67,8 @@ function AddEditDialog({
   );
   const [showValue, setShowValue] = useState(false);
 
-  const { data: credentials = [] } = useCredentials();
+  const { data: credentialsData } = useCredentials();
+  const credentials = credentialsData?.credentials ?? [];
   const setMutation = useSetBoxEnvVar();
   const isEditing = !!existingKey;
 
@@ -373,7 +374,7 @@ export function EnvVarsPanel({ boxId }: { boxId: BoxId }) {
     );
   }
 
-  const envVars = data ?? [];
+  const envVars = data?.envVars ?? [];
 
   return (
     <div className="space-y-4">

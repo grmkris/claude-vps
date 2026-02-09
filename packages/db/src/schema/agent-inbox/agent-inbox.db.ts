@@ -28,6 +28,28 @@ export const agentInboxSourceTypeEnum = pgEnum("agent_inbox_source_type", [
   "system",
 ]);
 
+/** Typed metadata — used on the Drizzle column and in services. */
+export type AgentInboxMetadata = {
+  // Email
+  emailMessageId?: string;
+  from?: { email: string; name?: string };
+  to?: string;
+  subject?: string;
+  htmlBody?: string;
+  inReplyTo?: string;
+  // Cron
+  cronJobId?: BoxCronjobId;
+  cronSchedule?: string;
+  // Webhook
+  webhookId?: string;
+  webhookPayload?: Record<string, unknown>;
+  callbackUrl?: string;
+  // Message
+  title?: string;
+  // Override delivery behavior
+  spawnSession?: boolean;
+};
+
 export const agentInbox = pgTable(
   "agent_inbox",
   {
@@ -54,26 +76,7 @@ export const agentInbox = pgTable(
     }>(),
 
     // Type-specific metadata
-    metadata: jsonb("metadata").$type<{
-      // Email
-      emailMessageId?: string;
-      from?: { email: string; name?: string };
-      to?: string;
-      subject?: string;
-      htmlBody?: string;
-      inReplyTo?: string;
-      // Cron
-      cronJobId?: BoxCronjobId;
-      cronSchedule?: string;
-      // Webhook
-      webhookId?: string;
-      webhookPayload?: Record<string, unknown>;
-      callbackUrl?: string;
-      // Message
-      title?: string;
-      // Override delivery behavior
-      spawnSession?: boolean;
-    }>(),
+    metadata: jsonb("metadata").$type<AgentInboxMetadata>(),
 
     // Timestamps
     createdAt: createTimestampField("created_at").defaultNow().notNull(),

@@ -254,7 +254,7 @@ export default function CredentialsList() {
     );
   }
 
-  const credentials = data ?? [];
+  const credentials = data?.credentials ?? [];
 
   return (
     <div className="space-y-8">

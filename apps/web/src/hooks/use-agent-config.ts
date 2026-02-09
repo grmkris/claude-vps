@@ -8,13 +8,7 @@ import { toast } from "sonner";
 import { orpc } from "@/utils/orpc";
 
 export function useAgentConfig(boxId: BoxId) {
-  return useQuery({
-    queryKey: ["agentConfig", boxId],
-    queryFn: async () => {
-      const result = await orpc.boxAgentConfig.get.call({ boxId });
-      return result.config;
-    },
-  });
+  return useQuery(orpc.boxAgentConfig.get.queryOptions({ input: { boxId } }));
 }
 
 export type { McpServerConfig };
@@ -41,7 +35,7 @@ export function useUpdateAgentConfig() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: ["agentConfig", vars.boxId],
+        queryKey: orpc.boxAgentConfig.get.queryKey({ input: { boxId: vars.boxId } }),
       });
       toast.success("Agent configuration saved");
     },

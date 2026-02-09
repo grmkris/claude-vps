@@ -1,31 +1,15 @@
 import { ORPCError } from "@orpc/server";
-import { BoxCronjobId, BoxId } from "@vps-claude/shared";
+import { SelectBoxCronjobSchema } from "@vps-claude/db";
+import { BoxCronjobId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { boxProcedure } from "../index";
 import { SuccessOutput } from "./schemas";
 
-// Inline schema to avoid TS7056 from drizzle-zod's createSelectSchema
-const CronjobOutput = z.object({
-  id: BoxCronjobId,
-  boxId: BoxId,
-  name: z.string(),
-  description: z.string().nullable(),
-  schedule: z.string(),
-  prompt: z.string(),
-  timezone: z.string(),
-  enabled: z.boolean(),
-  bullmqJobKey: z.string().nullable(),
-  lastRunAt: z.date().nullable(),
-  nextRunAt: z.date().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
 export const boxCronjobApiRouter = {
   list: boxProcedure
     .route({ method: "GET", path: "/box/cronjobs" })
-    .output(z.object({ cronjobs: z.array(CronjobOutput) }))
+    .output(z.object({ cronjobs: z.array(SelectBoxCronjobSchema) }))
     .handler(async ({ context }) => {
       context.wideEvent?.set({ op: "box.cronjob.list" });
       const boxResult = await context.emailService.getBoxByAgentSecret(
@@ -65,7 +49,7 @@ export const boxCronjobApiRouter = {
         prompt: z.string().min(1).max(10000),
       })
     )
-    .output(z.object({ cronjob: CronjobOutput }))
+    .output(z.object({ cronjob: SelectBoxCronjobSchema }))
     .handler(async ({ context, input }) => {
       context.wideEvent?.set({
         op: "box.cronjob.create",
@@ -119,7 +103,7 @@ export const boxCronjobApiRouter = {
         enabled: z.boolean().optional(),
       })
     )
-    .output(z.object({ cronjob: CronjobOutput }))
+    .output(z.object({ cronjob: SelectBoxCronjobSchema }))
     .handler(async ({ context, input }) => {
       context.wideEvent?.set({
         op: "box.cronjob.update",
@@ -142,7 +126,6 @@ export const boxCronjobApiRouter = {
         });
       }
 
-      // Verify cronjob belongs to this box
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {
         throw new ORPCError("NOT_FOUND", { message: "Cronjob not found" });
@@ -197,7 +180,6 @@ export const boxCronjobApiRouter = {
         });
       }
 
-      // Verify cronjob belongs to this box
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {
         throw new ORPCError("NOT_FOUND", { message: "Cronjob not found" });
@@ -220,7 +202,7 @@ export const boxCronjobApiRouter = {
   toggle: boxProcedure
     .route({ method: "POST", path: "/box/cronjobs/{id}/toggle" })
     .input(z.object({ id: BoxCronjobId }))
-    .output(z.object({ cronjob: CronjobOutput }))
+    .output(z.object({ cronjob: SelectBoxCronjobSchema }))
     .handler(async ({ context, input }) => {
       context.wideEvent?.set({
         op: "box.cronjob.toggle",
@@ -243,7 +225,6 @@ export const boxCronjobApiRouter = {
         });
       }
 
-      // Verify cronjob belongs to this box
       const cronjobResult = await context.cronjobService.getById(input.id);
       if (cronjobResult.isErr() || !cronjobResult.value) {
         throw new ORPCError("NOT_FOUND", { message: "Cronjob not found" });

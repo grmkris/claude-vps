@@ -6,12 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { orpc } from "@/utils/orpc";
 
-type InboxType = "email" | "cron" | "webhook" | "message";
-
 export function useInboxItems(
   boxId: BoxId | undefined,
   options?: {
-    type?: InboxType[];
+    type?: ("email" | "cron" | "webhook" | "message")[];
     status?: "pending" | "delivered" | "read";
     limit?: number;
   }

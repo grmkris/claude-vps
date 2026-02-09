@@ -8,13 +8,7 @@ import { toast } from "sonner";
 import { orpc } from "@/utils/orpc";
 
 export function useBoxEnvVars(boxId: BoxId) {
-  return useQuery({
-    queryKey: ["boxEnvVars", boxId],
-    queryFn: async () => {
-      const result = await orpc.boxEnvVar.list.call({ boxId });
-      return result.envVars;
-    },
-  });
+  return useQuery(orpc.boxEnvVar.list.queryOptions({ input: { boxId } }));
 }
 
 export function useSetBoxEnvVar() {
@@ -32,7 +26,7 @@ export function useSetBoxEnvVar() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: ["boxEnvVars", vars.boxId],
+        queryKey: orpc.boxEnvVar.list.queryKey({ input: { boxId: vars.boxId } }),
       });
       toast.success("Environment variable saved");
     },
@@ -55,7 +49,7 @@ export function useDeleteBoxEnvVar() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: ["boxEnvVars", vars.boxId],
+        queryKey: orpc.boxEnvVar.list.queryKey({ input: { boxId: vars.boxId } }),
       });
       toast.success("Environment variable deleted");
     },
@@ -86,7 +80,7 @@ export function useBulkSetBoxEnvVars() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: ["boxEnvVars", vars.boxId],
+        queryKey: orpc.boxEnvVar.list.queryKey({ input: { boxId: vars.boxId } }),
       });
     },
     onError: (error) => {

@@ -6,13 +6,7 @@ import { toast } from "sonner";
 import { orpc } from "@/utils/orpc";
 
 export function useCredentials() {
-  return useQuery({
-    queryKey: ["credentials"],
-    queryFn: async () => {
-      const result = await orpc.credential.list.call({});
-      return result.credentials;
-    },
-  });
+  return useQuery(orpc.credential.list.queryOptions({ input: {} }));
 }
 
 export function useSetCredential() {
@@ -23,7 +17,9 @@ export function useSetCredential() {
       return await orpc.credential.set.call(input);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["credentials"] });
+      void queryClient.invalidateQueries({
+        queryKey: orpc.credential.list.queryKey({ input: {} }),
+      });
       toast.success("Credential saved");
     },
     onError: (error) => {
@@ -42,7 +38,9 @@ export function useDeleteCredential() {
       return await orpc.credential.delete.call({ key });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["credentials"] });
+      void queryClient.invalidateQueries({
+        queryKey: orpc.credential.list.queryKey({ input: {} }),
+      });
       toast.success("Credential deleted");
     },
     onError: (error) => {

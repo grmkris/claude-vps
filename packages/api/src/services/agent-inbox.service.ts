@@ -14,7 +14,6 @@ import {
   type AgentInbox,
   type AgentInboxNotification,
   type BoxAgentSettings,
-  type DeliveryConfig,
   type DeliveryMode,
 } from "@vps-claude/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -108,7 +107,7 @@ export function createAgentInboxService({
     if (itemOverride !== undefined) {
       return itemOverride ? "spawn" : "notify";
     }
-    const config = settings.deliveryConfig as DeliveryConfig;
+    const config = settings.deliveryConfig;
     return config[type] ?? DEFAULT_DELIVERY_CONFIG[type];
   };
 
@@ -330,7 +329,6 @@ export function createAgentInboxService({
       AgentInboxServiceError
     >
   > => {
-    // Find box by subdomain
     const boxResult = await db.query.box.findFirst({
       where: eq(box.subdomain, subdomain),
     });
@@ -350,7 +348,6 @@ export function createAgentInboxService({
       });
     }
 
-    // Get or create settings
     const settingsResult = await getOrCreateSettings(boxResult.id);
     if (settingsResult.isErr()) return err(settingsResult.error);
 
@@ -362,7 +359,6 @@ export function createAgentInboxService({
       });
     }
 
-    // Create inbox item with notification
     const result = await createWithNotifications(
       {
         boxId: boxResult.id,
@@ -400,7 +396,6 @@ export function createAgentInboxService({
       parentId?: AgentInboxId;
     }
   ): Promise<Result<AgentInbox, AgentInboxServiceError>> => {
-    // Get sender box info
     const senderBox = await db.query.box.findFirst({
       where: eq(box.id, senderBoxId),
     });

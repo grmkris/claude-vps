@@ -1,38 +1,40 @@
 import { ORPCError } from "@orpc/server";
-import { AgentInboxId, BoxId } from "@vps-claude/shared";
+import {
+  AgentInboxMetadataSchema,
+  AgentInboxNotificationStatus,
+  AgentInboxSourceExternalSchema,
+  AgentInboxSourceType,
+  AgentInboxStatus,
+  AgentInboxType,
+} from "@vps-claude/db";
+import {
+  AgentInboxId,
+  AgentInboxNotificationId,
+  BoxId,
+} from "@vps-claude/shared";
 import { z } from "zod";
 
 import { boxProcedure } from "../index";
 import { SuccessOutput } from "./schemas";
 
-// Schemas for inbox
-const InboxTypeEnum = z.enum(["email", "cron", "webhook", "message"]);
-const InboxStatusEnum = z.enum(["pending", "delivered", "read"]);
-
 const InboxItemOutput = z.object({
-  id: z.string(),
-  type: InboxTypeEnum,
-  status: InboxStatusEnum,
+  id: AgentInboxId,
+  type: AgentInboxType,
+  status: AgentInboxStatus,
   content: z.string(),
   createdAt: z.date(),
   deliveredAt: z.date().nullable(),
   readAt: z.date().nullable(),
-  sourceType: z.enum(["external", "box", "system"]),
-  sourceBoxId: z.string().nullable(),
-  sourceExternal: z
-    .object({
-      email: z.string().optional(),
-      name: z.string().optional(),
-      webhookUrl: z.string().optional(),
-    })
-    .nullable(),
-  metadata: z.unknown().nullable(),
+  sourceType: AgentInboxSourceType,
+  sourceBoxId: BoxId.nullable(),
+  sourceExternal: AgentInboxSourceExternalSchema,
+  metadata: AgentInboxMetadataSchema.nullable(),
 });
 
 const NotificationOutput = z.object({
-  id: z.string(),
-  inboxId: z.string(),
-  status: z.enum(["unread", "read"]),
+  id: AgentInboxNotificationId,
+  inboxId: AgentInboxId,
+  status: AgentInboxNotificationStatus,
   createdAt: z.date(),
   inbox: InboxItemOutput.optional(),
 });
@@ -42,8 +44,8 @@ export const boxInboxApiRouter = {
     .route({ method: "GET", path: "/box/inbox" })
     .input(
       z.object({
-        type: InboxTypeEnum.array().optional(),
-        status: InboxStatusEnum.optional(),
+        type: AgentInboxType.array().optional(),
+        status: AgentInboxStatus.optional(),
         limit: z.number().min(1).max(100).optional(),
       })
     )
@@ -72,7 +74,9 @@ export const boxInboxApiRouter = {
       });
 
       return result.match(
-        (items) => ({ items: items as z.infer<typeof InboxItemOutput>[] }),
+        (items) => ({
+          items,
+        }),
         (error) => {
           throw new ORPCError("INTERNAL_SERVER_ERROR", {
             message: error.message,
@@ -106,11 +110,12 @@ export const boxInboxApiRouter = {
 
       return result.match(
         (item) => {
-          // Verify item belongs to this box
           if (item && item.boxId !== boxRecord.id) {
             throw new ORPCError("FORBIDDEN", { message: "Not authorized" });
           }
-          return { item: item as z.infer<typeof InboxItemOutput> | null };
+          return {
+            item,
+          };
         },
         (error) => {
           throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -141,7 +146,6 @@ export const boxInboxApiRouter = {
         throw new ORPCError("UNAUTHORIZED", { message: "Invalid box token" });
       }
 
-      // Verify item exists and belongs to this box
       const itemResult = await context.agentInboxService.getById(input.id);
       if (itemResult.isErr() || !itemResult.value) {
         throw new ORPCError("NOT_FOUND", { message: "Inbox item not found" });
@@ -150,7 +154,6 @@ export const boxInboxApiRouter = {
         throw new ORPCError("FORBIDDEN", { message: "Not authorized" });
       }
 
-      // Mark the item and its notifications as read
       await context.agentInboxService.markAsRead(input.id);
       await context.agentInboxService.markNotificationReadByInboxId(
         input.id,
@@ -188,7 +191,7 @@ export const boxInboxApiRouter = {
 
       return result.match(
         (notifications) => ({
-          notifications: notifications as z.infer<typeof NotificationOutput>[],
+          notifications,
         }),
         (error) => {
           throw new ORPCError("INTERNAL_SERVER_ERROR", {
@@ -234,13 +237,10 @@ export const boxInboxApiRouter = {
         throw new ORPCError("UNAUTHORIZED", { message: "Invalid box token" });
       }
 
-      // Resolve box subdomains to box IDs
       const recipients: { boxId: BoxId; sessionKey?: string }[] = [];
       for (const recipient of input.to) {
-        // For now, recipient.box is the subdomain - would need to resolve to BoxId
-        // This would require a lookup, simplified here
         recipients.push({
-          boxId: recipient.box as BoxId, // TODO: Resolve subdomain to BoxId
+          boxId: recipient.box as BoxId,
           sessionKey: recipient.session,
         });
       }

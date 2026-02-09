@@ -30,9 +30,7 @@ export function useFileUpload(boxId: BoxId) {
       const dir =
         variables.path.substring(0, variables.path.lastIndexOf("/")) || "/";
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxFs.list.queryOptions({
-          input: { id: boxId, path: dir },
-        }).queryKey,
+        queryKey: orpc.boxFs.list.queryKey({ input: { id: boxId, path: dir } }),
       });
       toast.success("File uploaded");
     },

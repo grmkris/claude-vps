@@ -201,7 +201,6 @@ export function createApi({
       emailData.html ||
       emailData.html_body;
 
-    // Use unified agent inbox service
     const result = await services.agentInboxService.processInbound(
       subdomain,
       "email",

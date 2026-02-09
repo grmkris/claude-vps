@@ -46,7 +46,7 @@ export default function CreateBoxForm() {
   // Filter credentials that might be Tailscale keys
   const tailscaleCredentials = useMemo(
     () =>
-      credentialsData?.filter(
+      credentialsData?.credentials?.filter(
         (c: { key: string }) =>
           c.key.toUpperCase().includes("TAILSCALE") ||
           c.key.toUpperCase().includes("TS_")

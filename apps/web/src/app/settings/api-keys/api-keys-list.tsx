@@ -287,7 +287,7 @@ export default function ApiKeysList() {
     );
   }
 
-  const apiKeys = data || [];
+  const apiKeys = data?.apiKeys || [];
 
   return (
     <div className="space-y-8">

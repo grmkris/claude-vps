@@ -33,7 +33,7 @@ export function useCreateBox() {
     mutationFn: (input: CreateBoxInput) => client.box.create(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
+        queryKey: orpc.box.list.queryKey({ input: {} }),
       });
       toast.success("Box created!");
     },
@@ -52,7 +52,7 @@ export function useCreateDevBox() {
     mutationFn: (input: { name: string }) => client.box.createDev(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
+        queryKey: orpc.box.list.queryKey({ input: {} }),
       });
       // Don't show toast - component will show credentials dialog
     },
@@ -71,7 +71,7 @@ export function useDeployBox() {
     mutationFn: (input: DeployBoxInput) => client.box.deploy(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
+        queryKey: orpc.box.list.queryKey({ input: {} }),
       });
       toast.success("Deployment started!");
     },
@@ -88,7 +88,7 @@ export function useDeleteBox() {
     mutationFn: async (id: BoxId) => client.box.delete({ id }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.box.list.queryOptions({ input: {} }).queryKey,
+        queryKey: orpc.box.list.queryKey({ input: {} }),
       });
       toast.success("Box deleted!");
     },

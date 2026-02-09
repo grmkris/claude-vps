@@ -33,9 +33,7 @@ export function useSendMessage(boxId: BoxId) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxSessions.list.queryOptions({
-          input: { id: boxId },
-        }).queryKey,
+        queryKey: orpc.boxSessions.list.queryKey({ input: { id: boxId } }),
       });
     },
   });
@@ -167,9 +165,9 @@ export function useStreamingSession(boxId: BoxId) {
 
         // Refresh sessions list
         void queryClient.invalidateQueries({
-          queryKey: orpc.boxSessions.list.queryOptions({
+          queryKey: orpc.boxSessions.list.queryKey({
             input: { id: boxId },
-          }).queryKey,
+          }),
         });
       }
     },

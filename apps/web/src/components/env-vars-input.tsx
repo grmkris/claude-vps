@@ -203,7 +203,8 @@ function EnvVarRow({
 }
 
 export function EnvVarsInput({ value, onChange }: EnvVarsInputProps) {
-  const { data: credentials = [] } = useCredentials();
+  const { data } = useCredentials();
+  const credentials = data?.credentials ?? [];
 
   const addEnvVar = () => {
     onChange([...value, { key: "", type: "literal", value: "" }]);

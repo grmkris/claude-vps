@@ -1,56 +1,28 @@
 import { ORPCError } from "@orpc/server";
-import { AgentInboxId, BoxCronjobId, BoxId } from "@vps-claude/shared";
+import {
+  AgentInboxMetadataSchema,
+  AgentInboxSourceExternalSchema,
+  AgentInboxSourceType,
+  AgentInboxStatus,
+  AgentInboxType,
+} from "@vps-claude/db";
+import { AgentInboxId, BoxId } from "@vps-claude/shared";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
 
-const InboxTypeEnum = z.enum(["email", "cron", "webhook", "message"]);
-const InboxStatusEnum = z.enum(["pending", "delivered", "read"]);
-
-const InboxMetadataOutput = z
-  .object({
-    // Email
-    emailMessageId: z.string().optional(),
-    from: z
-      .object({ email: z.string(), name: z.string().optional() })
-      .optional(),
-    to: z.string().optional(),
-    subject: z.string().optional(),
-    htmlBody: z.string().optional(),
-    inReplyTo: z.string().optional(),
-    // Cron
-    cronJobId: BoxCronjobId.optional(),
-    cronSchedule: z.string().optional(),
-    // Webhook
-    webhookId: z.string().optional(),
-    webhookPayload: z.record(z.string(), z.unknown()).optional(),
-    callbackUrl: z.string().optional(),
-    // Message
-    title: z.string().optional(),
-    // Delivery override
-    spawnSession: z.boolean().optional(),
-  })
-  .nullable();
-
 const InboxItemOutput = z.object({
   id: AgentInboxId,
-  boxId: BoxId,
-  type: InboxTypeEnum,
-  status: InboxStatusEnum,
+  type: AgentInboxType,
+  status: AgentInboxStatus,
   content: z.string(),
   createdAt: z.date(),
   deliveredAt: z.date().nullable(),
   readAt: z.date().nullable(),
-  sourceType: z.enum(["external", "box", "system"]),
-  sourceBoxId: z.string().nullable(),
-  sourceExternal: z
-    .object({
-      email: z.string().optional(),
-      name: z.string().optional(),
-      webhookUrl: z.string().optional(),
-    })
-    .nullable(),
-  metadata: InboxMetadataOutput,
+  sourceType: AgentInboxSourceType,
+  sourceBoxId: BoxId.nullable(),
+  sourceExternal: AgentInboxSourceExternalSchema,
+  metadata: AgentInboxMetadataSchema.nullable(),
 });
 
 export const agentInboxRouter = {
@@ -59,8 +31,8 @@ export const agentInboxRouter = {
     .input(
       z.object({
         boxId: BoxId,
-        type: InboxTypeEnum.array().optional(),
-        status: InboxStatusEnum.optional(),
+        type: AgentInboxType.array().optional(),
+        status: AgentInboxStatus.optional(),
         limit: z.number().min(1).max(100).optional(),
       })
     )

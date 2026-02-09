@@ -222,7 +222,8 @@ function LoadingSkeleton() {
 }
 
 export function AgentConfigPanel({ boxId }: { boxId: BoxId }) {
-  const { data: config, isLoading, error } = useAgentConfig(boxId);
+  const { data: configData, isLoading, error } = useAgentConfig(boxId);
+  const config = configData?.config;
   const updateMutation = useUpdateAgentConfig();
 
   // Local form state

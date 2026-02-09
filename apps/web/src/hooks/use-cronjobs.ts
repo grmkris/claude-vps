@@ -25,7 +25,7 @@ export function useCreateCronjob(boxId: BoxId) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.cronjob.list.queryOptions({ input: { boxId } }).queryKey,
+        queryKey: orpc.cronjob.list.queryKey({ input: { boxId } }),
       });
     },
   });
@@ -44,7 +44,7 @@ export function useUpdateCronjob(boxId: BoxId) {
     }) => orpc.cronjob.update.call(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.cronjob.list.queryOptions({ input: { boxId } }).queryKey,
+        queryKey: orpc.cronjob.list.queryKey({ input: { boxId } }),
       });
     },
   });
@@ -57,7 +57,7 @@ export function useDeleteCronjob(boxId: BoxId) {
     mutationFn: (id: BoxCronjobId) => orpc.cronjob.delete.call({ id }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.cronjob.list.queryOptions({ input: { boxId } }).queryKey,
+        queryKey: orpc.cronjob.list.queryKey({ input: { boxId } }),
       });
     },
   });
@@ -70,7 +70,7 @@ export function useToggleCronjob(boxId: BoxId) {
     mutationFn: (id: BoxCronjobId) => orpc.cronjob.toggle.call({ id }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.cronjob.list.queryOptions({ input: { boxId } }).queryKey,
+        queryKey: orpc.cronjob.list.queryKey({ input: { boxId } }),
       });
     },
   });

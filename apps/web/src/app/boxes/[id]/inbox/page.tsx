@@ -1,6 +1,6 @@
 "use client";
 
-import type { BoxId } from "@vps-claude/shared";
+import type { AgentInboxId, BoxId } from "@vps-claude/shared";
 
 import { SERVICE_URLS } from "@vps-claude/shared/services.schema";
 import { Clock, Mail, MailOpen, MessageSquare, Webhook } from "lucide-react";
@@ -81,17 +81,18 @@ function formatRelativeTime(date: Date | string): string {
 }
 
 function getItemTitle(item: InboxItem): string {
+  const meta = item.metadata;
   if (item.type === "email") {
-    return item.metadata?.subject ?? "(no subject)";
+    return meta?.subject ?? "(no subject)";
   }
   if (item.type === "cron") {
-    return `Cron trigger: ${item.metadata?.cronJobId ?? "unknown"}`;
+    return `Cron trigger: ${meta?.cronJobId ?? "unknown"}`;
   }
   if (item.type === "webhook") {
     return "Webhook payload";
   }
   if (item.type === "message") {
-    return "Inter-agent message";
+    return meta?.title ?? "Inter-agent message";
   }
   return "Unknown item";
 }
@@ -236,7 +237,7 @@ export default function InboxPage() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <TypeBadge type={item.type as InboxType} />
+                    <TypeBadge type={item.type} />
                     <StatusBadge status={item.status} />
                     <span className="font-medium truncate">
                       {getItemSender(item)}
@@ -294,7 +295,9 @@ export default function InboxPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => markRead.mutate({ id: item.id })}
+                      onClick={() =>
+                        markRead.mutate({ id: item.id as AgentInboxId })
+                      }
                       disabled={markRead.isPending}
                     >
                       Mark as read
