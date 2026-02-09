@@ -70,6 +70,7 @@ export interface SetupStepConfig {
   boxAgentBinaryUrl: string;
   envVars: Record<string, string>;
   spriteUrl: string;
+  mcpServers?: Record<string, unknown>;
 }
 
 // Proxy config for TCP tunneling

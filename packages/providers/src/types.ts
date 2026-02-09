@@ -102,6 +102,7 @@ export interface SetupStepConfig {
   boxAgentBinaryUrl: string;
   envVars: Record<string, string>;
   instanceUrl: string;
+  mcpServers?: Record<string, unknown>;
 }
 
 // Provider host configuration (for Docker hosts)

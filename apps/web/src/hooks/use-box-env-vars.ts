@@ -26,7 +26,9 @@ export function useSetBoxEnvVar() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxEnvVar.list.queryKey({ input: { boxId: vars.boxId } }),
+        queryKey: orpc.boxEnvVar.list.queryKey({
+          input: { boxId: vars.boxId },
+        }),
       });
       toast.success("Environment variable saved");
     },
@@ -49,7 +51,9 @@ export function useDeleteBoxEnvVar() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxEnvVar.list.queryKey({ input: { boxId: vars.boxId } }),
+        queryKey: orpc.boxEnvVar.list.queryKey({
+          input: { boxId: vars.boxId },
+        }),
       });
       toast.success("Environment variable deleted");
     },
@@ -80,7 +84,9 @@ export function useBulkSetBoxEnvVars() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxEnvVar.list.queryKey({ input: { boxId: vars.boxId } }),
+        queryKey: orpc.boxEnvVar.list.queryKey({
+          input: { boxId: vars.boxId },
+        }),
       });
     },
     onError: (error) => {

@@ -6,12 +6,12 @@ import {
 } from "@vps-claude/shared";
 import { z } from "zod";
 
+import { agentInboxNotificationStatusEnum } from "./agent-inbox-notification.db";
 import {
   agentInboxSourceTypeEnum,
   agentInboxStatusEnum,
   agentInboxTypeEnum,
 } from "./agent-inbox.db";
-import { agentInboxNotificationStatusEnum } from "./agent-inbox-notification.db";
 
 // Enums
 export const AGENT_INBOX_TYPES = agentInboxTypeEnum.enumValues;
@@ -39,9 +39,7 @@ export type AgentInboxNotificationStatus = z.infer<
 export const AgentInboxMetadataSchema = z.object({
   // Email
   emailMessageId: z.string().optional(),
-  from: z
-    .object({ email: z.string(), name: z.string().optional() })
-    .optional(),
+  from: z.object({ email: z.string(), name: z.string().optional() }).optional(),
   to: z.string().optional(),
   subject: z.string().optional(),
   htmlBody: z.string().optional(),
@@ -58,9 +56,7 @@ export const AgentInboxMetadataSchema = z.object({
   // Override delivery behavior
   spawnSession: z.boolean().optional(),
 });
-export type AgentInboxMetadataSchema = z.infer<
-  typeof AgentInboxMetadataSchema
->;
+export type AgentInboxMetadataSchema = z.infer<typeof AgentInboxMetadataSchema>;
 
 export const AgentInboxSourceExternalSchema = z
   .object({

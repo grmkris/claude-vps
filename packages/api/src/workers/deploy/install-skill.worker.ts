@@ -88,8 +88,12 @@ export function createInstallSkillWorker({
         // source is the GitHub repo path, e.g. "remotion-dev/skills"
         // --yes --global skips interactive prompts, echo "" | handles any remaining prompts
         const skillsRepoUrl = `https://github.com/${source}`;
-        const cmd = `cd /home/sprite && echo "" | /.sprite/bin/npx --yes skills add ${skillsRepoUrl} --skill ${skillId} --yes --global`;
-        const provider = providerFactory.getProviderForBox(boxResult.value);
+        const box = boxResult.value;
+        const isDocker = box.provider === "docker";
+        const homeDir = isDocker ? "/home/box" : "/home/sprite";
+        const npxBin = isDocker ? "bun x" : "/.sprite/bin/npx";
+        const cmd = `cd ${homeDir} && echo "" | ${npxBin} --yes skills add ${skillsRepoUrl} --skill ${skillId} --yes --global`;
+        const provider = providerFactory.getProviderForBox(box);
         const result = await provider.execShell(instanceName, cmd);
 
         if (result.exitCode !== 0) {

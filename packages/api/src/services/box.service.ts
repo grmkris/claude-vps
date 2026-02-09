@@ -381,12 +381,11 @@ export function createBoxService({ deps }: { deps: BoxServiceDeps }) {
 You can read/write files, run commands, and interact with the system.
 When handling emails, read the content and respond appropriately.`;
 
-      // Default MCP servers - always include ai-tools
+      // Default MCP servers - always include ai-tools (HTTP since box-agent is running)
       const defaultMcpServers: Record<string, McpServerConfig> = {
         "ai-tools": {
-          command: "/usr/local/bin/box-agent",
-          args: ["mcp"],
-          env: {},
+          type: "http",
+          url: "http://localhost:33002/mcp",
         },
       };
 

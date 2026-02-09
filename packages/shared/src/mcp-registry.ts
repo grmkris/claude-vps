@@ -98,8 +98,18 @@ export interface McpServerConfigSse {
   headers?: Record<string, string>;
 }
 
+/** MCP server config for runtime - HTTP (streamable HTTP) */
+export interface McpServerConfigHttp {
+  type: "http";
+  url: string;
+  headers?: Record<string, string>;
+}
+
 /** MCP server config for runtime (matches box-agent-config schema) */
-export type McpServerConfig = McpServerConfigStdio | McpServerConfigSse;
+export type McpServerConfig =
+  | McpServerConfigStdio
+  | McpServerConfigSse
+  | McpServerConfigHttp;
 
 /**
  * Convert a registry server to McpServerConfig

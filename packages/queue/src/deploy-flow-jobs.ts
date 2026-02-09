@@ -52,6 +52,7 @@ export const SetupStepJobData = z.object({
   stepOrder: z.number().int().min(1),
   envVars: z.record(z.string(), z.string()),
   boxAgentBinaryUrl: z.string(),
+  mcpServers: z.record(z.string(), z.unknown()).optional(),
 });
 export type SetupStepJobData = z.infer<typeof SetupStepJobData>;
 

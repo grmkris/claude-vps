@@ -21,6 +21,8 @@ export interface DeployFlowParams {
   completedSkillIds?: string[];
   /** Unique suffix for job IDs to prevent deduplication on retry */
   jobIdSuffix?: string;
+  /** MCP servers to write to settings.json during SETUP_MCP_SETTINGS */
+  mcpServers?: Record<string, unknown>;
 }
 
 interface BaseJobData {
@@ -71,6 +73,7 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
     completedStepKeys = [],
     completedSkillIds = [],
     jobIdSuffix = "",
+    mcpServers,
   } = params;
 
   // Helper to create unique job IDs (suffix prevents deduplication on retry)
@@ -92,6 +95,7 @@ export function buildDeployFlow(params: DeployFlowParams): FlowJob {
     boxAgentBinaryUrl,
     completedStepKeys,
     makeJobId,
+    mcpServers,
   });
 
   // Enable access children: only include if there are steps to run
@@ -159,6 +163,7 @@ interface SetupChainParams {
   boxAgentBinaryUrl: string;
   completedStepKeys: string[];
   makeJobId: (step: string) => string;
+  mcpServers?: Record<string, unknown>;
 }
 
 /**
@@ -187,8 +192,14 @@ const PARALLEL_PHASE1_STEPS = [
  * all children complete. This provides ~30-60s savings vs fully sequential.
  */
 function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
-  const { baseData, envVars, boxAgentBinaryUrl, completedStepKeys, makeJobId } =
-    params;
+  const {
+    baseData,
+    envVars,
+    boxAgentBinaryUrl,
+    completedStepKeys,
+    makeJobId,
+    mcpServers,
+  } = params;
   const { boxId, deploymentAttempt, instanceName, instanceUrl } = baseData;
 
   // Filter out completed steps
@@ -219,6 +230,7 @@ function buildSetupStepChain(params: SetupChainParams): FlowJob | undefined {
         stepOrder,
         envVars,
         boxAgentBinaryUrl,
+        mcpServers,
       },
       opts: {
         attempts: WORKER_CONFIG.setupStep.attempts,

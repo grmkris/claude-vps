@@ -21,9 +21,16 @@ export const McpServerConfigSseSchema = z.object({
   headers: z.record(z.string(), z.string()).optional(),
 });
 
+export const McpServerConfigHttpSchema = z.object({
+  type: z.literal("http"),
+  url: z.string(),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+
 export const McpServerConfigSchema = z.union([
   McpServerConfigStdioSchema,
   McpServerConfigSseSchema,
+  McpServerConfigHttpSchema,
 ]);
 export type McpServerConfigSchema = z.infer<typeof McpServerConfigSchema>;
 

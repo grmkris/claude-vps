@@ -38,11 +38,8 @@ const HAS_DOCKER = fs.existsSync(DOCKER_SOCKET);
 const BASE_DOMAIN = process.env.TEST_BASE_DOMAIN || "agents.localhost";
 
 // Claude authentication - needed for session tests
-const CLAUDE_TOKEN =
-  process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY;
-const CLAUDE_TOKEN_KEY = process.env.CLAUDE_CODE_OAUTH_TOKEN
-  ? "CLAUDE_CODE_OAUTH_TOKEN"
-  : "ANTHROPIC_API_KEY";
+const CLAUDE_TOKEN = process.env.ANTHROPIC_API_KEY;
+const CLAUDE_TOKEN_KEY = "ANTHROPIC_API_KEY";
 
 // Box-agent binary URL (auto-detects architecture)
 const BOX_AGENT_BINARY_URL = getBoxAgentBinaryUrl(

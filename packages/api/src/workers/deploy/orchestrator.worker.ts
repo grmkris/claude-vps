@@ -205,13 +205,23 @@ export function createOrchestratorWorker({
           "running"
         );
 
-        // 6. Resolve skill sources from skills.sh API (batch fetch)
+        // 6. Fetch MCP servers from box agent config (for settings.json)
+        let mcpServers: Record<string, unknown> | undefined;
+        const agentConfigResult = await boxService.getAgentConfig(
+          boxId,
+          "default"
+        );
+        if (agentConfigResult.isOk()) {
+          mcpServers = agentConfigResult.value.mcpServers ?? undefined;
+        }
+
+        // 7. Resolve skill sources from skills.sh API (batch fetch)
         const skillsWithSources = await resolveSkillSources(
           skills ?? [],
           logger
         );
 
-        // 7. Mark INSTALL_SKILLS as running if we have skills
+        // 8. Mark INSTALL_SKILLS as running if we have skills
         if (hasSkills) {
           await deployStepService.updateStepStatus(
             boxId,
@@ -255,6 +265,7 @@ export function createOrchestratorWorker({
           completedStepKeys,
           completedSkillIds,
           jobIdSuffix,
+          mcpServers,
         });
 
         await flowProducer.add(flow);

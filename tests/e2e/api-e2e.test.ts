@@ -15,12 +15,12 @@
  * - Server running (local dev or remote)
  * - inboundemail API key for sending test emails
  * - Ngrok or public URL for server (for email webhooks)
- * - CLAUDE_CODE_OAUTH_TOKEN for Claude session spawning (optional)
+ * - ANTHROPIC_API_KEY for Claude session spawning (optional)
  *
  * Run:
  *   SERVER_URL=http://localhost:33000 \
  *   INBOUND_API_KEY=xxx AGENTS_DOMAIN=yoda.fun \
- *   CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-... \
+ *   ANTHROPIC_API_KEY=sk-ant-oat01-... \
  *     bun test tests/e2e/api-e2e.test.ts
  */
 
@@ -42,7 +42,7 @@ const TestEnvSchema = z.object({
   SERVER_URL: z.string().url(),
   INBOUND_API_KEY: z.string().min(1),
   AGENTS_DOMAIN: z.string().min(1),
-  CLAUDE_CODE_OAUTH_TOKEN: z.string().min(1),
+  ANTHROPIC_API_KEY: z.string().min(1),
   PROVIDER: z.enum(["sprites", "docker"]).optional(),
 });
 const envResult = TestEnvSchema.safeParse(env);
@@ -148,8 +148,8 @@ describe.skipIf(!envResult.success)("API E2E - Email Flow", () => {
     const { box } = await client.box.create({
       name: `E2E Test Box ${Date.now().toString(36)}`,
       provider: TEST_ENV.PROVIDER,
-      ...(TEST_ENV.CLAUDE_CODE_OAUTH_TOKEN && {
-        envVars: { CLAUDE_CODE_OAUTH_TOKEN: TEST_ENV.CLAUDE_CODE_OAUTH_TOKEN },
+      ...(TEST_ENV.ANTHROPIC_API_KEY && {
+        envVars: { ANTHROPIC_API_KEY: TEST_ENV.ANTHROPIC_API_KEY },
       }),
     });
     boxId = box.id;

@@ -303,8 +303,14 @@ export function createDockerProvider(
     // =========================================================================
 
     async runSetupStep(config: SetupStepConfig): Promise<ExecResult> {
-      const { instanceName, stepKey, boxAgentBinaryUrl, envVars, instanceUrl } =
-        config;
+      const {
+        instanceName,
+        stepKey,
+        boxAgentBinaryUrl,
+        envVars,
+        instanceUrl,
+        mcpServers,
+      } = config;
 
       logger.info(
         { instanceName, stepKey },
@@ -315,6 +321,7 @@ export function createDockerProvider(
         boxAgentBinaryUrl,
         envVars,
         instanceUrl,
+        mcpServers,
       });
 
       if (!cmd) {
@@ -481,6 +488,7 @@ function getDockerSetupCommand(
     boxAgentBinaryUrl: string;
     envVars: Record<string, string>;
     instanceUrl: string;
+    mcpServers?: Record<string, unknown>;
   }
 ): string {
   // Add Docker-specific env vars needed by box-agent
@@ -548,6 +556,8 @@ ENVEOF
 ${envFileContent}
 ENVEOF
       chown box:box ${HOME_DIR}/.bashrc.env
+      # Source env vars in zsh so docker exec gets them
+      grep -q 'bashrc.env' ${HOME_DIR}/.zshrc 2>/dev/null || echo '[ -f ~/.bashrc.env ] && source ~/.bashrc.env' >> ${HOME_DIR}/.zshrc
     `,
 
     SETUP_BOX_AGENT_SERVICE: `
@@ -598,7 +608,13 @@ SUPERVISOREOF
   </nav>
   <section>
     <h2>Docker Access</h2>
-    <pre>docker exec -it $INSTANCE_NAME bash</pre>
+    <div style="position: relative;">
+      <pre id="docker-cmd">docker exec -it -u box $INSTANCE_NAME zsh</pre>
+      <button onclick="navigator.clipboard.writeText(document.getElementById('docker-cmd').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})"
+        style="position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.5rem; font-size: 12px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+        Copy
+      </button>
+    </div>
   </section>
 </body>
 </html>
@@ -658,10 +674,31 @@ SUPERVISOREOF
       supervisorctl update
     `,
 
-    SETUP_MCP_SETTINGS: `
-      source /home/box/.bashrc.env
-      /usr/local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp || echo "MCP settings skipped"
-    `,
+    SETUP_MCP_SETTINGS: (() => {
+      // Use `claude mcp add -s user` to register MCPs in ~/.claude.json
+      const allServers: Record<string, Record<string, unknown>> = {
+        "ai-tools": { type: "http", url: "http://localhost:33002/mcp" },
+      };
+      if (config.mcpServers) {
+        for (const [name, mcpConfig] of Object.entries(config.mcpServers)) {
+          if (name !== "ai-tools") {
+            allServers[name] = mcpConfig as Record<string, unknown>;
+          }
+        }
+      }
+      const cmds = Object.entries(allServers).map(([name, cfg]) => {
+        const transport =
+          cfg.type === "sse" ? "sse" : cfg.type === "http" ? "http" : "stdio";
+        if (transport === "stdio") {
+          const args = Array.isArray(cfg.args)
+            ? (cfg.args as string[]).join(" ")
+            : "";
+          return `su - box -c "claude mcp add -s user '${name}' -- ${cfg.command}${args ? ` ${args}` : ""}"`;
+        }
+        return `su - box -c "claude mcp add -s user -t ${transport} '${name}' '${cfg.url}'"`;
+      });
+      return cmds.join("\n");
+    })(),
 
     SETUP_INSTALL_CLAUDE: `
       # Claude CLI pre-installed in box image, verify it exists

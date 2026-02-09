@@ -40,6 +40,7 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
         stepKey,
         envVars,
         boxAgentBinaryUrl,
+        mcpServers,
       } = job.data;
 
       const event = createWideEvent(logger, {
@@ -78,11 +79,12 @@ export function createSetupStepWorker({ deps }: { deps: SetupStepWorkerDeps }) {
         // Run the setup step via provider abstraction
         const provider = providerFactory.getProviderForBox(boxResult.value);
         const result = await provider.runSetupStep({
-          instanceName: instanceName, // instanceName is instanceName in job data
+          instanceName,
           stepKey,
           boxAgentBinaryUrl,
           envVars,
-          instanceUrl: instanceUrl, // instanceUrl is instanceUrl in job data
+          instanceUrl,
+          mcpServers,
         });
 
         // Capture Tailscale IP if this is the Tailscale step

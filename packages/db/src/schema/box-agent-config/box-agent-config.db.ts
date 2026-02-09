@@ -39,7 +39,16 @@ export interface McpServerConfigSse {
   headers?: Record<string, string>;
 }
 
-export type McpServerConfig = McpServerConfigStdio | McpServerConfigSse;
+export interface McpServerConfigHttp {
+  type: "http";
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export type McpServerConfig =
+  | McpServerConfigStdio
+  | McpServerConfigSse
+  | McpServerConfigHttp;
 
 export interface AgentDefinition {
   name: string;

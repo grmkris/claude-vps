@@ -155,6 +155,7 @@ export function createSpritesProvider(
         boxAgentBinaryUrl: config.boxAgentBinaryUrl,
         envVars: config.envVars,
         spriteUrl: config.instanceUrl,
+        mcpServers: config.mcpServers,
       });
     },
 

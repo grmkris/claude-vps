@@ -366,6 +366,7 @@ ENVEOF`
       boxAgentBinaryUrl: string;
       envVars: Record<string, string>;
       spriteUrl: string;
+      mcpServers?: Record<string, unknown>;
     }
   ): string {
     const envFileContent = [
@@ -504,10 +505,31 @@ STARTEOF
           --needs box-agent \\
           --no-stream
       `,
-      SETUP_MCP_SETTINGS: `
-        source /home/sprite/.bashrc.env
-        /home/sprite/.local/bin/claude mcp add -s user -t http ai-tools http://localhost:33002/mcp
-      `,
+      SETUP_MCP_SETTINGS: (() => {
+        // Use `claude mcp add -s user` to register MCPs in ~/.claude.json
+        const allServers: Record<string, Record<string, unknown>> = {
+          "ai-tools": { type: "http", url: "http://localhost:33002/mcp" },
+        };
+        if (config.mcpServers) {
+          for (const [name, mcpConfig] of Object.entries(config.mcpServers)) {
+            if (name !== "ai-tools") {
+              allServers[name] = mcpConfig as Record<string, unknown>;
+            }
+          }
+        }
+        const cmds = Object.entries(allServers).map(([name, cfg]) => {
+          const transport =
+            cfg.type === "sse" ? "sse" : cfg.type === "http" ? "http" : "stdio";
+          if (transport === "stdio") {
+            const args = Array.isArray(cfg.args)
+              ? (cfg.args as string[]).join(" ")
+              : "";
+            return `claude mcp add -s user '${name}' -- ${cfg.command}${args ? ` ${args}` : ""}`;
+          }
+          return `claude mcp add -s user -t ${transport} '${name}' '${cfg.url}'`;
+        });
+        return cmds.join("\n");
+      })(),
       SETUP_TAILSCALE: `
         set -euo pipefail
         source /home/sprite/.bashrc.env
@@ -557,8 +579,14 @@ TSEOF
    * Used by modular deploy workers for fine-grained control
    */
   async function runSetupStep(config: SetupStepConfig): Promise<ExecResult> {
-    const { spriteName, stepKey, boxAgentBinaryUrl, envVars, spriteUrl } =
-      config;
+    const {
+      spriteName,
+      stepKey,
+      boxAgentBinaryUrl,
+      envVars,
+      spriteUrl,
+      mcpServers,
+    } = config;
 
     // Special case: SETUP_NGINX_SERVICE needs nginx config written first
     if (stepKey === "SETUP_NGINX_SERVICE") {
@@ -569,6 +597,7 @@ TSEOF
       boxAgentBinaryUrl,
       envVars,
       spriteUrl,
+      mcpServers,
     });
 
     if (!cmd) {

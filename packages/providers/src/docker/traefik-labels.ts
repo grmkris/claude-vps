@@ -3,7 +3,7 @@
  *
  * Routes:
  * - / -> nginx:8080 (static landing page)
- * - /app/* -> AgentApp (port 33003, strip /app)
+ * - /app/* -> AgentApp (port 33003, no strip - Next.js basePath handles it)
  * - /box/* -> BoxAgent (port 33002, strip /box)
  */
 export interface TraefikLabelConfig {
@@ -57,8 +57,6 @@ export function generateTraefikLabels(
     // Middlewares for path stripping
     [`traefik.http.middlewares.${routerName}-strip-box.stripprefix.prefixes`]:
       "/box",
-    [`traefik.http.middlewares.${routerName}-strip-app.stripprefix.prefixes`]:
-      "/app",
 
     // Router: root (static landing page from nginx)
     [`traefik.http.routers.${routerName}-root.rule`]: `Host(\`${host}\`) && Path(\`/\`)`,
@@ -69,7 +67,6 @@ export function generateTraefikLabels(
     // Router: app (AgentApp at /app/*)
     [`traefik.http.routers.${routerName}-app.rule`]: `Host(\`${host}\`) && PathPrefix(\`/app\`)`,
     [`traefik.http.routers.${routerName}-app.service`]: `${routerName}-app`,
-    [`traefik.http.routers.${routerName}-app.middlewares`]: `${routerName}-strip-app@docker`,
     [`traefik.http.routers.${routerName}-app.priority`]: "50",
     [`traefik.http.routers.${routerName}-app.entrypoints`]: entrypoint,
 

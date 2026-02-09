@@ -35,7 +35,9 @@ export function useUpdateAgentConfig() {
     },
     onSuccess: (_, vars) => {
       void queryClient.invalidateQueries({
-        queryKey: orpc.boxAgentConfig.get.queryKey({ input: { boxId: vars.boxId } }),
+        queryKey: orpc.boxAgentConfig.get.queryKey({
+          input: { boxId: vars.boxId },
+        }),
       });
       toast.success("Agent configuration saved");
     },
