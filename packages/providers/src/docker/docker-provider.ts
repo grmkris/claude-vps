@@ -675,7 +675,6 @@ SUPERVISOREOF
     `,
 
     SETUP_MCP_SETTINGS: (() => {
-      // Use `claude mcp add -s user` to register MCPs in ~/.claude.json
       const allServers: Record<string, Record<string, unknown>> = {
         "ai-tools": { type: "http", url: "http://localhost:33002/mcp" },
       };
@@ -686,16 +685,18 @@ SUPERVISOREOF
           }
         }
       }
+      const sanitize = (n: string) => n.replace(/[^a-zA-Z0-9_-]/g, "-");
       const cmds = Object.entries(allServers).map(([name, cfg]) => {
+        const safeName = sanitize(name);
         const transport =
           cfg.type === "sse" ? "sse" : cfg.type === "http" ? "http" : "stdio";
         if (transport === "stdio") {
           const args = Array.isArray(cfg.args)
             ? (cfg.args as string[]).join(" ")
             : "";
-          return `su - box -c "claude mcp add -s user '${name}' -- ${cfg.command}${args ? ` ${args}` : ""}"`;
+          return `su - box -c "claude mcp add -s user '${safeName}' -- ${cfg.command}${args ? ` ${args}` : ""}" || true`;
         }
-        return `su - box -c "claude mcp add -s user -t ${transport} '${name}' '${cfg.url}'"`;
+        return `su - box -c "claude mcp add -s user -t ${transport} '${safeName}' '${cfg.url}'" || true`;
       });
       return cmds.join("\n");
     })(),

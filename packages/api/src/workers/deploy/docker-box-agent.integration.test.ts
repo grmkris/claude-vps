@@ -190,6 +190,8 @@ describe.skipIf(!HAS_DOCKER)("Docker Box-Agent Integration", () => {
       provider: "docker",
       mcpServers: {
         "test-http-mcp": { type: "http" as const, url: "http://localhost:9999/mcp" },
+        "ai.autoblocks/ctxl": { type: "http" as const, url: "http://localhost:9998/mcp" },
+        "some.vendor/my-tool": { command: "npx", args: ["-y", "some-tool"] },
       },
     });
     expect(boxResult.isOk()).toBe(true);
@@ -709,22 +711,36 @@ describe.skipIf(!HAS_DOCKER)("Docker Box-Agent Integration", () => {
 
   // ─── MCP Deployment Verification ───
   describe("MCP Deployment", () => {
-    it("claude mcp list shows ai-tools", async () => {
+    let mcpList: string;
+
+    beforeAll(async () => {
       const dockerProvider = providerFactory.getProvider("docker");
       const result = await dockerProvider.execShell(
         finalBox.instanceName!,
         'su - box -c "claude mcp list" 2>&1'
       );
-      expect(result.stdout).toContain("ai-tools");
+      mcpList = result.stdout;
+      logger.info({ mcpList }, "MCP list for deployment tests");
     });
 
-    it("user-configured MCP visible in claude mcp list", async () => {
-      const dockerProvider = providerFactory.getProvider("docker");
-      const result = await dockerProvider.execShell(
-        finalBox.instanceName!,
-        'su - box -c "claude mcp list" 2>&1'
-      );
-      expect(result.stdout).toContain("test-http-mcp");
+    it("ai-tools registered", () => {
+      expect(mcpList).toContain("ai-tools");
+    });
+
+    it("clean-named MCP registered as-is", () => {
+      expect(mcpList).toContain("test-http-mcp");
+    });
+
+    it("dots/slashes sanitized to hyphens", () => {
+      // ai.autoblocks/ctxl → ai-autoblocks-ctxl
+      expect(mcpList).toContain("ai-autoblocks-ctxl");
+      // some.vendor/my-tool → some-vendor-my-tool
+      expect(mcpList).toContain("some-vendor-my-tool");
+    });
+
+    it("original invalid names not present", () => {
+      expect(mcpList).not.toContain("ai.autoblocks/ctxl");
+      expect(mcpList).not.toContain("some.vendor/my-tool");
     });
   });
 

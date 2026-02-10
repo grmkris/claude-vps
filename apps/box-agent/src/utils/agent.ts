@@ -8,7 +8,7 @@ import { existsSync } from "node:fs";
 import { env } from "../env";
 import { logger } from "../logger";
 import { getSession, saveSession } from "./sessions";
-import { syncMcpSettings } from "./sync-mcp-settings";
+
 
 // MCP server config types
 interface McpServerConfigStdio {
@@ -171,15 +171,6 @@ export async function* streamWithSession(opts: {
   const triggerType = opts.triggerType ?? "default";
   const config = await fetchAgentConfig(triggerType);
 
-  // Sync MCP servers to settings.json before session starts
-  if (config.mcpServers) {
-    try {
-      await syncMcpSettings(config.mcpServers);
-    } catch (err) {
-      logger.warn({ err }, "Failed to sync MCP settings");
-    }
-  }
-
   const existingSessionId = getSession(opts.contextType, opts.contextId);
   const sessionOptions = {
     ...buildSessionOptions(config),
@@ -235,15 +226,6 @@ export async function runWithSession(opts: {
   // Fetch config from API (falls back to defaults on error)
   const triggerType = opts.triggerType ?? "default";
   const config = await fetchAgentConfig(triggerType);
-
-  // Sync MCP servers to settings.json before session starts
-  if (config.mcpServers) {
-    try {
-      await syncMcpSettings(config.mcpServers);
-    } catch (err) {
-      logger.warn({ err }, "Failed to sync MCP settings");
-    }
-  }
 
   const existingSessionId = getSession(opts.contextType, opts.contextId);
   const sessionOptions = buildSessionOptions(config);
